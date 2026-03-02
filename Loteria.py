@@ -85,7 +85,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- ACRÉSCIMO TÉCNICO: FUNÇÃO DE PDF ESTILO VOLANTE ---
+# --- FUNÇÕES TÉCNICAS (MOTOR DE ALTA PRECISÃO) ---
+
 def gerar_pdf_bonito(jogos, modalidade):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -103,30 +104,6 @@ def gerar_pdf_bonito(jogos, modalidade):
         pdf.ln(5)
     return pdf.output(dest='S').encode('latin-1')
 
-# --- 2. MAPA DE ESTRATÉGIAS E MATRIZES ---
-ESTRATEGIA_MAPA = {
-    "Personalizado": {"dez": 15, "qtd": 10, "desc": "Configuração manual", "prob": "Variável", "peso": 0.1},
-    "1. SNIPER": {"dez": 15, "qtd": 8, "desc": "08 Jogos de 15 (Econômico)", "prob": "1/3.268.760", "peso": 0.2},
-    "2. ESCUDO E ESPADA": {"dez": 16, "qtd": 1, "desc": "01 de 16 + 10 de 15", "qtd_15": 10, "prob": "1/204.297", "peso": 0.5},
-    "3. EQUILÍBRIO REAL": {"dez": 16, "qtd": 2, "desc": "02 de 16 + 10 de 15 (NATA)", "qtd_15": 10, "prob": "1/102.148", "peso": 0.7},
-    "4. ELITE KADOSH": {"dez": 16, "qtd": 2, "desc": "02 de 16 + 15 de 15", "qtd_15": 15, "prob": "1/85.000", "peso": 0.9},
-    "5. INVASÃO": {"dez": 15, "qtd": 25, "desc": "25 Jogos de 15 (Volume)", "prob": "1/130.750", "peso": 0.6},
-    "6. A MARRETA": {"dez": 18, "qtd": 1, "desc": "01 de 18 + 05 de 16", "qtd_16": 5, "prob": "1/152 (14 pts)", "peso": 0.95},
-    "7. SIMETRIA GEOMÉTRICA": {"dez": 16, "qtd": 2, "desc": "02 de 16 + 08 de 15", "qtd_15": 8, "prob": "1/81.719", "peso": 0.85},
-    "8. RASTREAMENTO DE CICLO": {"dez": 16, "qtd": 1, "desc": "01 de 16 + 06 de 15 (Tendência)", "qtd_15": 6, "prob": "Alta Recorrência", "peso": 0.88},
-    "9. CERCO POR ELIMINAÇÃO": {"dez": 15, "qtd": 10, "desc": "10 Jogos de 15 (Quentes vs Atrasados)", "prob": "Equilibrada", "peso": 0.75}
-}
-
-MATRIZES_FECHAMENTO = {
-    "Nenhum": None,
-    "FECHAMENTO 18-15-14 (Redução Profissional)": {"n_pool": 18, "garantia": 14, "desc": "Garante 14 pts se as 15 estiverem nas 18", "prob": "1/152 para 14 pts", "peso": 0.75},
-    "FECHAMENTO 19-15-14 (Intermediário)": {"n_pool": 19, "garantia": 14, "desc": "Garante 14 pts se as 15 estiverem nas 19", "prob": "1/103 para 14 pts", "peso": 0.85},
-    "FECHAMENTO 20-15-13 (Cobertura Ampla)": {"n_pool": 20, "garantia": 13, "desc": "Garante 13 pts se as 15 estiverem nas 20", "prob": "1/12 para 13 pts", "peso": 0.98},
-    "MATRIZ DIAMANTE [2x16 + 10x15] (Pool 19)": {"n_pool": 19, "garantia": 14, "desc": "2 de 16 + 10 de 15 (Cerco Inteligente)", "prob": "Alta para 14/15", "peso": 0.92},
-    "MATRIZ CÉLULA [1x16 + 15x15] (Pool 18)": {"n_pool": 18, "garantia": 15, "desc": "1 de 16 + 15 de 15 (Malha Fina)", "prob": "Máxima para 15", "peso": 0.96}
-}
-
-# --- 3. FUNÇÕES TÉCNICAS (MOTOR DE ALTA PRECISÃO) ---
 def formata_dinheiro(valor):
     try:
         return f"R$ {float(valor):,.2f}".replace(",", "v").replace(".", ",").replace("v", ".")
@@ -267,6 +244,44 @@ def renderizar_heatmap(mod, res_loto):
             
     st.markdown("---")
 
+def calcular_matriz_afinidade_kadosh(mod):
+    res_db = st.session_state.ultimo_res.get(mod, {})
+    if len(res_db) < 3: return None
+    limite = 26 if mod == "Lotofácil" else 61 if mod == "Mega-Sena" else 81
+    matriz = [[0 for _ in range(limite)] for _ in range(limite)]
+    for sorteio in res_db.values():
+        nums = sorted([int(n) for n in sorteio])
+        for i in range(len(nums)):
+            for j in range(i + 1, len(nums)):
+                d1, d2 = nums[i], nums[j]
+                if d1 < limite and d2 < limite:
+                    matriz[d1][d2] += 1
+                    matriz[d2][d1] += 1
+    return matriz
+
+# --- 2. MAPA DE ESTRATÉGIAS E MATRIZES ---
+ESTRATEGIA_MAPA = {
+    "Personalizado": {"dez": 15, "qtd": 10, "desc": "Configuração manual", "prob": "Variável", "peso": 0.1},
+    "1. SNIPER": {"dez": 15, "qtd": 8, "desc": "08 Jogos de 15 (Econômico)", "prob": "1/3.268.760", "peso": 0.2},
+    "2. ESCUDO E ESPADA": {"dez": 16, "qtd": 1, "desc": "01 de 16 + 10 de 15", "qtd_15": 10, "prob": "1/204.297", "peso": 0.5},
+    "3. EQUILÍBRIO REAL": {"dez": 16, "qtd": 2, "desc": "02 de 16 + 10 de 15 (NATA)", "qtd_15": 10, "prob": "1/102.148", "peso": 0.7},
+    "4. ELITE KADOSH": {"dez": 16, "qtd": 2, "desc": "02 de 16 + 15 de 15", "qtd_15": 15, "prob": "1/85.000", "peso": 0.9},
+    "5. INVASÃO": {"dez": 15, "qtd": 25, "desc": "25 Jogos de 15 (Volume)", "prob": "1/130.750", "peso": 0.6},
+    "6. A MARRETA": {"dez": 18, "qtd": 1, "desc": "01 de 18 + 05 de 16", "qtd_16": 5, "prob": "1/152 (14 pts)", "peso": 0.95},
+    "7. SIMETRIA GEOMÉTRICA": {"dez": 16, "qtd": 2, "desc": "02 de 16 + 08 de 15", "qtd_15": 8, "prob": "1/81.719", "peso": 0.85},
+    "8. RASTREAMENTO DE CICLO": {"dez": 16, "qtd": 1, "desc": "01 de 16 + 06 de 15 (Tendência)", "qtd_15": 6, "prob": "Alta Recorrência", "peso": 0.88},
+    "9. CERCO POR ELIMINAÇÃO": {"dez": 15, "qtd": 10, "desc": "10 Jogos de 15 (Quentes vs Atrasados)", "prob": "Equilibrada", "peso": 0.75}
+}
+
+MATRIZES_FECHAMENTO = {
+    "Nenhum": None,
+    "FECHAMENTO 18-15-14 (Redução Profissional)": {"n_pool": 18, "garantia": 14, "desc": "Garante 14 pts se as 15 estiverem nas 18", "prob": "1/152 para 14 pts", "peso": 0.75},
+    "FECHAMENTO 19-15-14 (Intermediário)": {"n_pool": 19, "garantia": 14, "desc": "Garante 14 pts se as 15 estiverem nas 19", "prob": "1/103 para 14 pts", "peso": 0.85},
+    "FECHAMENTO 20-15-13 (Cobertura Ampla)": {"n_pool": 20, "garantia": 13, "desc": "Garante 13 pts se as 15 estiverem nas 20", "prob": "1/12 para 13 pts", "peso": 0.98},
+    "MATRIZ DIAMANTE [2x16 + 10x15] (Pool 19)": {"n_pool": 19, "garantia": 14, "desc": "2 de 16 + 10 de 15 (Cerco Inteligente)", "prob": "Alta para 14/15", "peso": 0.92},
+    "MATRIZ CÉLULA [1x16 + 15x15] (Pool 18)": {"n_pool": 18, "garantia": 15, "desc": "1 de 16 + 15 de 15 (Malha Fina)", "prob": "Máxima para 15", "peso": 0.96}
+}
+
 # --- 4. ESTADOS E ABAS ---
 for key in ['auth', 'jogos_gerados', 'jogos_salvos']:
     if key not in st.session_state: 
@@ -317,7 +332,7 @@ def mostrar_status_backup():
 
 # --- 6. INTERFACE ---
 st.title("📊 GESTÃO ESTRATÉGICA LOTERIAS")
-abas = st.tabs(["🎯 GERADOR PRO", "🔍 CONFERIR", "⚙️ VALORES", "📥 DATABASE", "💾 BACKUP", "🧠 INTELIGÊNCIA"])
+abas = st.tabs(["🎯 GERADOR PRO", "🔍 CONFERIR", "⚙️ VALORES", "📥 DATABASE", "💾 BACKUP", "🧠 INTELIGÊNCIA", "🔗 AFINIDADE"])
 
 with abas[0]:
     mostrar_status_backup()
@@ -647,25 +662,17 @@ with abas[5]:
 // 3. Backup: Leitura automática via session_state (Aba 5 reflete o JSON)
 // 4. Paridade: Fórmula dinâmica integrada no motor de validação
         """, language="javascript")
-# --- FUNÇÃO DE CÁLCULO DE AFINIDADE (MOTOR INDEPENDENTE) ---
-def calcular_matriz_afinidade_kadosh(mod):
-    res_db = st.session_state.ultimo_res.get(mod, {})
-    if len(res_db) < 3: return None
-    limite = 26 if mod == "Lotofácil" else 61 if mod == "Mega-Sena" else 81
-    matriz = [[0 for _ in range(limite)] for _ in range(limite)]
-    for sorteio in res_db.values():
-        nums = sorted([int(n) for n in sorteio])
-        for i in range(len(nums)):
-            for j in range(i + 1, len(nums)):
-                d1, d2 = nums[i], nums[j]
-                if d1 < limite and d2 < limite:
-                    matriz[d1][d2] += 1
-                    matriz[d2][d1] += 1
-    return matriz
 
 # --- CONTEÚDO DA NOVA ABA 7 ---
 with abas[6]:
-    st.markdown('<div class="painel-luxo-black"><div class="titulo-luxo-gold">🔗 ANÁLISE DE AFINIDADE E VÍNCULOS</div><div style="color:white; font-size:12px; margin-top:10px;">Identificação de pares de dezenas com alta frequência conjunta</div></div>', unsafe_allow_html=True)
+    st.markdown("""
+        <div class="painel-luxo-black">
+            <div class="moeda-animada">💰</div>
+            <div class="titulo-luxo-gold">🔗 ANÁLISE DE AFINIDADE E VÍNCULOS</div>
+            <div style="color:white; font-size:12px; margin-top:10px;">Identificação de pares de dezenas com alta frequência conjunta</div>
+        </div>
+    """, unsafe_allow_html=True)
+    
     mod_af = st.selectbox("Selecione a Loteria para Estudo", list(st.session_state.custos.keys()), key="af_selector_new")
     matriz_vinculos = calcular_matriz_afinidade_kadosh(mod_af)
     
@@ -678,8 +685,13 @@ with abas[6]:
                 for j in range(i + 1, len(matriz_vinculos)):
                     freq = matriz_vinculos[i][j]
                     if freq > 0:
-                        lista_pares.append({"Par": f"{i:02d} + {j:02d}", "Frequência": freq, "Afinidade": f"{(freq/len(st.session_state.ultimo_res[mod_af]))*100:.1f}%"})
+                        lista_pares.append({
+                            "Par": f"{i:02d} + {j:02d}", 
+                            "Frequência": freq, 
+                            "Afinidade": f"{(freq/max(1, len(st.session_state.ultimo_res[mod_af])))*100:.1f}%"
+                        })
             st.table(pd.DataFrame(sorted(lista_pares, key=lambda x: x['Frequência'], reverse=True)[:15]))
+            
         with col_vin2:
             st.subheader("🚫 Pares em Vácuo (Exemplos)")
             vacuos, cont_v = [], 0
@@ -688,7 +700,9 @@ with abas[6]:
                     if matriz_vinculos[i][j] == 0 and cont_v < 15: 
                         vacuos.append(f"{i:02d} + {j:02d}")
                         cont_v += 1
-            for v in vacuos: st.markdown(f"❌ `{v}`")
+            for v in vacuos: 
+                st.markdown(f"❌ `{v}`")
+                
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
-        st.warning("⚠️ Database insuficiente para análise de afinidade.")
+        st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
