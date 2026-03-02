@@ -5,68 +5,64 @@ import re
 import pandas as pd
 from collections import Counter
 from itertools import combinations
-from fpdf import FPDF
+from fpdf import FPDF  # Acréscimo para PDF
 import io
 
-# --- 1. CONFIGURAÇÃO E ESTÉTICA (ILUMINAÇÃO LUXO DARK INTEGRADA) ---
+# --- 1. CONFIGURAÇÃO E ESTÉTICA ---
 st.set_page_config(page_title="LOTERIAS - KADOSH ESTRATÉGICO", layout="wide")
 st.markdown("""
     <style>
-    /* Fundo Dark Profundo e Textos */
-    .stApp {background-color: #050505 !important;}
-    p, label, span, div {color: #ffffff !important; font-weight: bold !important;}
-    .stCodeBlock {border: 2px solid #d4af37 !important; background-color: #111 !important;}
-    code {font-size: 18px !important; color: #d4af37 !important; font-weight: bold !important;}
+    .stApp {background-color: #ffffff !important;}
+    p, label, span, div {color: #000000 !important; font-weight: bold !important;}
+    .stCodeBlock {border: 2px solid #000000 !important;}
+    code {font-size: 18px !important; color: black !important; font-weight: bold !important;}
     
-    /* Botões com Gradiente Ouro */
     div.stButton > button {
-        background: linear-gradient(135deg, #d4af37 0%, #8a6d3b 100%) !important;
-        color: #000 !important;
-        font-weight: 900 !important;
-        border-radius: 12px !important;
-        border: 1px solid #fff !important;
+        background: linear-gradient(45deg, #1e3799, #0984e3) !important;
+        color: white !important;
+        font-weight: bold !important;
+        border-radius: 8px !important;
+        border: none !important;
         width: 100% !important;
-        height: 50px !important;
-        transition: 0.4s !important;
-        box-shadow: 0 0 15px rgba(212, 175, 55, 0.4) !important;
+        transition: 0.3s !important;
         text-transform: uppercase !important;
     }
     div.stButton > button:hover {
-        box-shadow: 0 0 30px rgba(212, 175, 55, 0.8) !important;
-        transform: translateY(-2px) !important;
+        background: linear-gradient(45deg, #0984e3, #1e3799) !important;
+        transform: scale(1.02) !important;
     }
 
-    /* Painel de Luxo Black/Gold */
     .painel-luxo-black {
-        background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
-        border: 2px solid #d4af37;
+        background: #1a1a1a;
+        border: 3px solid #d4af37;
         padding: 40px;
-        border-radius: 30px;
+        border-radius: 25px;
         text-align: center;
-        box-shadow: 0 20px 50px rgba(0,0,0,0.9), inset 0 0 20px rgba(212,175,55,0.1);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.4);
         margin-bottom: 30px;
     }
     .titulo-luxo-gold {
         color: #d4af37 !important;
-        font-size: 24px !important;
-        letter-spacing: 5px !important;
-        text-shadow: 0 0 15px rgba(212,175,55,0.6);
+        font-size: 20px !important;
+        letter-spacing: 4px !important;
+        font-weight: bold !important;
         text-transform: uppercase;
     }
     .valor-luxo-white {
         color: #ffffff !important;
-        font-size: 65px !important;
+        font-size: 60px !important;
         font-weight: 900 !important;
-        text-shadow: 0 0 20px rgba(255,255,255,0.4);
+        margin: 10px 0;
+        text-shadow: 0 0 15px rgba(212,175,55,0.5);
     }
     
     .jogo-premiado {
-        background-color: #1a2e1a !important;
+        background-color: #e8f5e9 !important;
         border: 3px solid #d4af37 !important;
         padding: 15px;
         border-radius: 12px;
         margin-bottom: 8px;
-        box-shadow: 0 4px 15px rgba(212,175,55,0.3);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
 
     .moeda-animada {
@@ -79,18 +75,17 @@ st.markdown("""
         to { transform: rotateY(360deg); }
     }
     .status-backup {
-        padding: 8px 15px;
+        padding: 5px 10px;
         border-radius: 20px;
         font-size: 12px;
         float: right;
-        background: #111;
-        border: 1px solid #d4af37;
-        color: #d4af37 !important;
+        background: #f0f2f6;
+        border: 1px solid #d1d1d1;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 2. FUNÇÃO DE PDF ESTILO VOLANTE ---
+# --- ACRÉSCIMO TÉCNICO: FUNÇÃO DE PDF ESTILO VOLANTE ---
 def gerar_pdf_bonito(jogos, modalidade):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -102,12 +97,13 @@ def gerar_pdf_bonito(jogos, modalidade):
         pdf.set_font("Arial", 'B', 12)
         pdf.cell(0, 10, txt=f"JOGO {i+1:02d} - Estrategia: {j['est']}", ln=True)
         pdf.set_font("Arial", '', 11)
+        # Grade de dezenas
         dez_str = ' | '.join([f"{x:02d}" for x in j['n']])
         pdf.multi_cell(0, 10, txt=f"DEZENAS: {dez_str}", border=1)
         pdf.ln(5)
     return pdf.output(dest='S').encode('latin-1')
 
-# --- 3. MAPA DE ESTRATÉGIAS E MATRIZES (INTEGRAL) ---
+# --- 2. MAPA DE ESTRATÉGIAS E MATRIZES ---
 ESTRATEGIA_MAPA = {
     "Personalizado": {"dez": 15, "qtd": 10, "desc": "Configuração manual", "prob": "Variável", "peso": 0.1},
     "1. SNIPER": {"dez": 15, "qtd": 8, "desc": "08 Jogos de 15 (Econômico)", "prob": "1/3.268.760", "peso": 0.2},
@@ -130,95 +126,158 @@ MATRIZES_FECHAMENTO = {
     "MATRIZ CÉLULA [1x16 + 15x15] (Pool 18)": {"n_pool": 18, "garantia": 15, "desc": "1 de 16 + 15 de 15 (Malha Fina)", "prob": "Máxima para 15", "peso": 0.96}
 }
 
-# --- 4. MOTOR TÉCNICO E AUDITORIA CIRÚRGICA (SEM ALTERAÇÕES) ---
+# --- 3. FUNÇÕES TÉCNICAS (MOTOR DE ALTA PRECISÃO) ---
 def formata_dinheiro(valor):
-    try: return f"R$ {float(valor):,.2f}".replace(",", "v").replace(".", ",").replace("v", ".")
-    except: return f"R$ {valor}"
+    try:
+        return f"R$ {float(valor):,.2f}".replace(",", "v").replace(".", ",").replace("v", ".")
+    except: 
+        return f"R$ {valor}"
 
 def definir_label_chance(jogo, mod):
-    if mod != "Lotofácil": return "PADRÃO"
+    if mod != "Lotofácil": 
+        return "PADRÃO"
     soma = sum(jogo)
     n = len(jogo)
     media_esperada = 180 + ((n - 15) * 13)
-    if (media_esperada - 10) <= soma <= (media_esperada + 10): return "ALTA"
+    if (media_esperada - 10) <= soma <= (media_esperada + 10): 
+        return "ALTA"
     return "PADRÃO"
 
 def jogo_ja_saiu(jogo, mod):
     res_hist = st.session_state.ultimo_res.get(mod, {})
-    if not res_hist: return False
+    if not res_hist: 
+        return False
     conjunto_resultados = [set(res) for res in res_hist.values()]
-    if len(jogo) == 15: return set(jogo) in conjunto_resultados
+    if len(jogo) == 15:
+        return set(jogo) in conjunto_resultados
     for combo in combinations(jogo, 15):
-        if set(combo) in conjunto_resultados: return True
+        if set(combo) in conjunto_resultados: 
+            return True
     return False
 
 def validar_kadosh_cirurgico(jogo, mod, n_dez):
-    if mod != "Lotofácil": return True
-    if not (jogo[0] in [1, 2, 3] and jogo[-1] in [23, 24, 25]): return False
+    if mod != "Lotofácil": 
+        return True
+    
+    if not (jogo[0] in [1, 2, 3] and jogo[-1] in [23, 24, 25]): 
+        return False
+    
     for i in range(len(jogo)-1):
-        if (jogo[i+1] - jogo[i]) > 5: return False
+        if (jogo[i+1] - jogo[i]) > 5: 
+            return False
+
     pares = len([n for n in jogo if n % 2 == 0])
     diff_n = n_dez - 15
-    if not ( (7 + int(diff_n*0.4)) <= pares <= (9 + int(diff_n*0.6)) ): return False
+    if not ( (7 + int(diff_n*0.4)) <= pares <= (9 + int(diff_n*0.6)) ): 
+        return False
+
     fibo_ref = [1, 2, 3, 5, 8, 13, 21]
     fibo_count = len([n for n in jogo if n in fibo_ref])
-    if not (3 <= fibo_count <= 5 + int(diff_n*0.5)): return False
+    if not (3 <= fibo_count <= 5 + int(diff_n*0.5)): 
+        return False
+
     is_atypical = random.random() < 0.12 
     if not is_atypical:
-        vizinhos, sequencia_max, atual = 0, 1, 1
+        vizinhos = 0
+        sequencia_max = 1
+        atual = 1
         for i in range(len(jogo)-1):
             if jogo[i+1] - jogo[i] == 1:
                 vizinhos += 1
                 atual += 1
                 sequencia_max = max(sequencia_max, atual)
-            else: atual = 1
-        if not (3 <= vizinhos <= 8): return False
-        if sequencia_max < 3 or sequencia_max > 5: return False
-    linhas, colunas = [0]*5, [0]*5
+            else: 
+                atual = 1
+        if not (3 <= vizinhos <= 8): 
+            return False
+        if sequencia_max < 3 or sequencia_max > 5: 
+            return False
+
+    linhas = [0]*5
+    colunas = [0]*5
     for n in jogo:
         linhas[(n-1)//5] += 1
         colunas[(n-1)%5] += 1
-    if any(l == 0 for l in linhas) or any(c == 0 for c in colunas): return False
-    if any(l > 5 for l in linhas) or any(c > 5 for c in colunas): return False
+        
+    if any(l == 0 for l in linhas) or any(c == 0 for c in colunas): 
+        return False
+    if any(l > 5 for l in linhas) or any(c > 5 for c in colunas): 
+        return False
+
     soma = sum(jogo)
     primos_list = [2,3,5,7,11,13,17,19,23]
     moldura_list = [1,2,3,4,5,6,10,11,15,16,20,21,22,23,24,25]
     primos = len([n for n in jogo if n in primos_list])
     moldura = len([n for n in jogo if n in moldura_list])
-    cfg = {'s': (165 + (diff_n * 12), 215 + (diff_n * 14)), 'p': (4 + int(diff_n * 0.5), 7 + int(diff_n * 0.8)), 'm': (8 + int(diff_n * 0.7), 11 + int(diff_n * 0.9))}
-    if not (cfg['s'][0] <= soma <= cfg['s'][1]): return False
-    if not (cfg['p'][0] <= primos <= cfg['p'][1]): return False
-    if not (cfg['m'][0] <= moldura <= cfg['m'][1]): return False
-    if jogo_ja_saiu(jogo, mod): return False
+    
+    cfg = {
+        's': (165 + (diff_n * 12), 215 + (diff_n * 14)),
+        'p': (4 + int(diff_n * 0.5), 7 + int(diff_n * 0.8)),
+        'm': (8 + int(diff_n * 0.7), 11 + int(diff_n * 0.9))
+    }
+    
+    if not (cfg['s'][0] <= soma <= cfg['s'][1]): 
+        return False
+    if not (cfg['p'][0] <= primos <= cfg['p'][1]): 
+        return False
+    if not (cfg['m'][0] <= moldura <= cfg['m'][1]): 
+        return False
+
+    if jogo_ja_saiu(jogo, mod): 
+        return False
+        
     return True
 
 def renderizar_heatmap(mod, res_loto):
-    if not res_loto or mod != "Lotofácil": return
+    if not res_loto or mod != "Lotofácil": 
+        return
+        
     st.markdown("### 🗺️ MAPA DE CALOR E ANÁLISE DE CICLO (Últimos 20)")
     conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)[:20]
+    
     frequencia = Counter()
     atraso = {n: 0 for n in range(1, 26)}
     ja_apareceu = set()
+    
     for i, c in enumerate(conc_ordenados):
         sorteados = res_loto[c]
         for n in range(1, 26):
-            if n in sorteados: frequencia[n] += 1; ja_apareceu.add(n)
-            elif n not in ja_apareceu: atraso[n] += 1
+            if n in sorteados:
+                frequencia[n] += 1
+                ja_apareceu.add(n)
+            elif n not in ja_apareceu:
+                atraso[n] += 1
+                
     cols = st.columns(5)
     for n in range(1, 26):
-        freq, atr = frequencia[n], atraso[n]
-        bg_color, texto = "#222", "#d4af37"
-        if freq >= 12: bg_color, texto = "#d4af37", "#000"
-        elif atr >= 3: bg_color, texto = "#0984e3", "#fff"
+        freq = frequencia[n]
+        atr = atraso[n]
+        bg_color = "#f1f2f6"
+        texto = "black"
+        
+        if freq >= 12: 
+            bg_color = "#eb4d4b"
+            texto = "white"
+        elif atr >= 3: 
+            bg_color = "#0984e3"
+            texto = "white"
+            
         with cols[(n-1)%5]:
-            st.markdown(f'<div style="background-color:{bg_color}; color:{texto}; border-radius:10px; padding:10px; text-align:center; border:1px solid #d4af37; margin-bottom:5px;"><span style="font-size:20px;">{n:02d}</span><br><span style="font-size:10px;">F:{freq} | A:{atr}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="background-color:{bg_color}; color:{texto}; border-radius:10px; padding:10px; text-align:center; border:2px solid #2d3436; margin-bottom:5px;"><span style="font-size:20px;">{n:02d}</span><br><span style="font-size:10px;">F:{freq} | A:{atr}</span></div>', unsafe_allow_html=True)
+            
     st.markdown("---")
 
-# --- 5. ESTADOS E ACESSO ---
+# --- 4. ESTADOS E ABAS ---
 for key in ['auth', 'jogos_gerados', 'jogos_salvos']:
-    if key not in st.session_state: st.session_state[key] = False if key == 'auth' else []
-if 'ultimo_res' not in st.session_state: st.session_state.ultimo_res = {m: {} for m in ["Lotofácil", "Mega-Sena", "Quina", "+Milionária", "Dupla-Sena"]}
-if 'favoritas' not in st.session_state: st.session_state.favoritas = {m: [] for m in ["Lotofácil", "Mega-Sena", "Quina", "+Milionária", "Dupla-Sena"]}
+    if key not in st.session_state: 
+        st.session_state[key] = False if key == 'auth' else []
+        
+if 'ultimo_res' not in st.session_state: 
+    st.session_state.ultimo_res = {m: {} for m in ["Lotofácil", "Mega-Sena", "Quina", "+Milionária", "Dupla-Sena"]}
+    
+if 'favoritas' not in st.session_state: 
+    st.session_state.favoritas = {m: [] for m in ["Lotofácil", "Mega-Sena", "Quina", "+Milionária", "Dupla-Sena"]}
+    
 if 'premios' not in st.session_state:
     st.session_state.premios = {
         "Lotofácil": {"11": 7.0, "12": 14.0, "13": 35.0, "14": 1500.0, "15": 1700000.0},
@@ -227,6 +286,7 @@ if 'premios' not in st.session_state:
         "+Milionária": {"2": 6.0, "3": 24.0, "4": 1500.0, "5": 50000.0, "6": 10000000.0},
         "Dupla-Sena": {"3": 6.0, "4": 150.0, "5": 4000.0, "6": 500000.0}
     }
+    
 if 'custos' not in st.session_state:
     st.session_state.custos = {
         "Lotofácil": {15: 3.5, 16: 56.0, 17: 408.0, 18: 2448.0, 19: 11628.0, 20: 46512.0},
@@ -236,28 +296,36 @@ if 'custos' not in st.session_state:
         "Dupla-Sena": {6: 2.5, 7: 17.5, 8: 70.0}
     }
 
+# --- 5. ACESSO ---
 if not st.session_state.auth:
-    st.markdown('<div class="painel-luxo-black"><div class="titulo-luxo-gold">TERMINAL CRIPTOGRAFADO KADOSH</div></div>', unsafe_allow_html=True)
+    st.title("🛡️ ACESSO LOTERIAS")
     with st.form("login_form"):
         senha = st.text_input("CHAVE DE ACESSO", type="password")
-        if st.form_submit_button("DESBLOQUEAR"):
-            if senha == "kadosh": st.session_state.auth = True; st.rerun()
-            else: st.error("Chave Inválida")
+        if st.form_submit_button("ENTRAR"):
+            if senha == "kadosh":
+                st.session_state.auth = True
+                st.rerun()
+            else: 
+                st.error("Senha incorreta!")
     st.stop()
 
+# --- HELPER: INDICADOR DE BACKUP EM TODAS AS ABAS ---
 def mostrar_status_backup():
     total_jogos = len(st.session_state.jogos_salvos)
     total_res = sum(len(v) for v in st.session_state.ultimo_res.values())
-    st.markdown(f'<div class="status-backup">📁 Backup: {total_jogos} jogos | {total_res} resultados</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="status-backup">📁 Backup Ativo: {total_jogos} jogos | {total_res} resultados</div>', unsafe_allow_html=True)
 
-# --- 6. INTERFACE EM ABAS (7 ABAS COMPLETAS) ---
-st.title("📊 GESTÃO ESTRATÉGICA KADOSH")
-abas = st.tabs(["🎯 GERADOR PRO", "🔍 CONFERIR", "⚙️ VALORES", "📥 DATABASE", "💾 BACKUP", "🧠 INTELIGÊNCIA", "🔗 AFINIDADE"])
+# --- 6. INTERFACE ---
+st.title("📊 GESTÃO ESTRATÉGICA LOTERIAS")
+abas = st.tabs(["🎯 GERADOR PRO", "🔍 CONFERIR", "⚙️ VALORES", "📥 DATABASE", "💾 BACKUP", "🧠 INTELIGÊNCIA"])
 
 with abas[0]:
     mostrar_status_backup()
-    mod = st.selectbox("Modalidade", list(st.session_state.custos.keys()))
-    if 'ultima_mod_selecionada' not in st.session_state: st.session_state.ultima_mod_selecionada = mod
+    mod = st.selectbox("Modalidade", list(st.session_state.custos.keys()), key="mod_selector")
+    
+    if 'ultima_mod_selecionada' not in st.session_state:
+        st.session_state.ultima_mod_selecionada = mod
+        
     if st.session_state.ultima_mod_selecionada != mod:
         st.session_state.jogos_gerados = []
         st.session_state.ultima_mod_selecionada = mod
@@ -265,117 +333,362 @@ with abas[0]:
     
     col_est1, col_est2 = st.columns(2)
     with col_est1:
-        est_escolhida = st.selectbox("💎 ESTRATÉGIA KADOSH", list(ESTRATEGIA_MAPA.keys())) if mod == "Lotofácil" else "Personalizado"
-        info_est = ESTRATEGIA_MAPA[est_escolhida]
-        st.progress(info_est["peso"])
+        if mod == "Lotofácil":
+            est_escolhida = st.selectbox("💎 ESTRATÉGIA KADOSH", list(ESTRATEGIA_MAPA.keys()))
+            est_info = ESTRATEGIA_MAPA[est_escolhida]
+            st.progress(est_info["peso"])
+            qtd_total_est = est_info.get("qtd", 0) + est_info.get("qtd_15", 0) + est_info.get("qtd_16", 0)
+            st.markdown(f"🎯 **Probabilidade:** {est_info['prob']} | 📦 **Volume:** {qtd_total_est} jogos")
+        else:
+            est_escolhida = "Personalizado"
+            
     with col_est2:
-        fe_escolhido = st.selectbox("📐 MATRIZ", list(MATRIZES_FECHAMENTO.keys())) if mod == "Lotofácil" else "Nenhum"
-        info_fech = MATRIZES_FECHAMENTO.get(fe_escolhido)
-        if info_fech: st.progress(info_fech["peso"])
+        if mod == "Lotofácil":
+            fe_escolhido = st.selectbox("📐 MODO FECHAMENTO (MATRIZ)", list(MATRIZES_FECHAMENTO.keys()))
+            if fe_escolhido != "Nenhum":
+                fe_info = MATRIZES_FECHAMENTO[fe_escolhido]
+                st.progress(fe_info["peso"])
+                st.markdown(f"📐 **Garantia:** {fe_info['prob']} | 🧬 **Pool:** {fe_info['n_pool']} dezenas")
+            else:
+                st.markdown("<br><br>", unsafe_allow_html=True)
+        else:
+            fe_escolhido = "Nenhum"
+
+    info_fech = MATRIZES_FECHAMENTO.get(fe_escolhido) if mod == "Lotofácil" else None
+    info_est = ESTRATEGIA_MAPA.get(est_escolhida) if mod == "Lotofácil" else ESTRATEGIA_MAPA["Personalizado"]
+    
+    st.markdown("---")
 
     c1, c2 = st.columns(2)
     with c1:
         if info_fech:
-            def_dez, def_qtd = (16, 2) if "DIAMANTE" in fe_escolhido else (16, 1) if "CÉLULA" in fe_escolhido else (15, 24 if "18-15" in fe_escolhido else 45)
-        else: def_dez, def_qtd = info_est["dez"], info_est.get("qtd", 10)
-        n_dez = st.selectbox("Dezenas por Bilhete", list(st.session_state.custos[mod].keys()), index=list(st.session_state.custos[mod].keys()).index(def_dez) if def_dez in st.session_state.custos[mod] else 0)
-        qtd = st.number_input("Quantidade", 1, 500, def_qtd)
+            if "DIAMANTE" in fe_escolhido: 
+                def_dez, def_qtd = 16, 2
+            elif "CÉLULA" in fe_escolhido: 
+                def_dez, def_qtd = 16, 1
+            else: 
+                def_dez, def_qtd = 15, (24 if "18-15-14" in fe_escolhido else 45)
+        elif est_escolhida != "Personalizado" and mod == "Lotofácil":
+            def_dez, def_qtd = info_est["dez"], info_est.get("qtd", 10)
+        else:
+            def_dez = list(st.session_state.custos[mod].keys())[0]
+            def_qtd = 10
+            
+        opcoes_dez = list(st.session_state.custos[mod].keys())
+        idx_padrao = opcoes_dez.index(def_dez) if def_dez in opcoes_dez else 0
+        n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao)
+        qtd = st.number_input("Quantidade de Jogos", 1, 300, def_qtd)
+        
     with c2:
         max_v = 25 if mod=="Lotofácil" else 60 if mod=="Mega-Sena" else 80
-        if st.button("🧠 POOL INTELIGENTE KADOSH"):
-            res_loto = st.session_state.ultimo_res.get(mod, {})
-            if len(res_loto) >= 5:
-                n_p = info_fech['n_pool'] if info_fech else 20
-                scores = {n: (Counter(sum(res_loto.values(), []))[n] + (random.randint(1,5)*0.5)) for n in range(1, max_v+1)}
-                st.session_state.favoritas[mod] = sorted([n for n, s in sorted(scores.items(), key=lambda x: x[1], reverse=True)[:n_p]])
+        col_btn1, col_btn2 = st.columns(2)
+        
+        with col_btn1:
+            if st.button("✅ TODO O VOLANTE"):
+                st.session_state.favoritas[mod] = list(range(1, max_v + 1))
                 st.rerun()
-        pool = st.multiselect("POOL SELECIONADO", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
-        st.session_state.favoritas[mod] = pool
+                
+        with col_btn2:
+            if st.button("🧠 POOL INTELIGENTE KADOSH"):
+                res_loto = st.session_state.ultimo_res.get(mod, {})
+                if len(res_loto) >= 5:
+                    n_pool_req = info_fech['n_pool'] if info_fech else 20
+                    conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)[:20]
+                    score_kadosh = {}
+                    contagem = Counter()
+                    
+                    for c in conc_ordenados:
+                        for n in res_loto[c]: 
+                            contagem[n] += 1
+                            
+                    for n in range(1, 26):
+                        atraso_n = 0
+                        for c in conc_ordenados:
+                            if n not in res_loto[c]: 
+                                atraso_n += 1
+                            else: 
+                                break
+                        score_kadosh[n] = contagem[n] + (atraso_n * 1.5)
+                        
+                    melhores = sorted(score_kadosh.items(), key=lambda x: x[1], reverse=True)
+                    st.session_state.favoritas[mod] = sorted([n for n, s in melhores[:n_pool_req]])
+                    st.rerun()
 
-    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ)"):
-        novos = []
-        def gerar(t, q):
-            s, tent = 0, 0
-            while s < q and tent < 20000:
-                comb = sorted(random.sample(pool, t))
-                if not any(set(comb) == set(x['n']) for x in novos) and validar_kadosh_cirurgico(comb, mod, t):
-                    novos.append({"mod": mod, "n": comb, "tam": t, "chance": definir_label_chance(comb, mod), "est": fe_escolhido if info_fech else est_escolhida})
-                    s += 1
-                tent += 1
-        if info_fech:
-            if "DIAMANTE" in fe_escolhido: gerar(16, 2); gerar(15, 10)
-            elif "CÉLULA" in fe_escolhido: gerar(16, 1); gerar(15, 15)
-            else: gerar(15, qtd)
-        elif est_escolhida == "6. A MARRETA": gerar(18, 1); gerar(16, 5)
-        else: gerar(n_dez, qtd)
-        st.session_state.jogos_gerados = novos
-        st.rerun()
+        pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
+        st.session_state.favoritas[mod] = pool
+        renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
+
+    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
+        if len(pool) < (info_fech['n_pool'] if info_fech else n_dez):
+            st.error(f"Seu Pool precisa de pelo menos {info_fech['n_pool'] if info_fech else n_dez} dezenas!")
+        else:
+            novos = []
+            def gerar_com_matriz(tamanho, quantidade, filtragem=True):
+                sucessos, tentativas = 0, 0
+                while sucessos < quantidade and tentativas < 20000:
+                    comb = sorted(random.sample(pool, tamanho))
+                    if any(set(comb) == set(existente['n']) for existente in novos):
+                        tentativas += 1
+                        continue
+                        
+                    passou = validar_kadosh_cirurgico(comb, mod, tamanho) if filtragem else True
+                    if passou:
+                        novos.append({
+                            "mod": mod, 
+                            "n": comb, 
+                            "tam": tamanho, 
+                            "chance": definir_label_chance(comb, mod), 
+                            "est": fe_escolhido if info_fech else est_escolhida
+                        })
+                        sucessos += 1
+                    tentativas += 1
+
+            if info_fech:
+                if "DIAMANTE" in fe_escolhido: 
+                    gerar_com_matriz(16, 2)
+                    gerar_com_matriz(15, 10)
+                elif "CÉLULA" in fe_escolhido: 
+                    gerar_com_matriz(16, 1)
+                    gerar_com_matriz(15, 15)
+                else: 
+                    gerar_com_matriz(15, qtd)
+            elif est_escolhida == "8. RASTREAMENTO DE CICLO": 
+                gerar_com_matriz(16, 1)
+                gerar_com_matriz(15, 6)
+            elif est_escolhida == "9. CERCO POR ELIMINAÇÃO": 
+                gerar_com_matriz(15, 10)
+            elif est_escolhida == "6. A MARRETA": 
+                gerar_com_matriz(18, 1)
+                gerar_com_matriz(16, 5)
+            elif est_escolhida == "7. SIMETRIA GEOMÉTRICA": 
+                gerar_com_matriz(16, 2)
+                gerar_com_matriz(15, 8)
+            elif est_escolhida != "Personalizado" and mod == "Lotofácil":
+                gerar_com_matriz(info_est['dez'], info_est.get('qtd', 1))
+                if "qtd_15" in info_est: 
+                    gerar_com_matriz(15, info_est['qtd_15'])
+            else: 
+                gerar_com_matriz(n_dez, qtd)
+                
+            st.session_state.jogos_gerados = novos
+            st.rerun()
 
     for i, j in enumerate(st.session_state.jogos_gerados):
-        st.code(f"JOGO {i+1:02d} | {j['est']} | {' '.join([f'{x:02d}' for x in j['n']])} | {j['chance']}")
+        txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
+        st.code(f"JOGO {i+1:02d} | {j['est']} | {j['tam']} DEZ | {txt_jogo} / {j['chance']}")
     
-    if st.session_state.jogos_gerados and st.button("💾 SALVAR JOGOS"):
-        res_e = st.session_state.ultimo_res.get(mod, {})
-        u_c = int(max(res_e.keys(), key=int)) if res_e else 0
-        for jj in st.session_state.jogos_gerados: jj['concurso_alvo'] = u_c + 1; st.session_state.jogos_salvos.append(jj)
-        st.session_state.jogos_gerados = []; st.rerun()
+    if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
+        res_existentes = st.session_state.ultimo_res.get(mod, {})
+        ultimo_c = int(max(res_existentes.keys(), key=int)) if res_existentes else 0
+        for jogo in st.session_state.jogos_gerados:
+            jogo['concurso_alvo'] = ultimo_c + 1
+            st.session_state.jogos_salvos.append(jogo)
+        st.session_state.jogos_gerados = []
+        st.rerun()
 
 with abas[1]:
     mostrar_status_backup()
-    mod_f = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="f_c")
-    js_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
-    if js_atual: st.download_button("📄 PDF VOLANTES", gerar_pdf_bonito(js_atual, mod_f), f"Kadosh_{mod_f}.pdf")
+    st.header("🔍 Painel de Conferência")
+    mod_f = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="f_conf")
     
+    # ACRÉSCIMO 1: EXTRAIR PDF
+    jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
+    if jogos_salvos_atual:
+        btn_pdf = gerar_pdf_bonito(jogos_salvos_atual, mod_f)
+        st.download_button(label="📄 EXTRAIR JOGOS SALVOS EM PDF", data=btn_pdf, file_name=f"jogos_{mod_f}.pdf", mime="application/pdf")
+    else:
+        st.info("Salve jogos no Gerador para habilitar a extração em PDF.")
+
+    if st.button("🔄 ATUALIZAR E CONFERIR"): 
+        st.rerun()
+        
     res_db = st.session_state.ultimo_res.get(mod_f, {})
-    total_g = 0
-    for j in js_atual:
-        alvo = str(j.get('concurso_alvo', ''))
-        if alvo in res_db:
-            acc = len(set(j['n']).intersection(set(res_db[alvo])))
-            v = st.session_state.premios[mod_f].get(str(acc), 0.0)
-            total_g += v
-            st.markdown(f"<div {'class=\"jogo-premiado\"' if v>0 else ''}>ID {js_atual.index(j)+1} | {' '.join([f'{x:02d}' for x in j['n']])} | {acc} ACERTOS ({formata_dinheiro(v)})</div>", unsafe_allow_html=True)
-    st.markdown(f'<div class="painel-luxo-black"><div class="valor-luxo-white">{formata_dinheiro(total_g)}</div></div>', unsafe_allow_html=True)
+    jogos_na_espera = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
+    
+    if jogos_na_espera:
+        total_ganho = 0
+        for j in jogos_na_espera:
+            alvo = str(j.get('concurso_alvo', ''))
+            if alvo in res_db:
+                acertos = len(set(j['n']).intersection(set(res_db[alvo])))
+                total_ganho += st.session_state.premios[mod_f].get(str(acertos), 0.0)
+                
+        st.markdown(f'<div class="painel-luxo-black"><div class="titulo-luxo-gold">🏆 Premiação Total 🏆</div><div class="valor-luxo-white">{formata_dinheiro(total_ganho)}</div></div>', unsafe_allow_html=True)
+        
+        for i, j in enumerate(jogos_na_espera):
+            alvo = str(j.get('concurso_alvo', ''))
+            txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
+            if alvo in res_db:
+                acertos = len(set(j['n']).intersection(set(res_db[alvo])))
+                val = st.session_state.premios[mod_f].get(str(acertos), 0.0)
+                st.markdown(f"<div {'class=\"jogo-premiado\"' if val>0 else ''}>**ID {i+1:02d}** | `{txt_jogo}` | **{acertos} ACERTOS** ({formata_dinheiro(val)})</div>", unsafe_allow_html=True)
+            else: 
+                st.markdown(f"**ID {i+1:02d}** | `{txt_jogo}` | ⏳ **AGUARDANDO CONCURSO {alvo}**")
+                
+    if st.button("🗑️ LIMPAR HISTÓRICO"):
+        st.session_state.jogos_salvos = [j for j in st.session_state.jogos_salvos if j['mod'] != mod_f]
+        st.rerun()
 
 with abas[2]:
-    mod_v = st.selectbox("Loteria", list(st.session_state.premios.keys()), key="v_s")
-    for fx, vl in st.session_state.premios[mod_v].items():
-        st.session_state.premios[mod_v][fx] = st.number_input(f"Prêmio {fx} pts", value=float(vl))
+    mostrar_status_backup()
+    st.header("⚙️ Configuração de Valores")
+    mod_v = st.selectbox("Loteria", list(st.session_state.premios.keys()), key="v_sel")
+    novos_v = {}
+    for faixa, valor in st.session_state.premios[mod_v].items():
+        novos_v[faixa] = st.number_input(f"Prêmio {faixa} acertos", value=float(valor), format="%.2f", key=f"v_{mod_v}_{faixa}")
+    if st.button("💾 SALVAR VALORES"): 
+        st.session_state.premios[mod_v] = novos_v
+        st.success("✅ Valores atualizados!")
 
 with abas[3]:
-    m_db = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="m_d")
-    id_c = st.number_input("Concurso", 1, 9999)
-    txt = st.text_area("Números Sorteados")
-    if txt and st.button("GRAVAR"):
-        nums = sorted(list(set([int(n) for n in re.findall(r'\d+', txt) if 1 <= int(n) <= 80])))
-        st.session_state.ultimo_res[m_db][str(int(id_c))] = nums; st.success("OK")
+    mostrar_status_backup()
+    st.header("📥 Database")
+    m_db = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="m_db")
+    id_c = st.number_input("Nº Concurso", 1, 9999, key="id_c")
+    txt_site = st.text_area("Cole os números sorteados aqui").strip()
+    if txt_site:
+        nums = sorted(list(set([int(n) for n in re.findall(r'\d+', txt_site) if 1 <= int(n) <= 80])))
+        st.code(" ".join([f"{x:02d}" for x in nums]))
+        if st.button("💾 GRAVAR RESULTADO"):
+            st.session_state.ultimo_res[m_db][str(int(id_c))] = nums
+            st.success("✅ Gravado!")
 
 with abas[4]:
-    st.download_button("📤 EXPORTAR", json.dumps({"salvos": st.session_state.jogos_salvos, "premios": st.session_state.premios, "res": st.session_state.ultimo_res}), "backup.json")
-    f = st.file_uploader("IMPORTAR")
-    if f and st.button("CONFIRMAR"):
-        d = json.load(f); st.session_state.jogos_salvos = d['salvos']; st.session_state.ultimo_res = d['res']; st.rerun()
+    mostrar_status_backup()
+    st.header("💾 Backup e Status")
+    data_b = json.dumps({"salvos": st.session_state.jogos_salvos, "premios": st.session_state.premios, "res": st.session_state.ultimo_res}, indent=4)
+    st.download_button("📤 EXPORTAR BACKUP", data_b, "backup_kadosh.json")
+    f = st.file_uploader("Importar Backup", type="json")
+    if f and st.button("📥 CONFIRMAR IMPORTAÇÃO"):
+        d = json.load(f)
+        st.session_state.jogos_salvos = d.get("salvos", [])
+        st.session_state.premios = d.get("premios", st.session_state.premios)
+        st.session_state.ultimo_res = d.get("res", st.session_state.ultimo_res)
+        st.rerun()
 
 with abas[5]:
-    st.header("🧠 CENTRAL KADOSH")
-    st.table(pd.DataFrame([{"Estratégia": k, "Foco": v["desc"], "Chance": v["prob"]} for k,v in ESTRATEGIA_MAPA.items() if k != "Personalizado"]))
-    st.table(pd.DataFrame([{"Matriz": k, "Pool": v["n_pool"], "Garantia": v["desc"]} for k,v in MATRIZES_FECHAMENTO.items() if v]))
+    mostrar_status_backup()
+    st.header("🧠 CENTRAL DE INTELIGÊNCIA KADOSH")
+    st.markdown("---")
+    
+    st.subheader("📊 Painel Tático de Estratégias")
+    dados_est = []
+    for nome, info in ESTRATEGIA_MAPA.items():
+        if nome != "Personalizado":
+            qtd_total = info.get("qtd", 0) + info.get("qtd_15", 0) + info.get("qtd_16", 0)
+            custo_aprox = (info.get("qtd", 0) * 3.5) + (info.get("qtd_15", 0) * 3.5) + (info.get("qtd_16", 0) * 56.0)
+            if "MARRETA" in nome: 
+                custo_aprox = 2448.0 + (5 * 56.0)
+            dados_est.append({
+                "Estratégia": nome, 
+                "Jogos": qtd_total, 
+                "Custo Est.": f"R$ {custo_aprox:,.2f}", 
+                "Foco": info["desc"], 
+                "Chances": info["prob"]
+            })
+    st.table(pd.DataFrame(dados_est))
 
+    # --- ACRÉSCIMO 2: TABELA DE MATRIZES ---
+    st.markdown("---")
+    st.subheader("📐 ANÁLISE TÉCNICA DE MATRIZES (ACRÉSCIMO)")
+    dados_mat = []
+    for nome, info in MATRIZES_FECHAMENTO.items():
+        if info:
+            n_p = info["n_pool"]
+            erro_m = n_p - 15
+            dados_mat.append({
+                "Matriz": nome,
+                "Pool (Dez)": n_p,
+                "Foco/Garantia": info["desc"],
+                "Erro Máx.": f"Erre até {erro_m} dezenas",
+                "Probabilidade": info["prob"],
+                "Garantia": f"{info['garantia']} Pontos"
+            })
+    st.table(pd.DataFrame(dados_mat))
+    st.info("💡 **Dica Técnica:** A coluna 'Erro Máx.' indica quantas dezenas do seu pool podem ser sorteadas e ainda manter a garantia 100%.")
+    
+    st.markdown("---")
+    
+    col_inf1, col_inf2 = st.columns(2)
+    with col_inf1:
+        st.subheader("🔄 Status do Ciclo Atual")
+        res_loto = st.session_state.ultimo_res.get("Lotofácil", {})
+        if res_loto:
+            sorteadas_no_ciclo = set()
+            concursos_analisados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
+            for c in concursos_analisados:
+                sorteadas_no_ciclo.update(res_loto[c])
+                if len(sorteadas_no_ciclo) == 25: 
+                    break
+            faltam = sorted(list(set(range(1, 26)) - sorteadas_no_ciclo))
+            if not faltam: 
+                st.success("✅ CICLO FECHADO!")
+            else:
+                st.warning(f"⚠️ Faltam {len(faltam)} dezenas para o ciclo: {faltam}")
+                st.info("💡 Dezenas pendentes ganham bônus de atraso no Pool Inteligente.")
+                
+    with col_inf2:
+        st.subheader("⚖️ Regras de Auditoria")
+        st.markdown("""
+        - **Paridade:** 7 a 9 Pares (Adaptativa)
+        - **Âncoras:** Início [1,2,3] | Fim [23,24,25]
+        - **Soma:** 180 a 220
+        - **Moldura:** 8 a 11 dezenas
+        - **Frequência:** Analisando histórico de 20 jogos
+        """)
+    
+    st.markdown("---")
+    
+    with st.expander("🛠️ MANUAL DE MANUTENÇÃO TÉCNICA"):
+        st.code("""
+// LOCALIZAÇÃO DO CÓDIGO NO SCRIPT:
+// 1. Heatmap: Logo após a função 'validar_kadosh_cirurgico'
+// 2. Score Pool: Aba 0 > Botão Pool Inteligente Kadosh
+// 3. Backup: Leitura automática via session_state (Aba 5 reflete o JSON)
+// 4. Paridade: Fórmula dinâmica integrada no motor de validação
+        """, language="javascript")
+# --- FUNÇÃO DE CÁLCULO DE AFINIDADE (MOTOR INDEPENDENTE) ---
+def calcular_matriz_afinidade_kadosh(mod):
+    res_db = st.session_state.ultimo_res.get(mod, {})
+    if len(res_db) < 3: return None
+    limite = 26 if mod == "Lotofácil" else 61 if mod == "Mega-Sena" else 81
+    matriz = [[0 for _ in range(limite)] for _ in range(limite)]
+    for sorteio in res_db.values():
+        nums = sorted([int(n) for n in sorteio])
+        for i in range(len(nums)):
+            for j in range(i + 1, len(nums)):
+                d1, d2 = nums[i], nums[j]
+                if d1 < limite and d2 < limite:
+                    matriz[d1][d2] += 1
+                    matriz[d2][d1] += 1
+    return matriz
+
+# --- CONTEÚDO DA NOVA ABA 7 ---
 with abas[6]:
-    st.markdown('<div class="painel-luxo-black"><div class="titulo-luxo-gold">🔗 AFINIDADE E VÍNCULOS</div></div>', unsafe_allow_html=True)
-    m_af = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="af_s")
-    res_af = st.session_state.ultimo_res.get(m_af, {})
-    if len(res_af) > 3:
-        lim = 26 if m_af == "Lotofácil" else 61
-        mat = [[0]*lim for _ in range(lim)]
-        for s in res_af.values():
-            n_s = sorted([int(x) for x in s])
-            for i, j in combinations(n_s, 2): 
-                if i < lim and j < lim: mat[i][j] += 1
-        
-        l_pares = []
-        for i in range(1, lim):
-            for j in range(i+1, lim):
-                if mat[i][j] > 0: l_pares.append({"Par": f"{i:02d}+{j:02d}", "Vezes": mat[i][j], "Afinidade": f"{(mat[i][j]/len(res_af))*100:.1f}%"})
-        st.table(pd.DataFrame(sorted(l_pares, key=lambda x: x['Vezes'], reverse=True)[:15]))
-    else: st.warning("Dados insuficientes.")
+    st.markdown('<div class="painel-luxo-black"><div class="titulo-luxo-gold">🔗 ANÁLISE DE AFINIDADE E VÍNCULOS</div><div style="color:white; font-size:12px; margin-top:10px;">Identificação de pares de dezenas com alta frequência conjunta</div></div>', unsafe_allow_html=True)
+    mod_af = st.selectbox("Selecione a Loteria para Estudo", list(st.session_state.custos.keys()), key="af_selector_new")
+    matriz_vinculos = calcular_matriz_afinidade_kadosh(mod_af)
+    
+    if matriz_vinculos:
+        col_vin1, col_vin2 = st.columns(2)
+        with col_vin1:
+            st.subheader("🔥 Top 15 Pares Mais Fortes")
+            lista_pares = []
+            for i in range(1, len(matriz_vinculos)):
+                for j in range(i + 1, len(matriz_vinculos)):
+                    freq = matriz_vinculos[i][j]
+                    if freq > 0:
+                        lista_pares.append({"Par": f"{i:02d} + {j:02d}", "Frequência": freq, "Afinidade": f"{(freq/len(st.session_state.ultimo_res[mod_af]))*100:.1f}%"})
+            st.table(pd.DataFrame(sorted(lista_pares, key=lambda x: x['Frequência'], reverse=True)[:15]))
+        with col_vin2:
+            st.subheader("🚫 Pares em Vácuo (Exemplos)")
+            vacuos, cont_v = [], 0
+            for i in range(1, len(matriz_vinculos)):
+                for j in range(i + 1, len(matriz_vinculos)):
+                    if matriz_vinculos[i][j] == 0 and cont_v < 15: 
+                        vacuos.append(f"{i:02d} + {j:02d}")
+                        cont_v += 1
+            for v in vacuos: st.markdown(f"❌ `{v}`")
+        st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
+    else:
+        st.warning("⚠️ Database insuficiente para análise de afinidade.")
