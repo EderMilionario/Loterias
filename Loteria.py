@@ -82,6 +82,21 @@ st.markdown("""
         background: #f0f2f6;
         border: 1px solid #d1d1d1;
     }
+    /* Estilos para o Pool na Conferência */
+    .dezena-pool {
+        display: inline-block;
+        width: 35px;
+        height: 35px;
+        line-height: 35px;
+        text-align: center;
+        border-radius: 50%;
+        margin: 3px;
+        font-size: 14px;
+        font-weight: bold;
+        color: white;
+    }
+    .pool-vermelho { background-color: #ff4b4b; border: 1px solid #8b0000; }
+    .pool-verde { background-color: #28a745; border: 1px solid #145214; box-shadow: 0 0 8px #28a745; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -495,8 +510,10 @@ with abas[0]:
     if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
         res_existentes = st.session_state.ultimo_res.get(mod, {})
         ultimo_c = int(max(res_existentes.keys(), key=int)) if res_existentes else 0
+        pool_atual = list(st.session_state.favoritas.get(mod, [])) # CIRURGICO: SALVA O POOL ATUAL
         for jogo in st.session_state.jogos_gerados:
             jogo['concurso_alvo'] = ultimo_c + 1
+            jogo['pool_origem'] = pool_atual # VINCULA O POOL AO JOGO
             st.session_state.jogos_salvos.append(jogo)
         st.session_state.jogos_gerados = []
         st.rerun()
@@ -506,8 +523,35 @@ with abas[1]:
     st.header("🔍 Painel de Conferência")
     mod_f = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="f_conf")
     
-    # ACRÉSCIMO 1: EXTRAIR PDF
     jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
+    
+    # --- NOVO BLOCO: VISUALIZAÇÃO DO POOL NA CONFERÊNCIA ---
+    if jogos_salvos_atual:
+        st.markdown("### 🎯 PERFORMANCE DO SEU POOL (CERCO)")
+        res_db = st.session_state.ultimo_res.get(mod_f, {})
+        
+        # Pega o pool do primeiro jogo (considerando que o pool é o mesmo por lote)
+        pool_salvo = jogos_salvos_atual[0].get('pool_origem', [])
+        alvo_pool = str(jogos_salvos_atual[0].get('concurso_alvo', ''))
+        
+        if pool_salvo:
+            html_pool = '<div style="background: #f8f9fa; padding: 20px; border-radius: 15px; border: 2px solid #1e3799; margin-bottom: 20px;">'
+            acertos_pool = 0
+            resultado_alvo = res_db.get(alvo_pool, [])
+            
+            for d in sorted(pool_salvo):
+                classe = "pool-vermelho"
+                if d in resultado_alvo:
+                    classe = "pool-verde"
+                    acertos_pool += 1
+                html_pool += f'<span class="dezena-pool {classe}">{d:02d}</span>'
+            
+            html_pool += f'<br><br><span style="font-size: 18px; color: #1e3799;">📊 <b>ACERTOS NO CERCO: {acertos_pool} DEZENAS</b></span>'
+            html_pool += '</div>'
+            st.markdown(html_pool, unsafe_allow_html=True)
+        else:
+            st.info("Pool não registrado nos jogos antigos.")
+
     if jogos_salvos_atual:
         btn_pdf = gerar_pdf_bonito(jogos_salvos_atual, mod_f)
         st.download_button(label="📄 EXTRAIR JOGOS SALVOS EM PDF", data=btn_pdf, file_name=f"jogos_{mod_f}.pdf", mime="application/pdf")
@@ -603,7 +647,6 @@ with abas[5]:
             })
     st.table(pd.DataFrame(dados_est))
 
-    # --- ACRÉSCIMO 2: TABELA DE MATRIZES ---
     st.markdown("---")
     st.subheader("📐 ANÁLISE TÉCNICA DE MATRIZES (ACRÉSCIMO)")
     dados_mat = []
@@ -663,7 +706,6 @@ with abas[5]:
 // 4. Paridade: Fórmula dinâmica integrada no motor de validação
         """, language="javascript")
 
-# --- CONTEÚDO DA NOVA ABA 7 ---
 with abas[6]:
     st.markdown("""
         <div class="painel-luxo-black">
