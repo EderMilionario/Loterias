@@ -8,7 +8,7 @@ from itertools import combinations
 from fpdf import FPDF  # Acréscimo para PDF
 import io
 
-# --- 1. CONFIGURAÇÃO E ESTÉTICA (SISTEMA VISUAL KADOSH) ---
+# --- 1. CONFIGURAÇÃO E ESTÉTICA ---
 st.set_page_config(page_title="LOTERIAS - KADOSH ESTRATÉGICO", layout="wide")
 st.markdown("""
     <style>
@@ -100,7 +100,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 2. FUNÇÕES TÉCNICAS (MOTOR DE ALTA PRECISÃO) ---
+# --- FUNÇÕES TÉCNICAS (MOTOR DE ALTA PRECISÃO) ---
 
 def gerar_pdf_bonito(jogos, modalidade):
     pdf = FPDF()
@@ -274,7 +274,7 @@ def calcular_matriz_afinidade_kadosh(mod):
                     matriz[d2][d1] += 1
     return matriz
 
-# --- 3. MAPA DE ESTRATÉGIAS E MATRIZES ---
+# --- 2. MAPA DE ESTRATÉGIAS E MATRIZES ---
 ESTRATEGIA_MAPA = {
     "Personalizado": {"dez": 15, "qtd": 10, "desc": "Configuração manual", "prob": "Variável", "peso": 0.1},
     "1. SNIPER": {"dez": 15, "qtd": 8, "desc": "08 Jogos de 15 (Econômico)", "prob": "1/3.268.760", "peso": 0.2},
@@ -296,6 +296,7 @@ MATRIZES_FECHAMENTO = {
     "MATRIZ DIAMANTE [2x16 + 10x15] (Pool 19)": {"n_pool": 19, "garantia": 14, "desc": "2 de 16 + 10 de 15 (Cerco Inteligente)", "prob": "Alta para 14/15", "peso": 0.92},
     "MATRIZ CÉLULA [1x16 + 15x15] (Pool 18)": {"n_pool": 18, "garantia": 15, "desc": "1 de 16 + 15 de 15 (Malha Fina)", "prob": "Máxima para 15", "peso": 0.96}
 }
+
 # --- 4. ESTADOS E ABAS ---
 for key in ['auth', 'jogos_gerados', 'jogos_salvos']:
     if key not in st.session_state: 
@@ -329,7 +330,7 @@ if 'custos' not in st.session_state:
 if not st.session_state.auth:
     st.title("🛡️ ACESSO LOTERIAS")
     with st.form("login_form"):
-        senha = st.password_input("CHAVE DE ACESSO")
+        senha = st.text_input("CHAVE DE ACESSO", type="password")
         if st.form_submit_button("ENTRAR"):
             if senha == "kadosh":
                 st.session_state.auth = True
@@ -471,8 +472,7 @@ with abas[0]:
                         })
                         sucessos += 1
                     tentativas += 1
-# CONTINUA...
-# --- CONTINUAÇÃO DO MOTOR DE GERAÇÃO ---
+
             if info_fech:
                 if "DIAMANTE" in fe_escolhido: 
                     gerar_com_matriz(16, 2)
@@ -510,10 +510,10 @@ with abas[0]:
     if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
         res_existentes = st.session_state.ultimo_res.get(mod, {})
         ultimo_c = int(max(res_existentes.keys(), key=int)) if res_existentes else 0
-        pool_atual = list(st.session_state.favoritas.get(mod, [])) 
+        pool_atual = list(st.session_state.favoritas.get(mod, [])) # CIRURGICO: SALVA O POOL ATUAL
         for jogo in st.session_state.jogos_gerados:
             jogo['concurso_alvo'] = ultimo_c + 1
-            jogo['pool_origem'] = pool_atual 
+            jogo['pool_origem'] = pool_atual # VINCULA O POOL AO JOGO
             st.session_state.jogos_salvos.append(jogo)
         st.session_state.jogos_gerados = []
         st.rerun()
@@ -525,9 +525,12 @@ with abas[1]:
     
     jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
     
+    # --- NOVO BLOCO: VISUALIZAÇÃO DO POOL NA CONFERÊNCIA ---
     if jogos_salvos_atual:
         st.markdown("### 🎯 PERFORMANCE DO SEU POOL (CERCO)")
         res_db = st.session_state.ultimo_res.get(mod_f, {})
+        
+        # Pega o pool do primeiro jogo (considerando que o pool é o mesmo por lote)
         pool_salvo = jogos_salvos_atual[0].get('pool_origem', [])
         alvo_pool = str(jogos_salvos_atual[0].get('concurso_alvo', ''))
         
@@ -546,10 +549,14 @@ with abas[1]:
             html_pool += f'<br><br><span style="font-size: 18px; color: #1e3799;">📊 <b>ACERTOS NO CERCO: {acertos_pool} DEZENAS</b></span>'
             html_pool += '</div>'
             st.markdown(html_pool, unsafe_allow_html=True)
+        else:
+            st.info("Pool não registrado nos jogos antigos.")
 
     if jogos_salvos_atual:
         btn_pdf = gerar_pdf_bonito(jogos_salvos_atual, mod_f)
         st.download_button(label="📄 EXTRAIR JOGOS SALVOS EM PDF", data=btn_pdf, file_name=f"jogos_{mod_f}.pdf", mime="application/pdf")
+    else:
+        st.info("Salve jogos no Gerador para habilitar a extração em PDF.")
 
     if st.button("🔄 ATUALIZAR E CONFERIR"): 
         st.rerun()
@@ -622,25 +629,44 @@ with abas[5]:
     mostrar_status_backup()
     st.header("🧠 CENTRAL DE INTELIGÊNCIA KADOSH")
     st.markdown("---")
+    
     st.subheader("📊 Painel Tático de Estratégias")
     dados_est = []
     for nome, info in ESTRATEGIA_MAPA.items():
         if nome != "Personalizado":
             qtd_total = info.get("qtd", 0) + info.get("qtd_15", 0) + info.get("qtd_16", 0)
             custo_aprox = (info.get("qtd", 0) * 3.5) + (info.get("qtd_15", 0) * 3.5) + (info.get("qtd_16", 0) * 56.0)
-            if "MARRETA" in nome: custo_aprox = 2448.0 + (5 * 56.0)
-            dados_est.append({"Estratégia": nome, "Jogos": qtd_total, "Custo Est.": f"R$ {custo_aprox:,.2f}", "Foco": info["desc"], "Chances": info["prob"]})
+            if "MARRETA" in nome: 
+                custo_aprox = 2448.0 + (5 * 56.0)
+            dados_est.append({
+                "Estratégia": nome, 
+                "Jogos": qtd_total, 
+                "Custo Est.": f"R$ {custo_aprox:,.2f}", 
+                "Foco": info["desc"], 
+                "Chances": info["prob"]
+            })
     st.table(pd.DataFrame(dados_est))
 
     st.markdown("---")
-    st.subheader("📐 ANÁLISE TÉCNICA DE MATRIZES")
+    st.subheader("📐 ANÁLISE TÉCNICA DE MATRIZES (ACRÉSCIMO)")
     dados_mat = []
     for nome, info in MATRIZES_FECHAMENTO.items():
         if info:
             n_p = info["n_pool"]
-            dados_mat.append({"Matriz": nome, "Pool (Dez)": n_p, "Foco/Garantia": info["desc"], "Erro Máx.": f"Erre até {n_p-15} dezenas", "Garantia": f"{info['garantia']} Pontos"})
+            erro_m = n_p - 15
+            dados_mat.append({
+                "Matriz": nome,
+                "Pool (Dez)": n_p,
+                "Foco/Garantia": info["desc"],
+                "Erro Máx.": f"Erre até {erro_m} dezenas",
+                "Probabilidade": info["prob"],
+                "Garantia": f"{info['garantia']} Pontos"
+            })
     st.table(pd.DataFrame(dados_mat))
-
+    st.info("💡 **Dica Técnica:** A coluna 'Erro Máx.' indica quantas dezenas do seu pool podem ser sorteadas e ainda manter a garantia 100%.")
+    
+    st.markdown("---")
+    
     col_inf1, col_inf2 = st.columns(2)
     with col_inf1:
         st.subheader("🔄 Status do Ciclo Atual")
@@ -650,17 +676,45 @@ with abas[5]:
             concursos_analisados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
             for c in concursos_analisados:
                 sorteadas_no_ciclo.update(res_loto[c])
-                if len(sorteadas_no_ciclo) == 25: break
+                if len(sorteadas_no_ciclo) == 25: 
+                    break
             faltam = sorted(list(set(range(1, 26)) - sorteadas_no_ciclo))
-            if not faltam: st.success("✅ CICLO FECHADO!")
-            else: st.warning(f"⚠️ Faltam {len(faltam)} dezenas: {faltam}")
+            if not faltam: 
+                st.success("✅ CICLO FECHADO!")
+            else:
+                st.warning(f"⚠️ Faltam {len(faltam)} dezenas para o ciclo: {faltam}")
+                st.info("💡 Dezenas pendentes ganham bônus de atraso no Pool Inteligente.")
                 
     with col_inf2:
         st.subheader("⚖️ Regras de Auditoria")
-        st.markdown("- **Paridade:** 7 a 9 Pares\n- **Âncoras:** Início [1,2,3] | Fim [23,24,25]\n- **Soma:** 180 a 220\n- **Moldura:** 8 a 11 dezenas")
+        st.markdown("""
+        - **Paridade:** 7 a 9 Pares (Adaptativa)
+        - **Âncoras:** Início [1,2,3] | Fim [23,24,25]
+        - **Soma:** 180 a 220
+        - **Moldura:** 8 a 11 dezenas
+        - **Frequência:** Analisando histórico de 20 jogos
+        """)
+    
+    st.markdown("---")
+    
+    with st.expander("🛠️ MANUAL DE MANUTENÇÃO TÉCNICA"):
+        st.code("""
+// LOCALIZAÇÃO DO CÓDIGO NO SCRIPT:
+// 1. Heatmap: Logo após a função 'validar_kadosh_cirurgico'
+// 2. Score Pool: Aba 0 > Botão Pool Inteligente Kadosh
+// 3. Backup: Leitura automática via session_state (Aba 5 reflete o JSON)
+// 4. Paridade: Fórmula dinâmica integrada no motor de validação
+        """, language="javascript")
 
 with abas[6]:
-    st.markdown('<div class="painel-luxo-black"><div class="moeda-animada">💰</div><div class="titulo-luxo-gold">🔗 ANÁLISE DE AFINIDADE</div></div>', unsafe_allow_html=True)
+    st.markdown("""
+        <div class="painel-luxo-black">
+            <div class="moeda-animada">💰</div>
+            <div class="titulo-luxo-gold">🔗 ANÁLISE DE AFINIDADE E VÍNCULOS</div>
+            <div style="color:white; font-size:12px; margin-top:10px;">Identificação de pares de dezenas com alta frequência conjunta</div>
+        </div>
+    """, unsafe_allow_html=True)
+    
     mod_af = st.selectbox("Selecione a Loteria para Estudo", list(st.session_state.custos.keys()), key="af_selector_new")
     matriz_vinculos = calcular_matriz_afinidade_kadosh(mod_af)
     
@@ -673,15 +727,24 @@ with abas[6]:
                 for j in range(i + 1, len(matriz_vinculos)):
                     freq = matriz_vinculos[i][j]
                     if freq > 0:
-                        lista_pares.append({"Par": f"{i:02d} + {j:02d}", "Frequência": freq, "Afinidade": f"{(freq/max(1, len(st.session_state.ultimo_res[mod_af])))*100:.1f}%"})
+                        lista_pares.append({
+                            "Par": f"{i:02d} + {j:02d}", 
+                            "Frequência": freq, 
+                            "Afinidade": f"{(freq/max(1, len(st.session_state.ultimo_res[mod_af])))*100:.1f}%"
+                        })
             st.table(pd.DataFrame(sorted(lista_pares, key=lambda x: x['Frequência'], reverse=True)[:15]))
+            
         with col_vin2:
             st.subheader("🚫 Pares em Vácuo (Exemplos)")
             vacuos, cont_v = [], 0
             for i in range(1, len(matriz_vinculos)):
                 for j in range(i + 1, len(matriz_vinculos)):
                     if matriz_vinculos[i][j] == 0 and cont_v < 15: 
-                        vacuos.append(f"{i:02d} + {j:02d}"); cont_v += 1
-            for v in vacuos: st.markdown(f"❌ `{v}`")
+                        vacuos.append(f"{i:02d} + {j:02d}")
+                        cont_v += 1
+            for v in vacuos: 
+                st.markdown(f"❌ `{v}`")
+                
+        st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
-        st.warning("⚠️ Database insuficiente para análise.")
+        st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
