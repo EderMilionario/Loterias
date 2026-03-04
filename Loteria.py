@@ -100,6 +100,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# --- 2. NOVO: INTELIGÊNCIA DE FIXAS IA ---
+def obter_fixas_ia(pool_selecionado, qtd=7):
+    """Extrai as dezenas de maior 'pressão' (início do pool ordenado) para travar."""
+    if len(pool_selecionado) >= qtd:
+        return sorted(pool_selecionado[:qtd])
+    return sorted(pool_selecionado[:3]) if pool_selecionado else []
+
 # --- FUNÇÕES TÉCNICAS (MOTOR DE ALTA PRECISÃO) ---
 
 def gerar_pdf_bonito(jogos, modalidade):
@@ -402,9 +409,7 @@ with abas[0]:
             def_dez, def_qtd = info_est["dez"], info_est.get("qtd", 10)
         else:
             def_dez = list(st.session_state.custos[mod].keys())[0]
-            def_qtd = 10
-            
-        opcoes_dez = list(st.session_state.custos[mod].keys())
+opcoes_dez = list(st.session_state.custos[mod].keys())
         idx_padrao = opcoes_dez.index(def_dez) if def_dez in opcoes_dez else 0
         n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao)
         qtd = st.number_input("Quantidade de Jogos", 1, 300, def_qtd)
@@ -446,6 +451,15 @@ with abas[0]:
 
         pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
         st.session_state.favoritas[mod] = pool
+        
+        # --- NOVO: SELETOR DE FIXAS IA ---
+        fixas_ia = []
+        if mod == "Lotofácil" and pool:
+            usar_fixas = st.toggle("🔒 TRAVAR DEZENAS FIXAS (IA)", value=True)
+            if usar_fixas:
+                fixas_ia = obter_fixas_ia(pool, qtd=7)
+                st.markdown(f"📌 **Fixas Cravadas:** {', '.join([f'{x:02d}' for x in fixas_ia])}")
+        
         renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
 
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
@@ -456,7 +470,13 @@ with abas[0]:
             def gerar_com_matriz(tamanho, quantidade, filtragem=True):
                 sucessos, tentativas = 0, 0
                 while sucessos < quantidade and tentativas < 20000:
-                    comb = sorted(random.sample(pool, tamanho))
+                    # Lógica de Cravamento: Inicia o jogo com as fixas e completa com o resto do pool
+                    if fixas_ia and tamanho > len(fixas_ia):
+                        restante_pool = list(set(pool) - set(fixas_ia))
+                        comb = sorted(fixas_ia + random.sample(restante_pool, tamanho - len(fixas_ia)))
+                    else:
+                        comb = sorted(random.sample(pool, tamanho))
+                        
                     if any(set(comb) == set(existente['n']) for existente in novos):
                         tentativas += 1
                         continue
@@ -525,12 +545,10 @@ with abas[1]:
     
     jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
     
-    # --- NOVO BLOCO: VISUALIZAÇÃO DO POOL NA CONFERÊNCIA ---
     if jogos_salvos_atual:
         st.markdown("### 🎯 PERFORMANCE DO SEU POOL (CERCO)")
         res_db = st.session_state.ultimo_res.get(mod_f, {})
         
-        # Pega o pool do primeiro jogo (considerando que o pool é o mesmo por lote)
         pool_salvo = jogos_salvos_atual[0].get('pool_origem', [])
         alvo_pool = str(jogos_salvos_atual[0].get('concurso_alvo', ''))
         
@@ -748,3 +766,4 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+            def_qtd = 10
