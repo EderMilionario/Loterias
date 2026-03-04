@@ -609,6 +609,53 @@ with abas[5]:
     st.header("🧠 CENTRAL DE INTELIGÊNCIA KADOSH")
     st.markdown("---")
     
+    # --- NOVO BLOCO: RANKING DE PERFORMANCE REAL ---
+    st.subheader("🏆 Desempenho Histórico por Estratégia")
+    
+    jogos_salvos = st.session_state.get('jogos_salvos', [])
+    res_db = st.session_state.ultimo_res.get("Lotofácil", {}) # Focado em Lotofácil por ser o motor principal
+    
+    if not jogos_salvos or not res_db:
+        st.info("💡 Para ver o ranking de performance, você precisa ter jogos salvos e resultados cadastrados na Database.")
+    else:
+        stats_est = {}
+        for j in jogos_salvos:
+            est_nome = j.get('est', 'Outros')
+            if est_nome not in stats_est:
+                stats_est[est_nome] = {"jogos": 0, "premios": 0.0, "acertos_11_13": 0, "acertos_14_15": 0}
+            
+            alvo = str(j.get('concurso_alvo', ''))
+            if alvo in res_db:
+                acertos = len(set(j['n']).intersection(set(res_db[alvo])))
+                val_premio = st.session_state.premios["Lotofácil"].get(str(acertos), 0.0)
+                
+                stats_est[est_nome]["jogos"] += 1
+                stats_est[est_nome]["premios"] += val_premio
+                if 11 <= acertos <= 13:
+                    stats_est[est_nome]["acertos_11_13"] += 1
+                elif acertos >= 14:
+                    stats_est[est_nome]["acertos_14_15"] += 1
+        
+        if stats_est:
+            df_ranking = []
+            for est, dados in stats_est.items():
+                df_ranking.append({
+                    "Estratégia": est,
+                    "Qtd Jogos": dados["jogos"],
+                    "Premiação Total": formata_dinheiro(dados["premios"]),
+                    "11 a 13 pts": dados["acertos_11_13"],
+                    "14 a 15 pts": dados["acertos_14_15"]
+                })
+            
+            # Ordena pelo que deu mais dinheiro
+            df_ranking = sorted(df_ranking, key=lambda x: float(x["Premiação Total"].replace('R$ ', '').replace('.', '').replace(',', '.')), reverse=True)
+            st.table(pd.DataFrame(df_ranking))
+        else:
+            st.warning("Aguardando sorteio dos concursos vinculados aos jogos salvos.")
+
+    st.markdown("---")
+    
+    # --- MANTENDO O RESTANTE DA ABA SEM ALTERAÇÕES ---
     st.subheader("📊 Painel Tático de Estratégias")
     dados_est = []
     for nome, info in ESTRATEGIA_MAPA.items():
@@ -626,7 +673,6 @@ with abas[5]:
             })
     st.table(pd.DataFrame(dados_est))
 
-    # --- ACRÉSCIMO 2: TABELA DE MATRIZES ---
     st.markdown("---")
     st.subheader("📐 ANÁLISE TÉCNICA DE MATRIZES (ACRÉSCIMO)")
     dados_mat = []
@@ -729,6 +775,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
