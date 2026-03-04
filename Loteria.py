@@ -354,285 +354,307 @@ with abas[0]:
     if 'analise_stats' not in st.session_state:
         st.session_state.analise_stats = {}
     
-    mostrar_status_backup()
-    mod = st.selectbox("Modalidade", list(st.session_state.custos.keys()), key="mod_selector")
+    # --- NOVO: INICIALIZAÇÃO DE MEMÓRIA PARA FIXAS SUGERIDAS ---
+    if 'fixas_sugeridas_ia' not in st.session_state:
+        st.session_state.fixas_sugeridas_ia = {m: [] for m in ["Lotofácil", "Mega-Sena", "Quina", "+Milionária", "Dupla-Sena"]}
+    
+    [cite_start]mostrar_status_backup() [cite: 51]
+    [cite_start]mod = st.selectbox("Modalidade", list(st.session_state.custos.keys()), key="mod_selector") [cite: 53]
     
     if 'ultima_mod_selecionada' not in st.session_state:
-        st.session_state.ultima_mod_selecionada = mod
+        [cite_start]st.session_state.ultima_mod_selecionada = mod [cite: 53]
         
     if st.session_state.ultima_mod_selecionada != mod:
-        st.session_state.jogos_gerados = []
-        st.session_state.ultima_mod_selecionada = mod
-        st.rerun()
+        [cite_start]st.session_state.jogos_gerados = [] [cite: 53]
+        [cite_start]st.session_state.ultima_mod_selecionada = mod [cite: 53]
+        [cite_start]st.rerun() [cite: 53]
     
-    col_est1, col_est2 = st.columns(2)
+    [cite_start]col_est1, col_est2 = st.columns(2) [cite: 53]
     with col_est1:
         if mod == "Lotofácil":
-            est_escolhida = st.selectbox("💎 ESTRATÉGIA KADOSH", list(ESTRATEGIA_MAPA.keys()))
-            est_info = ESTRATEGIA_MAPA[est_escolhida]
-            st.progress(est_info["peso"])
-            qtd_total_est = est_info.get("qtd", 0) + est_info.get("qtd_15", 0) + est_info.get("qtd_16", 0)
-            st.markdown(f"🎯 **Probabilidade:** {est_info['prob']} | 📦 **Volume:** {qtd_total_est} jogos")
+            [cite_start]est_escolhida = st.selectbox("💎 ESTRATÉGIA KADOSH", list(ESTRATEGIA_MAPA.keys())) [cite: 54]
+            [cite_start]est_info = ESTRATEGIA_MAPA[est_escolhida] [cite: 54]
+            [cite_start]st.progress(est_info["peso"]) [cite: 54]
+            [cite_start]qtd_total_est = est_info.get("qtd", 0) + est_info.get("qtd_15", 0) + est_info.get("qtd_16", 0) [cite: 54]
+            [cite_start]st.markdown(f"🎯 **Probabilidade:** {est_info['prob']} | 📦 **Volume:** {qtd_total_est} jogos") [cite: 55]
         else:
-            est_escolhida = "Personalizado"
+            [cite_start]est_escolhida = "Personalizado" [cite: 55]
             
     with col_est2:
         if mod == "Lotofácil":
-            fe_escolhido = st.selectbox("📐 MODO FECHAMENTO (MATRIZ)", list(MATRIZES_FECHAMENTO.keys()))
+            [cite_start]fe_escolhido = st.selectbox("📐 MODO FECHAMENTO (MATRIZ)", list(MATRIZES_FECHAMENTO.keys())) [cite: 56]
             if fe_escolhido != "Nenhum":
-                fe_info = MATRIZES_FECHAMENTO[fe_escolhido]
-                st.progress(fe_info["peso"])
-                st.markdown(f"📐 **Garantia:** {fe_info['prob']} | 🧬 **Pool:** {fe_info['n_pool']} dezenas")
+                [cite_start]fe_info = MATRIZES_FECHAMENTO[fe_escolhido] [cite: 56]
+                [cite_start]st.progress(fe_info["peso"]) [cite: 56]
+                [cite_start]st.markdown(f"📐 **Garantia:** {fe_info['prob']} | 🧬 **Pool:** {fe_info['n_pool']} dezenas") [cite: 56]
             else:
-                st.markdown("<br><br>", unsafe_allow_html=True)
+                [cite_start]st.markdown("<br><br>", unsafe_allow_html=True) [cite: 56]
         else:
-            fe_escolhido = "Nenhum"
+            [cite_start]fe_escolhido = "Nenhum" [cite: 56]
 
-    info_fech = MATRIZES_FECHAMENTO.get(fe_escolhido) if mod == "Lotofácil" else None
-    info_est = ESTRATEGIA_MAPA.get(est_escolhida) if mod == "Lotofácil" else ESTRATEGIA_MAPA["Personalizado"]
+    [cite_start]info_fech = MATRIZES_FECHAMENTO.get(fe_escolhido) if mod == "Lotofácil" else None [cite: 57]
+    [cite_start]info_est = ESTRATEGIA_MAPA.get(est_escolhida) if mod == "Lotofácil" else ESTRATEGIA_MAPA["Personalizado"] [cite: 57]
     
-    st.markdown("---")
+    [cite_start]st.markdown("---") [cite: 57]
 
-    c1, c2 = st.columns(2)
+    [cite_start]c1, c2 = st.columns(2) [cite: 57]
     with c1:
         if info_fech:
             if "DIAMANTE" in fe_escolhido: 
-                def_dez, def_qtd = 16, 2
+                [cite_start]def_dez, def_qtd = 16, 2 [cite: 58]
             elif "CÉLULA" in fe_escolhido: 
-                def_dez, def_qtd = 16, 1
+                [cite_start]def_dez, def_qtd = 16, 1 [cite: 58]
             else: 
-                def_dez, def_qtd = 15, (24 if "18-15-14" in fe_escolhido else 45)
+                [cite_start]def_dez, def_qtd = 15, (24 if "18-15-14" in fe_escolhido else 45) [cite: 58]
         elif est_escolhida != "Personalizado" and mod == "Lotofácil":
-            def_dez, def_qtd = info_est["dez"], info_est.get("qtd", 10)
+            [cite_start]def_dez, def_qtd = info_est["dez"], info_est.get("qtd", 10) [cite: 58]
         else:
-            def_dez = list(st.session_state.custos[mod].keys())[0]
-            def_qtd = 10
+            [cite_start]def_dez = list(st.session_state.custos[mod].keys())[0] [cite: 59]
+            [cite_start]def_qtd = 10 [cite: 59]
             
-        opcoes_dez = list(st.session_state.custos[mod].keys())
-        idx_padrao = opcoes_dez.index(def_dez) if def_dez in opcoes_dez else 0
-        n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao)
-        qtd = st.number_input("Quantidade de Jogos", 1, 300, def_qtd)
-        
+        [cite_start]opcoes_dez = list(st.session_state.custos[mod].keys()) [cite: 59]
+        [cite_start]idx_padrao = opcoes_dez.index(def_dez) if def_dez in opcoes_dez else 0 [cite: 59]
+        [cite_start]n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao) [cite: 59]
+        [cite_start]qtd = st.number_input("Quantidade de Jogos", 1, 300, def_qtd) [cite: 59]
+       
     with c2:
-        max_v = 25 if mod=="Lotofácil" else 60 if mod=="Mega-Sena" else 80
-        col_btn1, col_btn2 = st.columns(2)
+        [cite_start]max_v = 25 if mod=="Lotofácil" else 60 if mod=="Mega-Sena" else 80 [cite: 60]
+        [cite_start]col_btn1, col_btn2 = st.columns(2) [cite: 60]
         
         with col_btn1:
             if st.button("✅ TODO O VOLANTE"):
-                st.session_state.favoritas[mod] = list(range(1, max_v + 1))
-                st.rerun()
+                [cite_start]st.session_state.favoritas[mod] = list(range(1, max_v + 1)) [cite: 60]
+                [cite_start]st.rerun() [cite: 61]
                 
         with col_btn2:
             if st.button("🧠 POOL INTELIGENTE KADOSH"):
-                res_loto = st.session_state.ultimo_res.get(mod, {})
+                [cite_start]res_loto = st.session_state.ultimo_res.get(mod, {}) [cite: 61]
                 if len(res_loto) >= 5:
-                    n_pool_req = info_fech['n_pool'] if info_fech else 20
-                    conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)[:20]
-                    score_kadosh = {}
-                    contagem = Counter()
+                    [cite_start]n_pool_req = info_fech['n_pool'] if info_fech else 20 [cite: 62]
+                    [cite_start]conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)[:20] [cite: 62]
+                    [cite_start]score_kadosh = {} [cite: 62]
+                    [cite_start]contagem = Counter() [cite: 62]
                     
                     for c in conc_ordenados:
                         for n in res_loto[c]: 
-                            contagem[n] += 1
-                            
+                            [cite_start]contagem[n] += 1 [cite: 63]
+                   
                     for n in range(1, max_v + 1):
-                        atraso_n = 0
+                        [cite_start]atraso_n = 0 [cite: 64]
                         for c in conc_ordenados:
                             if n not in res_loto[c]: 
-                                atraso_n += 1
+                                [cite_start]atraso_n += 1 [cite: 65]
                             else: 
-                                break
-                        score_kadosh[n] = contagem[n] + (atraso_n * 1.5)
+                                [cite_start]break [cite: 66]
+                        [cite_start]score_kadosh[n] = contagem[n] + (atraso_n * 1.5) [cite: 66]
                         
-                    melhores = sorted(score_kadosh.items(), key=lambda x: x[1], reverse=True)
-                    st.session_state.favoritas[mod] = sorted([n for n, s in melhores[:n_pool_req]])
-                    st.rerun()
+                    [cite_start]melhores = sorted(score_kadosh.items(), key=lambda x: x[1], reverse=True) [cite: 66]
+                    [cite_start]st.session_state.favoritas[mod] = sorted([n for n, s in melhores[:n_pool_req]]) [cite: 67]
+                    
+                    # --- NOVO: CAPTURA DE FIXAS SUGERIDAS PELA IA ---
+                    st.session_state.fixas_sugeridas_ia[mod] = sorted([n for n, s in melhores[:6]])
+                    
+                    [cite_start]st.rerun() [cite: 67]
 
-        pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
-        st.session_state.favoritas[mod] = pool
+        [cite_start]pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, [])) [cite: 67]
+        [cite_start]st.session_state.favoritas[mod] = pool [cite: 67]
         
-        modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
-        fixas_final = []
+        # --- NOVO: EXIBIÇÃO VISUAL DAS FIXAS DO POOL INTELIGENTE ---
+        if st.session_state.fixas_sugeridas_ia.get(mod):
+            st.markdown("### 📌 FIXAS SUGERIDAS (IA SCORE)")
+            fixas_html = '<div style="margin-bottom: 10px;">'
+            for f in st.session_state.fixas_sugeridas_ia[mod]:
+                fixas_html += f'<span style="background:#d4af37; color:black; padding:5px 12px; border-radius:15px; margin-right:5px; border:1px solid black; font-weight:bold; font-size:14px;">{f:02d}</span>'
+            fixas_html += '</div>'
+            st.markdown(fixas_html, unsafe_allow_html=True)
+        
+        [cite_start]modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True) [cite: 67]
+        [cite_start]fixas_final = [] [cite: 68]
         if modo_fixa == "Manual":
-            fixas_final = st.multiselect("📌 CRAVAR DEZENAS:", options=pool)
+            [cite_start]fixas_final = st.multiselect("📌 CRAVAR DEZENAS:", options=pool) [cite: 68]
         elif modo_fixa == "IA Automática (Score)":
-            qtd_auto = st.slider("Qtd de Cravadas:", 1, 10, 6)
+            [cite_start]qtd_auto = st.slider("Qtd de Cravadas:", 1, 10, 6) [cite: 68]
             if mod in st.session_state.analise_stats:
-                stats = st.session_state.analise_stats[mod]
-                melhores = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
-                fixas_final = melhores[:qtd_auto]
-                st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
+                [cite_start]stats = st.session_state.analise_stats[mod] [cite: 69]
+                [cite_start]melhores_ia = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True) [cite: 69]
+                [cite_start]fixas_final = melhores_ia[:qtd_auto] [cite: 69]
+                [cite_start]st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}") [cite: 69]
         
-        renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
+        [cite_start]renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {})) [cite: 69]
 
-    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-        if len(pool) < (info_fech['n_pool'] if info_fech else n_dez):
-            st.error(f"Seu Pool precisa de pelo menos {info_fech['n_pool'] if info_fech else n_dez} dezenas!")
+    [cite_start]if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"): [cite: 69]
+        [cite_start]if len(pool) < (info_fech['n_pool'] if info_fech else n_dez): [cite: 70]
+            [cite_start]st.error(f"Seu Pool precisa de pelo menos {info_fech['n_pool'] if info_fech else n_dez} dezenas!") [cite: 70]
         else:
-            novos = []
+            [cite_start]novos = [] [cite: 70]
             def gerar_com_matriz(tamanho, quantidade, filtragem=True):
-                sucessos, tentativas = 0, 0
-                pool_para_sorteio = [n for n in pool if n not in fixas_final]
-                vagas_abertas = tamanho - len(fixas_final)
+                [cite_start]sucessos, tentativas = 0, 0 [cite: 70]
+                [cite_start]pool_para_sorteio = [n for n in pool if n not in fixas_final] [cite: 71]
+                [cite_start]vagas_abertas = tamanho - len(fixas_final) [cite: 71]
 
                 while sucessos < quantidade and tentativas < 30000:
                     if len(pool_para_sorteio) >= vagas_abertas:
-                        complemento = random.sample(pool_para_sorteio, vagas_abertas)
-                        comb = sorted(fixas_final + complemento)
+                        [cite_start]complemento = random.sample(pool_para_sorteio, vagas_abertas) [cite: 72]
+                        [cite_start]comb = sorted(fixas_final + complemento) [cite: 72]
                     else:
-                        comb = sorted(random.sample(pool, tamanho))
-                    
-                    if any(set(comb) == set(existente['n']) for existente in novos):
-                        tentativas += 1
+                        [cite_start]comb = sorted(random.sample(pool, tamanho)) [cite: 72]
+               
+                    [cite_start]if any(set(comb) == set(existente['n']) for existente in novos): [cite: 73]
+                        [cite_start]tentativas += 1 [cite: 73]
                         continue
-                        
-                    passou = validar_kadosh_cirurgico(comb, mod, tamanho) if filtragem else True
+                  
+                    [cite_start]passou = validar_kadosh_cirurgico(comb, mod, tamanho) if filtragem else True [cite: 74]
                     if passou:
-                        tag_est = f"{fe_escolhido if info_fech else est_escolhida}"
-                        if fixas_final: tag_est += f" (FIXAS: {len(fixas_final)})"
+                        [cite_start]tag_est = f"{fe_escolhido if info_fech else est_escolhida}" [cite: 74]
+                        [cite_start]if fixas_final: tag_est += f" (FIXAS: {len(fixas_final)})" [cite: 75]
                         
-                        # SALVANDO O JOGO COM A LISTA DE FIXAS PARA O CONFERIDOR
                         novos.append({
-                            "mod": mod, 
-                            "n": comb, 
-                            "tam": tamanho, 
-                            "fixas_utilizadas": list(fixas_final),
-                            "chance": definir_label_chance(comb, mod), 
-                            "est": tag_est
+                            [cite_start]"mod": mod, [cite: 76] 
+                            [cite_start]"n": comb, [cite: 76] 
+                            [cite_start]"tam": tamanho, [cite: 76] 
+                            [cite_start]"fixas_utilizadas": list(fixas_final), [cite: 77]
+                            [cite_start]"chance": definir_label_chance(comb, mod), [cite: 77] 
+                            [cite_start]"est": tag_est [cite: 77]
                         })
-                        sucessos += 1
-                    tentativas += 1
+                        [cite_start]sucessos += 1 [cite: 78]
+                    [cite_start]tentativas += 1 [cite: 78]
 
             if info_fech:
                 if "DIAMANTE" in fe_escolhido: 
-                    gerar_com_matriz(16, 2); gerar_com_matriz(15, 10)
+                    [cite_start]gerar_com_matriz(16, 2); gerar_com_matriz(15, 10) [cite: 79]
                 elif "CÉLULA" in fe_escolhido: 
-                    gerar_com_matriz(16, 1); gerar_com_matriz(15, 15)
+                    [cite_start]gerar_com_matriz(16, 1); gerar_com_matriz(15, 15) [cite: 79]
                 else: 
-                    gerar_com_matriz(15, qtd)
+                    [cite_start]gerar_com_matriz(15, qtd) [cite: 80]
             elif est_escolhida == "8. RASTREAMENTO DE CICLO": 
-                gerar_com_matriz(16, 1); gerar_com_matriz(15, 6)
+                [cite_start]gerar_com_matriz(16, 1); gerar_com_matriz(15, 6) [cite: 80]
             elif est_escolhida == "9. CERCO POR ELIMINAÇÃO": 
-                gerar_com_matriz(15, 10)
+                [cite_start]gerar_com_matriz(15, 10) [cite: 81]
             elif est_escolhida == "6. A MARRETA": 
-                gerar_com_matriz(18, 1); gerar_com_matriz(16, 5)
+                [cite_start]gerar_com_matriz(18, 1); gerar_com_matriz(16, 5) [cite: 81]
             elif est_escolhida == "7. SIMETRIA GEOMÉTRICA": 
-                gerar_com_matriz(16, 2); gerar_com_matriz(15, 8)
+                [cite_start]gerar_com_matriz(16, 2); gerar_com_matriz(15, 8) [cite: 82]
             elif est_escolhida != "Personalizado" and mod == "Lotofácil":
-                gerar_com_matriz(info_est['dez'], info_est.get('qtd', 1))
-                if "qtd_15" in info_est: gerar_com_matriz(15, info_est['qtd_15'])
+                [cite_start]gerar_com_matriz(info_est['dez'], info_est.get('qtd', 1)) [cite: 83]
+                [cite_start]if "qtd_15" in info_est: gerar_com_matriz(15, info_est['qtd_15']) [cite: 83]
             else: 
-                gerar_com_matriz(n_dez, qtd)
-                
-            st.session_state.jogos_gerados = novos
-            st.rerun()
+                [cite_start]gerar_com_matriz(n_dez, qtd) [cite: 83]
+           
+            [cite_start]st.session_state.jogos_gerados = novos [cite: 84]
+            [cite_start]st.rerun() [cite: 84]
 
     for i, j in enumerate(st.session_state.jogos_gerados):
-        txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
-        st.code(f"JOGO {i+1:02d} | {j['est']} | {j['tam']} DEZ | {txt_jogo} / {j['chance']}")
+        [cite_start]txt_jogo = ' '.join([f'{x:02d}' for x in j['n']]) [cite: 84]
+        [cite_start]st.code(f"JOGO {i+1:02d} | {j['est']} | {j['tam']} DEZ | {txt_jogo} / {j['chance']}") [cite: 84]
     
-    if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
-        res_existentes = st.session_state.ultimo_res.get(mod, {})
-        ultimo_c = int(max(res_existentes.keys(), key=int)) if res_existentes else 0
-        pool_atual = list(st.session_state.favoritas.get(mod, [])) 
+    [cite_start]if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"): [cite: 84]
+        [cite_start]res_existentes = st.session_state.ultimo_res.get(mod, {}) [cite: 84]
+        [cite_start]ultimo_c = int(max(res_existentes.keys(), key=int)) if res_existentes else 0 [cite: 85]
+        [cite_start]pool_atual = list(st.session_state.favoritas.get(mod, [])) [cite: 85]
         for jogo in st.session_state.jogos_gerados:
-            jogo['concurso_alvo'] = ultimo_c + 1
-            jogo['pool_origem'] = pool_atual 
-            st.session_state.jogos_salvos.append(jogo)
-        st.session_state.jogos_gerados = []
-        st.rerun()
-
+            [cite_start]jogo['concurso_alvo'] = ultimo_c + 1 [cite: 85]
+            [cite_start]jogo['pool_origem'] = pool_atual [cite: 85]
+            # NOVO: SALVANDO AS FIXAS USADAS NO MOMENTO DA GERAÇÃO PARA O BACKUP
+            jogo['fixas_pool_origem'] = list(jogo.get('fixas_utilizadas', []))
+            [cite_start]st.session_state.jogos_salvos.append(jogo) [cite: 85]
+        [cite_start]st.session_state.jogos_gerados = [] [cite: 85]
+        [cite_start]st.rerun() [cite: 85]
 with abas[1]:
-    mostrar_status_backup()
-    st.header("🔍 Painel de Conferência")
-    mod_f = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="f_conf")
+    [cite_start]mostrar_status_backup() [cite: 86]
+    [cite_start]st.header("🔍 Painel de Conferência") [cite: 86]
+    [cite_start]mod_f = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="f_conf") [cite: 86]
     
-    jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
+    [cite_start]jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f] [cite: 86]
     
-    # --- NOVO BLOCO: VISUALIZAÇÃO DO POOL NA CONFERÊNCIA (MANTIDO) ---
     if jogos_salvos_atual:
-        st.markdown("### 🎯 PERFORMANCE DO SEU POOL (CERCO)")
-        res_db = st.session_state.ultimo_res.get(mod_f, {})
+        [cite_start]st.markdown("### 🎯 PERFORMANCE DO SEU POOL (CERCO)") [cite: 86]
+        [cite_start]res_db = st.session_state.ultimo_res.get(mod_f, {}) [cite: 87]
         
-        # Pega o pool do primeiro jogo
-        pool_salvo = jogos_salvos_atual[0].get('pool_origem', [])
-        alvo_pool = str(jogos_salvos_atual[0].get('concurso_alvo', ''))
+        [cite_start]pool_salvo = jogos_salvos_atual[0].get('pool_origem', []) [cite: 87]
+        [cite_start]alvo_pool = str(jogos_salvos_atual[0].get('concurso_alvo', '')) [cite: 87]
         
         if pool_salvo:
-            html_pool = '<div style="background: #f8f9fa; padding: 20px; border-radius: 15px; border: 2px solid #1e3799; margin-bottom: 20px;">'
-            acertos_pool = 0
-            resultado_alvo = res_db.get(alvo_pool, [])
+            [cite_start]html_pool = '<div style="background: #f8f9fa; padding: 20px; border-radius: 15px; border: 2px solid #1e3799; margin-bottom: 20px;">' [cite: 87]
+            [cite_start]acertos_pool = 0 [cite: 88]
+            [cite_start]resultado_alvo = res_db.get(alvo_pool, []) [cite: 88]
             
             for d in sorted(pool_salvo):
-                classe = "pool-vermelho"
+                [cite_start]classe = "pool-vermelho" [cite: 88]
                 if d in resultado_alvo:
-                    classe = "pool-verde"
-                    acertos_pool += 1
-                html_pool += f'<span class="dezena-pool {classe}">{d:02d}</span>'
+                    [cite_start]classe = "pool-verde" [cite: 89]
+                    [cite_start]acertos_pool += 1 [cite: 89]
+                [cite_start]html_pool += f'<span class="dezena-pool {classe}">{d:02d}</span>' [cite: 89]
             
-            html_pool += f'<br><br><span style="font-size: 18px; color: #1e3799;">📊 <b>ACERTOS NO CERCO: {acertos_pool} DEZENAS</b></span>'
-            html_pool += '</div>'
-            st.markdown(html_pool, unsafe_allow_html=True)
+            [cite_start]html_pool += f'<br><br><span style="font-size: 18px; color: #1e3799;">📊 <b>ACERTOS NO CERCO: {acertos_pool} DEZENAS</b></span>' [cite: 90]
+            [cite_start]html_pool += '</div>' [cite: 90]
+            [cite_start]st.markdown(html_pool, unsafe_allow_html=True) [cite: 90]
+            
+            # --- NOVO: PERFORMANCE DAS DEZENAS FIXAS SEPARADO ---
+            fixas_salvas = jogos_salvos_atual[0].get('fixas_pool_origem', [])
+            if fixas_salvas:
+                st.markdown("### 📌 PERFORMANCE DAS DEZENAS FIXAS")
+                acertos_fixas = 0
+                html_fixas = '<div style="background: #1a1a1a; padding: 15px; border-radius: 12px; border: 2px solid #d4af37; margin-bottom: 20px;">'
+                
+                for df in sorted(fixas_salvas):
+                    cor_fixa = "#28a745" if df in resultado_alvo else "#ff4b4b"
+                    html_fixas += f'<span style="display:inline-block; width:35px; height:35px; line-height:35px; text-align:center; border-radius:50%; margin:3px; font-weight:bold; color:white; background-color:{cor_fixa}; border:1px solid white;">{df:02d}</span>'
+                    if df in resultado_alvo:
+                        acertos_fixas += 1
+                
+                html_fixas += f'<br><br><span style="color:#d4af37; font-size:16px;"><b>🎯 ACERTOS NAS FIXAS: {acertos_fixas} de {len(fixas_salvas)}</b></span>'
+                html_fixas += '</div>'
+                st.markdown(html_fixas, unsafe_allow_html=True)
         else:
-            st.info("Pool não registrado nos jogos antigos.")
+            [cite_start]st.info("Pool não registrado nos jogos antigos.") [cite: 90]
 
-    # --- EXTRAÇÃO EM PDF (MANTIDO) ---
     if jogos_salvos_atual:
-        btn_pdf = gerar_pdf_bonito(jogos_salvos_atual, mod_f)
-        st.download_button(label="📄 EXTRAIR JOGOS SALVOS EM PDF", data=btn_pdf, file_name=f"jogos_{mod_f}.pdf", mime="application/pdf")
-    else:
-        st.info("Salve jogos no Gerador para habilitar a extração em PDF.")
+        [cite_start]btn_pdf = gerar_pdf_bonito(jogos_salvos_atual, mod_f) [cite: 90]
+        [cite_start]st.download_button(label="📄 EXTRAIR JOGOS SALVOS EM PDF", data=btn_pdf, file_name=f"jogos_{mod_f}.pdf", mime="application/pdf") [cite: 91]
 
     if st.button("🔄 ATUALIZAR E CONFERIR"): 
-        st.rerun()
+        [cite_start]st.rerun() [cite: 91]
         
-    res_db = st.session_state.ultimo_res.get(mod_f, {})
-    jogos_na_espera = [j for j in st.session_state.jogos_salvos if j.get('mod') == mod_f]
+    [cite_start]res_db = st.session_state.ultimo_res.get(mod_f, {}) [cite: 91]
+    [cite_start]jogos_na_espera = [j for j in st.session_state.jogos_salvos if j.get('mod') == mod_f] [cite: 91]
     
     if jogos_na_espera:
-        total_ganho = 0
-        # Primeiro calculamos o total de prêmios
+        [cite_start]total_ganho = 0 [cite: 91]
         for j in jogos_na_espera:
-            alvo = str(j.get('concurso_alvo', ''))
+            [cite_start]alvo = str(j.get('concurso_alvo', '')) [cite: 92]
             if alvo in res_db:
-                sorteados = set(res_db[alvo])
-                acertos = len(set(j['n']).intersection(sorteados))
-                total_ganho += st.session_state.premios[mod_f].get(str(acertos), 0.0)
+                [cite_start]sorteados = set(res_db[alvo]) [cite: 92]
+                [cite_start]acertos = len(set(j['n']).intersection(sorteados)) [cite: 92]
+                [cite_start]total_ganho += st.session_state.premios[mod_f].get(str(acertos), 0.0) [cite: 92]
+    
+        [cite_start]st.markdown(f'<div class="painel-luxo-black"><div class="titulo-luxo-gold">🏆 Premiação Total 🏆</div><div class="valor-luxo-white">{formata_dinheiro(total_ganho)}</div></div>', unsafe_allow_html=True) [cite: 93]
         
-        # Painel de Resumo Luxo
-        st.markdown(f'<div class="painel-luxo-black"><div class="titulo-luxo-gold">🏆 Premiação Total 🏆</div><div class="valor-luxo-white">{formata_dinheiro(total_ganho)}</div></div>', unsafe_allow_html=True)
-        
-        # Listagem dos Jogos com as Bolinhas das Fixas (ACRÉSCIMO SOLICITADO)
         for i, j in enumerate(jogos_na_espera):
-            alvo = str(j.get('concurso_alvo', ''))
-            txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
+            [cite_start]alvo = str(j.get('concurso_alvo', '')) [cite: 93]
+            [cite_start]txt_jogo = ' '.join([f'{x:02d}' for x in j['n']]) [cite: 94]
             
             if alvo in res_db:
-                sorteados = set(res_db[alvo])
-                acertos = len(set(j['n']).intersection(sorteados))
-                val = st.session_state.premios[mod_f].get(str(acertos), 0.0)
-                
-                # --- NOVO: SCANNER DE FIXAS ---
+                [cite_start]sorteados = set(res_db[alvo]) [cite: 94]
+                [cite_start]acertos = len(set(j['n']).intersection(sorteados)) [cite: 94]
+                [cite_start]val = st.session_state.premios[mod_f].get(str(acertos), 0.0) [cite: 94]
+               
                 if "fixas_utilizadas" in j and j["fixas_utilizadas"]:
-                    fixas_u = j["fixas_utilizadas"]
-                    acertos_f = set(fixas_u).intersection(sorteados)
-                    
-                    bolinhas = ""
+                    [cite_start]fixas_u = j["fixas_utilizadas"] [cite: 95]
+                    [cite_start]acertos_f = set(fixas_u).intersection(sorteados) [cite: 95]
+                    [cite_start]bolinhas = "" [cite: 96]
                     for f in fixas_u:
-                        cor_f = "#2ecc71" if f in sorteados else "#e74c3c"
-                        bolinhas += f'<span style="background:{cor_f}; color:white; padding:2px 8px; border-radius:50%; margin-right:5px; border:1px solid black; font-size:11px; font-weight:bold;">{f:02d}</span>'
+                        [cite_start]cor_f = "#2ecc71" if f in sorteados else "#e74c3c" [cite: 96]
+                        [cite_start]bolinhas += f'<span style="background:{cor_f}; color:white; padding:2px 8px; border-radius:50%; margin-right:5px; border:1px solid black; font-size:11px; font-weight:bold;">{f:02d}</span>' [cite: 98]
                     
-                    st.markdown(f"📍 **FIXAS:** {bolinhas} | **Acertos: {len(acertos_f)}/{len(fixas_u)}**", unsafe_allow_html=True)
+                    [cite_start]st.markdown(f"📍 **FIXAS:** {bolinhas} | **Acertos: {len(acertos_f)}/{len(fixas_u)}**", unsafe_allow_html=True) [cite: 98]
 
-                # Mantendo sua exibição original intacta
-                st.markdown(f"<div {'class=\"jogo-premiado\"' if val>0 else ''}>**ID {i+1:02d}** | `{txt_jogo}` | **{acertos} ACERTOS** ({formata_dinheiro(val)})</div>", unsafe_allow_html=True)
+                [cite_start]st.markdown(f"<div {'class=\"jogo-premiado\"' if val>0 else ''}>**ID {i+1:02d}** | `{txt_jogo}` | **{acertos} ACERTOS** ({formata_dinheiro(val)})</div>", unsafe_allow_html=True) [cite: 99]
             else: 
-                st.markdown(f"**ID {i+1:02d}** | `{txt_jogo}` | ⏳ **AGUARDANDO CONCURSO {alvo}**")
+                [cite_start]st.markdown(f"**ID {i+1:02d}** | `{txt_jogo}` | ⏳ **AGUARDANDO CONCURSO {alvo}**") [cite: 99]
                 
     if st.button("🗑️ LIMPAR HISTÓRICO"):
-        st.session_state.jogos_salvos = [j for j in st.session_state.jogos_salvos if j['mod'] != mod_f]
-        st.rerun()
-
+        [cite_start]st.session_state.jogos_salvos = [j for j in st.session_state.jogos_salvos if j['mod'] != mod_f] [cite: 99]
+        [cite_start]st.rerun() [cite: 99]
 with abas[2]:
     mostrar_status_backup()
     st.header("⚙️ Configuração de Valores")
@@ -817,5 +839,6 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
