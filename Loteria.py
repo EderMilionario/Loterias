@@ -556,27 +556,27 @@ with abas[2]:
         st.success("✅ Valores atualizados!")
 
 with abas[3]:
-    mostrar_status_backup()
-    st.header("📥 Database")
-    m_db = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="m_db")
-    id_c = st.number_input("Nº Concurso", 1, 9999, key="id_c")
-   txt_site = st.text_area("Cole os números sorteados aqui").strip()
+    mostrar_status_backup() # 4 espaços de recuo
+    st.header("📥 Database") # 4 espaços de recuo
+    m_db = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="m_db") # 4 espaços
+    id_c = st.number_input("Nº Concurso", 1, 9999, key="id_c") # 4 espaços
+    
+    # O BLOCO NOVO DEVE COMEÇAR AQUI, ALINHADO COM O HEADER ACIMA
+    txt_site = st.text_area("Cole os números sorteados aqui").strip() 
     if txt_site:
         try:
-            # Extrai números e filtra pelo intervalo da loteria selecionada
+            # Note que aqui dentro do 'if', o recuo aumenta (8 espaços)
             nums = sorted(list(set([int(n) for n in re.findall(r'\d+', txt_site) if 1 <= int(n) <= 80])))
-            
             if not nums:
-                st.warning("⚠️ Nenhum número válido foi encontrado no texto colado.")
+                st.warning("⚠️ Nenhum número válido foi encontrado.")
             else:
                 st.code(" ".join([f"{x:02d}" for x in nums]))
                 if st.button("💾 GRAVAR RESULTADO"):
                     st.session_state.ultimo_res[m_db][str(int(id_c))] = nums
-                    st.success(f"✅ Concurso {id_c} gravado com sucesso!")
+                    st.success("✅ Gravado!")
                     st.rerun()
         except Exception as e:
-            st.error(f"❌ Erro ao processar entrada: {e}")
-
+            st.error(f"❌ Erro: {e}")
 with abas[4]:
     mostrar_status_backup()
     st.header("💾 Backup e Status")
@@ -715,4 +715,5 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
