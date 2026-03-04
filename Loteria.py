@@ -458,8 +458,9 @@ with abas[0]:
                     
                     [cite_start]st.rerun() [cite: 67]
 
-        [cite_start]pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, [])) [cite: 67]
-        # --- BLOCO DAS FIXAS (COLE ABAIXO DO MULTISELECT DO POOL) ---
+      pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
+        
+        # --- COPIE DAQUI ATÉ O FINAL DO BLOCO ---
         if 'fixas_sugeridas_ia' in st.session_state and st.session_state.fixas_sugeridas_ia.get(mod):
             st.markdown("### 📌 FIXAS SUGERIDAS (IA SCORE)")
             fixas_html = '<div style="margin-bottom: 10px;">'
@@ -467,8 +468,9 @@ with abas[0]:
                 fixas_html += f'<span style="background:#d4af37; color:black; padding:5px 12px; border-radius:15px; margin-right:5px; border:1px solid black; font-weight:bold; font-size:14px;">{f:02d}</span>'
             fixas_html += '</div>'
             st.markdown(fixas_html, unsafe_allow_html=True)
-        
-        [cite_start]st.session_state.favoritas[mod] = pool [cite: 67]
+        # --- FIM DO BLOCO ---
+
+        st.session_state.favoritas[mod] = pool
         
         # --- NOVO: EXIBIÇÃO VISUAL DAS FIXAS DO POOL INTELIGENTE ---
         if st.session_state.fixas_sugeridas_ia.get(mod):
@@ -862,6 +864,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
