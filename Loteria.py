@@ -450,6 +450,8 @@ with abas[0]:
                         
                     [cite_start]melhores = sorted(score_kadosh.items(), key=lambda x: x[1], reverse=True) [cite: 66]
                     [cite_start]st.session_state.favoritas[mod] = sorted([n for n, s in melhores[:n_pool_req]]) [cite: 67]
+                    st.session_state.fixas_sugeridas_ia = {m: [] for m in st.session_state.custos.keys()} if 'fixas_sugeridas_ia' not in st.session_state else st.session_state.fixas_sugeridas_ia
+                st.session_state.fixas_sugeridas_ia[mod] = sorted([n for n, s in melhores[:6]])
                     
                     # --- NOVO: CAPTURA DE FIXAS SUGERIDAS PELA IA ---
                     st.session_state.fixas_sugeridas_ia[mod] = sorted([n for n, s in melhores[:6]])
@@ -457,6 +459,15 @@ with abas[0]:
                     [cite_start]st.rerun() [cite: 67]
 
         [cite_start]pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, [])) [cite: 67]
+        # --- BLOCO DAS FIXAS (COLE ABAIXO DO MULTISELECT DO POOL) ---
+        if 'fixas_sugeridas_ia' in st.session_state and st.session_state.fixas_sugeridas_ia.get(mod):
+            st.markdown("### 📌 FIXAS SUGERIDAS (IA SCORE)")
+            fixas_html = '<div style="margin-bottom: 10px;">'
+            for f in st.session_state.fixas_sugeridas_ia[mod]:
+                fixas_html += f'<span style="background:#d4af37; color:black; padding:5px 12px; border-radius:15px; margin-right:5px; border:1px solid black; font-weight:bold; font-size:14px;">{f:02d}</span>'
+            fixas_html += '</div>'
+            st.markdown(fixas_html, unsafe_allow_html=True)
+        
         [cite_start]st.session_state.favoritas[mod] = pool [cite: 67]
         
         # --- NOVO: EXIBIÇÃO VISUAL DAS FIXAS DO POOL INTELIGENTE ---
@@ -588,6 +599,18 @@ with abas[1]:
             [cite_start]html_pool += f'<br><br><span style="font-size: 18px; color: #1e3799;">📊 <b>ACERTOS NO CERCO: {acertos_pool} DEZENAS</b></span>' [cite: 90]
             [cite_start]html_pool += '</div>' [cite: 90]
             [cite_start]st.markdown(html_pool, unsafe_allow_html=True) [cite: 90]
+            # --- BLOCO DE DESEMPENHO DAS FIXAS ---
+            fixas_salvas = jogos_salvos_atual[0].get('fixas_utilizadas', [])
+            if fixas_salvas:
+                st.markdown("### 📌 PERFORMANCE DAS DEZENAS FIXAS")
+                ac_f = 0
+                h_fix = '<div style="background: #1a1a1a; padding: 15px; border-radius: 12px; border: 2px solid #d4af37; margin-bottom: 20px;">'
+                for df in sorted(fixas_salvas):
+                    c_f = "#28a745" if df in resultado_alvo else "#ff4b4b"
+                    h_fix += f'<span style="display:inline-block; width:35px; height:35px; line-height:35px; text-align:center; border-radius:50%; margin:3px; font-weight:bold; color:white; background-color:{c_f}; border:1px solid white;">{df:02d}</span>'
+                    if df in resultado_alvo: ac_f += 1
+                h_fix += f'<br><br><span style="color:#d4af37; font-size:16px;"><b>🎯 ACERTOS NAS FIXAS: {ac_f} de {len(fixas_salvas)}</b></span></div>'
+                st.markdown(h_fix, unsafe_allow_html=True)
             
             # --- NOVO: PERFORMANCE DAS DEZENAS FIXAS SEPARADO ---
             fixas_salvas = jogos_salvos_atual[0].get('fixas_pool_origem', [])
@@ -839,5 +862,6 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
