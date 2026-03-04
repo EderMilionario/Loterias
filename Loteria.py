@@ -446,6 +446,18 @@ with abas[0]:
 
         pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
         st.session_state.favoritas[mod] = pool
+        # --- BLOCO DE FIXAÇÃO INTELIGENTE ---
+        modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
+        fixas_final = []
+        if modo_fixa == "Manual":
+            fixas_final = st.multiselect("📌 CRAVAR DEZENAS:", options=pool)
+        elif modo_fixa == "IA Automática (Score)":
+            qtd_auto = st.slider("Qtd de Cravadas:", 1, 10, 6)
+            if mod in st.session_state.analise_stats:
+                stats = st.session_state.analise_stats[mod]
+                melhores = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
+                fixas_final = melhores[:qtd_auto]
+                st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
         renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
 
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
@@ -455,20 +467,29 @@ with abas[0]:
             novos = []
             def gerar_com_matriz(tamanho, quantidade, filtragem=True):
                 sucessos, tentativas = 0, 0
-                while sucessos < quantidade and tentativas < 20000:
-                    comb = sorted(random.sample(pool, tamanho))
+                # Separa o que é fixo para o motor não mexer
+                pool_para_sorteio = [n for n in pool if n not in fixas_final]
+                vagas_abertas = tamanho - len(fixas_final)
+
+                while sucessos < quantidade and tentativas < 30000:
+                    if len(pool_para_sorteio) >= vagas_abertas:
+                        complemento = random.sample(pool_para_sorteio, vagas_abertas)
+                        comb = sorted(fixas_final + complemento)
+                    else:
+                        comb = sorted(random.sample(pool, tamanho))
+                    
                     if any(set(comb) == set(existente['n']) for existente in novos):
                         tentativas += 1
                         continue
                         
                     passou = validar_kadosh_cirurgico(comb, mod, tamanho) if filtragem else True
                     if passou:
+                        tag_est = f"{fe_escolhido if info_fech else est_escolhida}"
+                        if fixas_final: tag_est += f" (FIXAS: {len(fixas_final)})"
+                        
                         novos.append({
-                            "mod": mod, 
-                            "n": comb, 
-                            "tam": tamanho, 
-                            "chance": definir_label_chance(comb, mod), 
-                            "est": fe_escolhido if info_fech else est_escolhida
+                            "mod": mod, "n": comb, "tam": tamanho, 
+                            "chance": definir_label_chance(comb, mod), "est": tag_est
                         })
                         sucessos += 1
                     tentativas += 1
@@ -748,3 +769,4 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
