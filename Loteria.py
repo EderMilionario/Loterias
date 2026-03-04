@@ -560,13 +560,22 @@ with abas[3]:
     st.header("📥 Database")
     m_db = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="m_db")
     id_c = st.number_input("Nº Concurso", 1, 9999, key="id_c")
-    txt_site = st.text_area("Cole os números sorteados aqui").strip()
+   txt_site = st.text_area("Cole os números sorteados aqui").strip()
     if txt_site:
-        nums = sorted(list(set([int(n) for n in re.findall(r'\d+', txt_site) if 1 <= int(n) <= 80])))
-        st.code(" ".join([f"{x:02d}" for x in nums]))
-        if st.button("💾 GRAVAR RESULTADO"):
-            st.session_state.ultimo_res[m_db][str(int(id_c))] = nums
-            st.success("✅ Gravado!")
+        try:
+            # Extrai números e filtra pelo intervalo da loteria selecionada
+            nums = sorted(list(set([int(n) for n in re.findall(r'\d+', txt_site) if 1 <= int(n) <= 80])))
+            
+            if not nums:
+                st.warning("⚠️ Nenhum número válido foi encontrado no texto colado.")
+            else:
+                st.code(" ".join([f"{x:02d}" for x in nums]))
+                if st.button("💾 GRAVAR RESULTADO"):
+                    st.session_state.ultimo_res[m_db][str(int(id_c))] = nums
+                    st.success(f"✅ Concurso {id_c} gravado com sucesso!")
+                    st.rerun()
+        except Exception as e:
+            st.error(f"❌ Erro ao processar entrada: {e}")
 
 with abas[4]:
     mostrar_status_backup()
@@ -706,3 +715,4 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
