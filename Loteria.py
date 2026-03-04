@@ -841,4 +841,3 @@ with abas[6]:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
 
 
-
