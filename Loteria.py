@@ -579,11 +579,10 @@ with abas[1]:
     else:
         st.info("Salve jogos no Gerador para habilitar a extração em PDF.")
 
-  if mod_f in st.session_state.ultimo_res:
-        if st.button("🔄 ATUALIZAR E CONFERIR"): 
-            st.rerun()
-            
-        res_db = st.session_state.ultimo_res.get(mod_f, {})
+    if st.button("🔄 ATUALIZAR E CONFERIR"): 
+        st.rerun()
+        
+   res_db = st.session_state.ultimo_res.get(mod_f, {})
         jogos_na_espera = [j for j in st.session_state.jogos_salvos if j.get('mod') == mod_f]
         
         if jogos_na_espera:
@@ -620,11 +619,6 @@ with abas[1]:
                             bolinhas += f'<span style="background:{cor_f}; color:white; padding:2px 8px; border-radius:50%; margin-right:5px; border:1px solid black; font-size:11px; font-weight:bold;">{f:02d}</span>'
                         
                         st.markdown(f"📍 **FIXAS:** {bolinhas} | **Acertos: {len(acertos_f)}/{len(fixas_u)}**", unsafe_allow_html=True)
-
-                    # LINHA DO JOGO ORIGINAL
-                    st.markdown(f"<div {'class=\"jogo-premiado\"' if val>0 else ''}>**ID {i+1:02d}** | `{txt_jogo}` | **{acertos} ACERTOS** ({formata_dinheiro(val)})</div>", unsafe_allow_html=True)
-                else: 
-                    st.markdown(f"**ID {i+1:02d}** | `{txt_jogo}` | ⏳ **AGUARDANDO CONCURSO {alvo}**")
             else: 
                 st.markdown(f"**ID {i+1:02d}** | `{txt_jogo}` | ⏳ **AGUARDANDO CONCURSO {alvo}**")
                 
