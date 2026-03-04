@@ -766,4 +766,5 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
-            def_qtd = 10
+        def_qtd = 10
+
