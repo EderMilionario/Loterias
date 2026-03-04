@@ -488,8 +488,12 @@ with abas[0]:
                         if fixas_final: tag_est += f" (FIXAS: {len(fixas_final)})"
                         
                         novos.append({
-                            "mod": mod, "n": comb, "tam": tamanho, 
-                            "chance": definir_label_chance(comb, mod), "est": tag_est
+                           "mod": mod,
+                           "n": comb,
+                           "tam": tamanho,
+                           "fixas_utilizadas": list(fixas_final),
+                           "chance": definir_label_chance(comb, mod),
+                           "est": tag_est
                         })
                         sucessos += 1
                     tentativas += 1
@@ -769,4 +773,5 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
