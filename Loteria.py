@@ -579,29 +579,52 @@ with abas[1]:
     else:
         st.info("Salve jogos no Gerador para habilitar a extração em PDF.")
 
-    if st.button("🔄 ATUALIZAR E CONFERIR"): 
-        st.rerun()
+  if mod_f in st.session_state.ultimo_res:
+        if st.button("🔄 ATUALIZAR E CONFERIR"): 
+            st.rerun()
+            
+        res_db = st.session_state.ultimo_res.get(mod_f, {})
+        jogos_na_espera = [j for j in st.session_state.jogos_salvos if j.get('mod') == mod_f]
         
-    res_db = st.session_state.ultimo_res.get(mod_f, {})
-    jogos_na_espera = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
-    
-    if jogos_na_espera:
-        total_ganho = 0
-        for j in jogos_na_espera:
-            alvo = str(j.get('concurso_alvo', ''))
-            if alvo in res_db:
-                acertos = len(set(j['n']).intersection(set(res_db[alvo])))
-                total_ganho += st.session_state.premios[mod_f].get(str(acertos), 0.0)
+        if jogos_na_espera:
+            total_ganho = 0
+            # Primeiro calculamos o total de prêmios
+            for j in jogos_na_espera:
+                alvo = str(j.get('concurso_alvo', ''))
+                if alvo in res_db:
+                    sorteados = set(res_db[alvo])
+                    acertos = len(set(j['n']).intersection(sorteados))
+                    total_ganho += st.session_state.premios[mod_f].get(str(acertos), 0.0)
+            
+            # Painel de Resumo
+            st.markdown(f'<div class="painel-luxo-black"><div class="titulo-luxo-gold">🏆 Premiação Total 🏆</div><div class="valor-luxo-white">{formata_dinheiro(total_ganho)}</div></div>', unsafe_allow_html=True)
+            
+            # Listagem dos Jogos com as Bolinhas das Fixas
+            for i, j in enumerate(jogos_na_espera):
+                alvo = str(j.get('concurso_alvo', ''))
+                txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
                 
-        st.markdown(f'<div class="painel-luxo-black"><div class="titulo-luxo-gold">🏆 Premiação Total 🏆</div><div class="valor-luxo-white">{formata_dinheiro(total_ganho)}</div></div>', unsafe_allow_html=True)
-        
-        for i, j in enumerate(jogos_na_espera):
-            alvo = str(j.get('concurso_alvo', ''))
-            txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
-            if alvo in res_db:
-                acertos = len(set(j['n']).intersection(set(res_db[alvo])))
-                val = st.session_state.premios[mod_f].get(str(acertos), 0.0)
-                st.markdown(f"<div {'class=\"jogo-premiado\"' if val>0 else ''}>**ID {i+1:02d}** | `{txt_jogo}` | **{acertos} ACERTOS** ({formata_dinheiro(val)})</div>", unsafe_allow_html=True)
+                if alvo in res_db:
+                    sorteados = set(res_db[alvo])
+                    acertos = len(set(j['n']).intersection(sorteados))
+                    val = st.session_state.premios[mod_f].get(str(acertos), 0.0)
+                    
+                    # --- ÁREA DAS FIXAS COLORIDAS ---
+                    if "fixas_utilizadas" in j and j["fixas_utilizadas"]:
+                        fixas_u = j["fixas_utilizadas"]
+                        acertos_f = set(fixas_u).intersection(sorteados)
+                        
+                        bolinhas = ""
+                        for f in fixas_u:
+                            cor_f = "#2ecc71" if f in sorteados else "#e74c3c"
+                            bolinhas += f'<span style="background:{cor_f}; color:white; padding:2px 8px; border-radius:50%; margin-right:5px; border:1px solid black; font-size:11px; font-weight:bold;">{f:02d}</span>'
+                        
+                        st.markdown(f"📍 **FIXAS:** {bolinhas} | **Acertos: {len(acertos_f)}/{len(fixas_u)}**", unsafe_allow_html=True)
+
+                    # LINHA DO JOGO ORIGINAL
+                    st.markdown(f"<div {'class=\"jogo-premiado\"' if val>0 else ''}>**ID {i+1:02d}** | `{txt_jogo}` | **{acertos} ACERTOS** ({formata_dinheiro(val)})</div>", unsafe_allow_html=True)
+                else: 
+                    st.markdown(f"**ID {i+1:02d}** | `{txt_jogo}` | ⏳ **AGUARDANDO CONCURSO {alvo}**")
             else: 
                 st.markdown(f"**ID {i+1:02d}** | `{txt_jogo}` | ⏳ **AGUARDANDO CONCURSO {alvo}**")
                 
