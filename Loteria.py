@@ -409,7 +409,7 @@ with abas[0]:
             def_dez, def_qtd = info_est["dez"], info_est.get("qtd", 10)
         else:
             def_dez = list(st.session_state.custos[mod].keys())[0]
-opcoes_dez = list(st.session_state.custos[mod].keys())
+            opcoes_dez = list(st.session_state.custos[mod].keys())
         idx_padrao = opcoes_dez.index(def_dez) if def_dez in opcoes_dez else 0
         n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao)
         qtd = st.number_input("Quantidade de Jogos", 1, 300, def_qtd)
