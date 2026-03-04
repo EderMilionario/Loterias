@@ -596,7 +596,7 @@ with abas[1]:
             if alvo in res_db:
                 acertos = len(set(j['n']).intersection(set(res_db[alvo])))
                 total_ganho += st.session_state.premios[mod_f].get(str(acertos), 0.0)
-                for i, j in enumerate(jogos_na_espera):
+               for i, j in enumerate(jogos_na_espera):
             alvo = str(j.get('concurso_alvo', ''))
             txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
             
@@ -605,21 +605,17 @@ with abas[1]:
                 acertos = len(set(j['n']).intersection(sorteados))
                 val = st.session_state.premios[mod_f].get(str(acertos), 0.0)
 
-                # --- INÍCIO DA INSERÇÃO DAS FIXAS COLORIDAS ---
+                # --- FIXAS COLORIDAS ---
                 if "fixas_utilizadas" in j and j["fixas_utilizadas"]:
                     fixas_u = j["fixas_utilizadas"]
                     acertos_f = set(fixas_u).intersection(sorteados)
-                    
                     bolinhas = ""
                     for f in fixas_u:
-                        # Verde se acertou a fixa, Vermelho se errou
                         cor_f = "#2ecc71" if f in sorteados else "#e74c3c"
                         bolinhas += f'<span style="background:{cor_f}; color:white; padding:2px 8px; border-radius:50%; margin-right:5px; border:1px solid black; font-size:12px; font-weight:bold;">{f:02d}</span>'
-                    
                     st.markdown(f"📍 **FIXAS:** {bolinhas} | **Acertos: {len(acertos_f)}/{len(fixas_u)}**", unsafe_allow_html=True)
-                # --- FIM DA INSERÇÃO ---
 
-                # MANTÉM SUA LINHA ORIGINAL DE EXIBIÇÃO ABAIXO
+                # EXIBIÇÃO DO JOGO
                 st.markdown(f"<div {'class=\"jogo-premiado\"' if val>0 else ''}>**ID {i+1:02d}** | `{txt_jogo}` | **{acertos} ACERTOS** ({formata_dinheiro(val)})</div>", unsafe_allow_html=True)
             else: 
                 st.markdown(f"**ID {i+1:02d}** | `{txt_jogo}` | ⏳ **AGUARDANDO CONCURSO {alvo}**")
@@ -799,6 +795,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
