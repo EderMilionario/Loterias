@@ -336,133 +336,213 @@ abas = st.tabs(["🎯 GERADOR PRO", "🔍 CONFERIR", "⚙️ VALORES", "📥 DAT
 
 with abas[0]:
     mostrar_status_backup()
-    st.header("🎯 Gerador Kadosh Estratégico")
+    mod = st.selectbox("Modalidade", list(st.session_state.custos.keys()), key="mod_selector")
     
-    col_c1, col_c2, col_c3 = st.columns([1,1,1])
-    with col_c1:
-        # Adicionado a opção manual/avulsa para não bugar o ranking
-        opcoes_est = list(ESTRATEGIA_MAPA.keys()) + ["Avulso/Sem Estratégia"]
-        mod_est = st.selectbox("Escolha a Estratégia", opcoes_est, key="mod_est_0")
+    if 'ultima_mod_selecionada' not in st.session_state:
+        st.session_state.ultima_mod_selecionada = mod
         
-        # Busca o número do próximo concurso
-        id_prox_0 = max(1, int(max(st.session_state.ultimo_res['Lotofácil'].keys() or [0])) + 1)
-        id_alvo = st.number_input("Concurso Alvo", 1, 9999, value=id_prox_0, key="id_alvo_0")
+    if st.session_state.ultima_mod_selecionada != mod:
+        st.session_state.jogos_gerados = []
+        st.session_state.ultima_mod_selecionada = mod
+        st.rerun()
     
-    with col_c2:
-        pool_tipo = st.radio("Origem das Dezenas", ["Pool Inteligente (IA)", "Seleção Manual"])
-        qtd_avulso = st.slider("Quantidade de Jogos", 1, 50, 10) if mod_est == "Avulso/Sem Estratégia" else None
-        
-    with col_c3:
-        if pool_tipo == "Seleção Manual":
-            pool_usar = st.multiselect("Dezenas (Mín. 18)", list(range(1,26)), default=list(range(1,19)))
+    col_est1, col_est2 = st.columns(2)
+    with col_est1:
+        if mod == "Lotofácil":
+            est_escolhida = st.selectbox("💎 ESTRATÉGIA KADOSH", list(ESTRATEGIA_MAPA.keys()))
+            est_info = ESTRATEGIA_MAPA[est_escolhida]
+            st.progress(est_info["peso"])
+            qtd_total_est = est_info.get("qtd", 0) + est_info.get("qtd_15", 0) + est_info.get("qtd_16", 0)
+            st.markdown(f"🎯 **Probabilidade:** {est_info['prob']} | 📦 **Volume:** {qtd_total_est} jogos")
         else:
-            # VOLTANDO A LÓGICA ORIGINAL QUE ESTAVA NO SEU TXT PARA NÃO DAR NAMEERROR
-            res_loto = st.session_state.ultimo_res.get("Lotofácil", {})
-            if not res_loto:
-                pool_usar = list(range(1, 19))
-                st.warning("Database vazia. Usando padrão 01-18.")
-            else:
-                todos_n = [n for lista in res_loto.values() for n in lista]
-                freq = Counter(todos_n)
-                # Pega as 18 mais frequentes como seu código fazia
-                pool_usar = [num for num, _ in freq.most_common(18)]
-                st.info(f"IA selecionou as 18 dezenas mais frequentes: {sorted(pool_usar)}")
-
-    if st.button("🚀 GERAR JOGOS"):
-        jogos_gerados = []
-        
-        # Lógica para quando você não usa estratégia pronta
-        if mod_est == "Avulso/Sem Estratégia":
-            for _ in range(qtd_avulso):
-                jogos_gerados.append(sorted(random.sample(pool_usar, 15)))
-        
-        # Lógica das estratégias do seu mapa
-        elif mod_est == "A MARRETA (SISTEMA 18)":
-            # Gera o jogo principal de 18 e 5 de 15 como apoio
-            jogos_gerados.append(sorted(random.sample(pool_usar, 18)))
-            for _ in range(5):
-                jogos_gerados.append(validar_kadosh_cirurgico(pool_usar, 15))
-        else:
-            info = ESTRATEGIA_MAPA[mod_est]
-            for _ in range(info.get("qtd", 10)): 
-                jogos_gerados.append(validar_kadosh_cirurgico(pool_usar, 15))
-            for _ in range(info.get("qtd_16", 0)): 
-                jogos_gerados.append(validar_kadosh_cirurgico(pool_usar, 16))
-
-        st.session_state.temp_jogos = [j for j in jogos_gerados if j]
-        st.success(f"Gerados {len(st.session_state.temp_jogos)} jogos!")
-
-    # Exibição e Salvamento
-    if st.session_state.get('temp_jogos'):
-        for idx, j in enumerate(st.session_state.temp_jogos):
-            st.code(f"Jogo {idx+1:02d}: " + " ".join([f"{x:02d}" for x in j]))
-        
-        if st.button("💾 SALVAR TUDO NO SISTEMA"):
-            for j in st.session_state.temp_jogos:
-                st.session_state.jogos_salvos.append({
-                    "concurso_alvo": id_alvo,
-                    "n": j,
-                    "est": mod_est, # Carimbo para o ranking
-                    "data": pd.Timestamp.now().strftime("%d/%m/%Y %H:%M")
-                })
-            st.success("✅ Jogos salvos com sucesso!")
-            st.session_state.temp_jogos = []
-            st.rerun()
-    mostrar_status_backup()
-    st.header("📐 Matrizes de Fechamento")
-    
-    col_m1, col_m2 = st.columns(2)
-    with col_m1:
-        mod_mat = st.selectbox("Selecione a Matriz", list(MATRIZES_FECHAMENTO.keys()))
-        # Busca o próximo concurso automaticamente
-        id_prox = max(1, int(max(st.session_state.ultimo_res['Lotofácil'].keys() or [0])) + 1)
-        id_alvo_m = st.number_input("Concurso Alvo", 1, 9999, value=id_prox, key="id_alvo_m")
-    
-    with col_m2:
-        m_info = MATRIZES_FECHAMENTO[mod_mat]
-        st.info(f"**Garantia:** {m_info['garantia']} Pontos | **Probabilidade:** {m_info['prob']}")
-        pool_m = st.multiselect(f"Escolha EXATAMENTE {m_info['n_pool']} dezenas para o Pool", list(range(1,26)), key="pool_matriz")
-
-    # VALIDAÇÃO DE QUANTIDADE DE DEZENAS
-    if len(pool_m) != m_info['n_pool']:
-        st.warning(f"⚠️ Selecione exatamente {m_info['n_pool']} dezenas. Você selecionou {len(pool_m)}.")
-    else:
-        if st.button("🧩 GERAR FECHAMENTO"):
-            jogos_finais = []
-            # Lógica de Matriz Diamante ou Fechamento Padrão
-            if mod_mat == "DIAMANTE (19-15-14/15)":
-                for _ in range(2): jogos_finais.append(validar_kadosh_cirurgico(pool_m, 16))
-                for _ in range(10): jogos_finais.append(validar_kadosh_cirurgico(pool_m, 15))
-            else:
-                # Gera 12 jogos baseados no pool selecionado para garantir volume
-                for _ in range(12): jogos_finais.append(validar_kadosh_cirurgico(pool_m, 15))
+            est_escolhida = "Personalizado"
             
-            st.session_state.temp_matriz = [j for j in jogos_finais if j]
-            st.success(f"Matriz {mod_mat} gerada com sucesso!")
+    with col_est2:
+        if mod == "Lotofácil":
+            fe_escolhido = st.selectbox("📐 MODO FECHAMENTO (MATRIZ)", list(MATRIZES_FECHAMENTO.keys()))
+            if fe_escolhido != "Nenhum":
+                fe_info = MATRIZES_FECHAMENTO[fe_escolhido]
+                st.progress(fe_info["peso"])
+                st.markdown(f"📐 **Garantia:** {fe_info['prob']} | 🧬 **Pool:** {fe_info['n_pool']} dezenas")
+            else:
+                st.markdown("<br><br>", unsafe_allow_html=True)
+        else:
+            fe_escolhido = "Nenhum"
 
-    # EXIBIÇÃO E SALVAMENTO
-    if st.session_state.get('temp_matriz'):
-        st.markdown("---")
-        for idx, j in enumerate(st.session_state.temp_matriz):
-            st.code(f"Jogo {idx+1:02d}: " + " ".join([f"{x:02d}" for x in j]))
+    info_fech = MATRIZES_FECHAMENTO.get(fe_escolhido) if mod == "Lotofácil" else None
+    info_est = ESTRATEGIA_MAPA.get(est_escolhida) if mod == "Lotofácil" else ESTRATEGIA_MAPA["Personalizado"]
+    
+    st.markdown("---")
+
+    c1, c2 = st.columns(2)
+    with c1:
+        if info_fech:
+            if "DIAMANTE" in fe_escolhido: 
+                def_dez, def_qtd = 16, 2
+            elif "CÉLULA" in fe_escolhido: 
+                def_dez, def_qtd = 16, 1
+            else: 
+                def_dez, def_qtd = 15, (24 if "18-15-14" in fe_escolhido else 45)
+        elif est_escolhida != "Personalizado" and mod == "Lotofácil":
+            def_dez, def_qtd = info_est["dez"], info_est.get("qtd", 10)
+        else:
+            def_dez = list(st.session_state.custos[mod].keys())[0]
+            def_qtd = 10
+            
+        opcoes_dez = list(st.session_state.custos[mod].keys())
+        idx_padrao = opcoes_dez.index(def_dez) if def_dez in opcoes_dez else 0
+        n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao)
+        qtd = st.number_input("Quantidade de Jogos", 1, 300, def_qtd)
         
-        col_sm1, col_sm2 = st.columns(2)
-        with col_sm1:
-            if st.button("💾 SALVAR JOGOS DA MATRIZ"):
-                for j in st.session_state.temp_matriz:
-                    st.session_state.jogos_salvos.append({
-                        "concurso_alvo": id_alvo_m,
-                        "n": j,
-                        "est": f"Matriz: {mod_mat}", # ESTA LINHA É O QUE ALIMENTA O TEU RANKING
-                        "data": pd.Timestamp.now().strftime("%d/%m/%Y %H:%M")
-                    })
-                st.success("✅ Jogos salvos! Agora aparecem no Ranking da Central de Inteligência.")
-                st.session_state.temp_matriz = [] # Limpa a memória temporária
+    with c2:
+        max_v = 25 if mod=="Lotofácil" else 60 if mod=="Mega-Sena" else 80
+        col_btn1, col_btn2 = st.columns(2)
+        
+        with col_btn1:
+            if st.button("✅ TODO O VOLANTE"):
+                st.session_state.favoritas[mod] = list(range(1, max_v + 1))
                 st.rerun()
+                
+        with col_btn2:
+            if st.button("🧠 POOL INTELIGENTE KADOSH"):
+                res_loto = st.session_state.ultimo_res.get(mod, {})
+                if len(res_loto) >= 5:
+                    n_pool_req = info_fech['n_pool'] if info_fech else 20
+                    conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)[:20]
+                    score_kadosh = {}
+                    contagem = Counter()
+                    
+                    for c in conc_ordenados:
+                        for n in res_loto[c]: 
+                            contagem[n] += 1
+                            
+                    for n in range(1, 26):
+                        atraso_n = 0
+                        for c in conc_ordenados:
+                            if n not in res_loto[c]: 
+                                atraso_n += 1
+                            else: 
+                                break
+                        score_kadosh[n] = contagem[n] + (atraso_n * 1.5)
+                        
+                    melhores = sorted(score_kadosh.items(), key=lambda x: x[1], reverse=True)
+                    st.session_state.favoritas[mod] = sorted([n for n, s in melhores[:n_pool_req]])
+                    st.rerun()
+
+        pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
+        st.session_state.favoritas[mod] = pool
+        renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
+
+    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
+        if len(pool) < (info_fech['n_pool'] if info_fech else n_dez):
+            st.error(f"Seu Pool precisa de pelo menos {info_fech['n_pool'] if info_fech else n_dez} dezenas!")
+        else:
+            novos = []
+            def gerar_com_matriz(tamanho, quantidade, filtragem=True):
+                sucessos, tentativas = 0, 0
+                while sucessos < quantidade and tentativas < 20000:
+                    comb = sorted(random.sample(pool, tamanho))
+                    if any(set(comb) == set(existente['n']) for existente in novos):
+                        tentativas += 1
+                        continue
+                        
+                    passou = validar_kadosh_cirurgico(comb, mod, tamanho) if filtragem else True
+                    if passou:
+                        novos.append({
+                            "mod": mod, 
+                            "n": comb, 
+                            "tam": tamanho, 
+                            "chance": definir_label_chance(comb, mod), 
+                            "est": fe_escolhido if info_fech else est_escolhida
+                        })
+                        sucessos += 1
+                    tentativas += 1
+
+            if info_fech:
+                if "DIAMANTE" in fe_escolhido: 
+                    gerar_com_matriz(16, 2)
+                    gerar_com_matriz(15, 10)
+                elif "CÉLULA" in fe_escolhido: 
+                    gerar_com_matriz(16, 1)
+                    gerar_com_matriz(15, 15)
+                else: 
+                    gerar_com_matriz(15, qtd)
+            elif est_escolhida == "8. RASTREAMENTO DE CICLO": 
+                gerar_com_matriz(16, 1)
+                gerar_com_matriz(15, 6)
+            elif est_escolhida == "9. CERCO POR ELIMINAÇÃO": 
+                gerar_com_matriz(15, 10)
+            elif est_escolhida == "6. A MARRETA": 
+                gerar_com_matriz(18, 1)
+                gerar_com_matriz(16, 5)
+            elif est_escolhida == "7. SIMETRIA GEOMÉTRICA": 
+                gerar_com_matriz(16, 2)
+                gerar_com_matriz(15, 8)
+            elif est_escolhida != "Personalizado" and mod == "Lotofácil":
+                gerar_com_matriz(info_est['dez'], info_est.get('qtd', 1))
+                if "qtd_15" in info_est: 
+                    gerar_com_matriz(15, info_est['qtd_15'])
+            else: 
+                gerar_com_matriz(n_dez, qtd)
+                
+            st.session_state.jogos_gerados = novos
+            st.rerun()
+
+    for i, j in enumerate(st.session_state.jogos_gerados):
+        txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
+        st.code(f"JOGO {i+1:02d} | {j['est']} | {j['tam']} DEZ | {txt_jogo} / {j['chance']}")
+    
+    if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
+        res_existentes = st.session_state.ultimo_res.get(mod, {})
+        ultimo_c = int(max(res_existentes.keys(), key=int)) if res_existentes else 0
+        for jogo in st.session_state.jogos_gerados:
+            jogo['concurso_alvo'] = ultimo_c + 1
+            st.session_state.jogos_salvos.append(jogo)
+        st.session_state.jogos_gerados = []
+        st.rerun()
+
+with abas[1]:
+    mostrar_status_backup()
+    st.header("🔍 Painel de Conferência")
+    mod_f = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="f_conf")
+    
+    # ACRÉSCIMO 1: EXTRAIR PDF
+    jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
+    if jogos_salvos_atual:
+        btn_pdf = gerar_pdf_bonito(jogos_salvos_atual, mod_f)
+        st.download_button(label="📄 EXTRAIR JOGOS SALVOS EM PDF", data=btn_pdf, file_name=f"jogos_{mod_f}.pdf", mime="application/pdf")
+    else:
+        st.info("Salve jogos no Gerador para habilitar a extração em PDF.")
+
+    if st.button("🔄 ATUALIZAR E CONFERIR"): 
+        st.rerun()
         
-        with col_sm2:
-            pdf_m = gerar_pdf_bonito(st.session_state.temp_matriz, f"Matriz_{mod_mat}")
-            st.download_button("📥 Baixar PDF da Matriz", pdf_m, "matriz_kadosh.pdf")
+    res_db = st.session_state.ultimo_res.get(mod_f, {})
+    jogos_na_espera = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
+    
+    if jogos_na_espera:
+        total_ganho = 0
+        for j in jogos_na_espera:
+            alvo = str(j.get('concurso_alvo', ''))
+            if alvo in res_db:
+                acertos = len(set(j['n']).intersection(set(res_db[alvo])))
+                total_ganho += st.session_state.premios[mod_f].get(str(acertos), 0.0)
+                
+        st.markdown(f'<div class="painel-luxo-black"><div class="titulo-luxo-gold">🏆 Premiação Total 🏆</div><div class="valor-luxo-white">{formata_dinheiro(total_ganho)}</div></div>', unsafe_allow_html=True)
+        
+        for i, j in enumerate(jogos_na_espera):
+            alvo = str(j.get('concurso_alvo', ''))
+            txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
+            if alvo in res_db:
+                acertos = len(set(j['n']).intersection(set(res_db[alvo])))
+                val = st.session_state.premios[mod_f].get(str(acertos), 0.0)
+                st.markdown(f"<div {'class=\"jogo-premiado\"' if val>0 else ''}>**ID {i+1:02d}** | `{txt_jogo}` | **{acertos} ACERTOS** ({formata_dinheiro(val)})</div>", unsafe_allow_html=True)
+            else: 
+                st.markdown(f"**ID {i+1:02d}** | `{txt_jogo}` | ⏳ **AGUARDANDO CONCURSO {alvo}**")
+                
+    if st.button("🗑️ LIMPAR HISTÓRICO"):
+        st.session_state.jogos_salvos = [j for j in st.session_state.jogos_salvos if j['mod'] != mod_f]
+        st.rerun()
 
 with abas[2]:
     mostrar_status_backup()
@@ -529,53 +609,6 @@ with abas[5]:
     st.header("🧠 CENTRAL DE INTELIGÊNCIA KADOSH")
     st.markdown("---")
     
-    # --- NOVO BLOCO: RANKING DE PERFORMANCE REAL ---
-    st.subheader("🏆 Desempenho Histórico por Estratégia")
-    
-    jogos_salvos = st.session_state.get('jogos_salvos', [])
-    res_db = st.session_state.ultimo_res.get("Lotofácil", {}) # Focado em Lotofácil por ser o motor principal
-    
-    if not jogos_salvos or not res_db:
-        st.info("💡 Para ver o ranking de performance, você precisa ter jogos salvos e resultados cadastrados na Database.")
-    else:
-        stats_est = {}
-        for j in jogos_salvos:
-            est_nome = j.get('est', 'Outros')
-            if est_nome not in stats_est:
-                stats_est[est_nome] = {"jogos": 0, "premios": 0.0, "acertos_11_13": 0, "acertos_14_15": 0}
-            
-            alvo = str(j.get('concurso_alvo', ''))
-            if alvo in res_db:
-                acertos = len(set(j['n']).intersection(set(res_db[alvo])))
-                val_premio = st.session_state.premios["Lotofácil"].get(str(acertos), 0.0)
-                
-                stats_est[est_nome]["jogos"] += 1
-                stats_est[est_nome]["premios"] += val_premio
-                if 11 <= acertos <= 13:
-                    stats_est[est_nome]["acertos_11_13"] += 1
-                elif acertos >= 14:
-                    stats_est[est_nome]["acertos_14_15"] += 1
-        
-        if stats_est:
-            df_ranking = []
-            for est, dados in stats_est.items():
-                df_ranking.append({
-                    "Estratégia": est,
-                    "Qtd Jogos": dados["jogos"],
-                    "Premiação Total": formata_dinheiro(dados["premios"]),
-                    "11 a 13 pts": dados["acertos_11_13"],
-                    "14 a 15 pts": dados["acertos_14_15"]
-                })
-            
-            # Ordena pelo que deu mais dinheiro
-            df_ranking = sorted(df_ranking, key=lambda x: float(x["Premiação Total"].replace('R$ ', '').replace('.', '').replace(',', '.')), reverse=True)
-            st.table(pd.DataFrame(df_ranking))
-        else:
-            st.warning("Aguardando sorteio dos concursos vinculados aos jogos salvos.")
-
-    st.markdown("---")
-    
-    # --- MANTENDO O RESTANTE DA ABA SEM ALTERAÇÕES ---
     st.subheader("📊 Painel Tático de Estratégias")
     dados_est = []
     for nome, info in ESTRATEGIA_MAPA.items():
@@ -593,6 +626,7 @@ with abas[5]:
             })
     st.table(pd.DataFrame(dados_est))
 
+    # --- ACRÉSCIMO 2: TABELA DE MATRIZES ---
     st.markdown("---")
     st.subheader("📐 ANÁLISE TÉCNICA DE MATRIZES (ACRÉSCIMO)")
     dados_mat = []
@@ -695,10 +729,5 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
-
-
-
-
-
 
 
