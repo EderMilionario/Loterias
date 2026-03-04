@@ -350,6 +350,10 @@ st.title("📊 GESTÃO ESTRATÉGICA LOTERIAS")
 abas = st.tabs(["🎯 GERADOR PRO", "🔍 CONFERIR", "⚙️ VALORES", "📥 DATABASE", "💾 BACKUP", "🧠 INTELIGÊNCIA", "🔗 AFINIDADE"])
 
 with abas[0]:
+    # --- CORREÇÃO DE SEGURANÇA (INICIALIZAÇÃO) ---
+    if 'analise_stats' not in st.session_state:
+        st.session_state.analise_stats = {}
+    
     mostrar_status_backup()
     mod = st.selectbox("Modalidade", list(st.session_state.custos.keys()), key="mod_selector")
     
@@ -431,7 +435,7 @@ with abas[0]:
                         for n in res_loto[c]: 
                             contagem[n] += 1
                             
-                    for n in range(1, 26):
+                    for n in range(1, max_v + 1):
                         atraso_n = 0
                         for c in conc_ordenados:
                             if n not in res_loto[c]: 
@@ -446,7 +450,7 @@ with abas[0]:
 
         pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
         st.session_state.favoritas[mod] = pool
-        # --- BLOCO DE FIXAÇÃO INTELIGENTE ---
+        
         modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
         fixas_final = []
         if modo_fixa == "Manual":
@@ -458,6 +462,7 @@ with abas[0]:
                 melhores = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
                 fixas_final = melhores[:qtd_auto]
                 st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
+        
         renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
 
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
@@ -467,7 +472,6 @@ with abas[0]:
             novos = []
             def gerar_com_matriz(tamanho, quantidade, filtragem=True):
                 sucessos, tentativas = 0, 0
-                # Separa o que é fixo para o motor não mexer
                 pool_para_sorteio = [n for n in pool if n not in fixas_final]
                 vagas_abertas = tamanho - len(fixas_final)
 
@@ -487,37 +491,36 @@ with abas[0]:
                         tag_est = f"{fe_escolhido if info_fech else est_escolhida}"
                         if fixas_final: tag_est += f" (FIXAS: {len(fixas_final)})"
                         
+                        # SALVANDO O JOGO COM A LISTA DE FIXAS PARA O CONFERIDOR
                         novos.append({
-                            "mod": mod, "n": comb, "tam": tamanho, 
-                            "chance": definir_label_chance(comb, mod), "est": tag_est
+                            "mod": mod, 
+                            "n": comb, 
+                            "tam": tamanho, 
+                            "fixas_utilizadas": list(fixas_final),
+                            "chance": definir_label_chance(comb, mod), 
+                            "est": tag_est
                         })
                         sucessos += 1
                     tentativas += 1
 
             if info_fech:
                 if "DIAMANTE" in fe_escolhido: 
-                    gerar_com_matriz(16, 2)
-                    gerar_com_matriz(15, 10)
+                    gerar_com_matriz(16, 2); gerar_com_matriz(15, 10)
                 elif "CÉLULA" in fe_escolhido: 
-                    gerar_com_matriz(16, 1)
-                    gerar_com_matriz(15, 15)
+                    gerar_com_matriz(16, 1); gerar_com_matriz(15, 15)
                 else: 
                     gerar_com_matriz(15, qtd)
             elif est_escolhida == "8. RASTREAMENTO DE CICLO": 
-                gerar_com_matriz(16, 1)
-                gerar_com_matriz(15, 6)
+                gerar_com_matriz(16, 1); gerar_com_matriz(15, 6)
             elif est_escolhida == "9. CERCO POR ELIMINAÇÃO": 
                 gerar_com_matriz(15, 10)
             elif est_escolhida == "6. A MARRETA": 
-                gerar_com_matriz(18, 1)
-                gerar_com_matriz(16, 5)
+                gerar_com_matriz(18, 1); gerar_com_matriz(16, 5)
             elif est_escolhida == "7. SIMETRIA GEOMÉTRICA": 
-                gerar_com_matriz(16, 2)
-                gerar_com_matriz(15, 8)
+                gerar_com_matriz(16, 2); gerar_com_matriz(15, 8)
             elif est_escolhida != "Personalizado" and mod == "Lotofácil":
                 gerar_com_matriz(info_est['dez'], info_est.get('qtd', 1))
-                if "qtd_15" in info_est: 
-                    gerar_com_matriz(15, info_est['qtd_15'])
+                if "qtd_15" in info_est: gerar_com_matriz(15, info_est['qtd_15'])
             else: 
                 gerar_com_matriz(n_dez, qtd)
                 
@@ -531,10 +534,10 @@ with abas[0]:
     if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
         res_existentes = st.session_state.ultimo_res.get(mod, {})
         ultimo_c = int(max(res_existentes.keys(), key=int)) if res_existentes else 0
-        pool_atual = list(st.session_state.favoritas.get(mod, [])) # CIRURGICO: SALVA O POOL ATUAL
+        pool_atual = list(st.session_state.favoritas.get(mod, [])) 
         for jogo in st.session_state.jogos_gerados:
             jogo['concurso_alvo'] = ultimo_c + 1
-            jogo['pool_origem'] = pool_atual # VINCULA O POOL AO JOGO
+            jogo['pool_origem'] = pool_atual 
             st.session_state.jogos_salvos.append(jogo)
         st.session_state.jogos_gerados = []
         st.rerun()
@@ -790,4 +793,5 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
