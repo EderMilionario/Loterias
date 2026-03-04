@@ -340,10 +340,11 @@ with abas[0]:
     
     col_c1, col_c2, col_c3 = st.columns([1,1,1])
     with col_c1:
-        # Adicionei 'Avulso/Sem Estratégia' para quando você não quiser seguir o mapa
-        lista_opcoes = list(ESTRATEGIA_MAPA.keys()) + ["Avulso/Sem Estratégia"]
-        mod_est = st.selectbox("Escolha a Estratégia", lista_opcoes, key="mod_est_0")
+        # Adicionado a opção manual/avulsa para não bugar o ranking
+        opcoes_est = list(ESTRATEGIA_MAPA.keys()) + ["Avulso/Sem Estratégia"]
+        mod_est = st.selectbox("Escolha a Estratégia", opcoes_est, key="mod_est_0")
         
+        # Busca o número do próximo concurso
         id_prox_0 = max(1, int(max(st.session_state.ultimo_res['Lotofácil'].keys() or [0])) + 1)
         id_alvo = st.number_input("Concurso Alvo", 1, 9999, value=id_prox_0, key="id_alvo_0")
     
@@ -355,31 +356,43 @@ with abas[0]:
         if pool_tipo == "Seleção Manual":
             pool_usar = st.multiselect("Dezenas (Mín. 18)", list(range(1,26)), default=list(range(1,19)))
         else:
-            pool_usar = processar_pool_inteligente("Lotofácil")
-            st.info(f"IA selecionou {len(pool_usar)} dezenas.")
+            # VOLTANDO A LÓGICA ORIGINAL QUE ESTAVA NO SEU TXT PARA NÃO DAR NAMEERROR
+            res_loto = st.session_state.ultimo_res.get("Lotofácil", {})
+            if not res_loto:
+                pool_usar = list(range(1, 19))
+                st.warning("Database vazia. Usando padrão 01-18.")
+            else:
+                todos_n = [n for lista in res_loto.values() for n in lista]
+                freq = Counter(todos_n)
+                # Pega as 18 mais frequentes como seu código fazia
+                pool_usar = [num for num, _ in freq.most_common(18)]
+                st.info(f"IA selecionou as 18 dezenas mais frequentes: {sorted(pool_usar)}")
 
     if st.button("🚀 GERAR JOGOS"):
         jogos_gerados = []
         
-        # Se NÃO usar estratégia do mapa (O que você perguntou)
+        # Lógica para quando você não usa estratégia pronta
         if mod_est == "Avulso/Sem Estratégia":
             for _ in range(qtd_avulso):
                 jogos_gerados.append(sorted(random.sample(pool_usar, 15)))
         
-        # Se usar as estratégias do mapa
+        # Lógica das estratégias do seu mapa
         elif mod_est == "A MARRETA (SISTEMA 18)":
+            # Gera o jogo principal de 18 e 5 de 15 como apoio
             jogos_gerados.append(sorted(random.sample(pool_usar, 18)))
-            for _ in range(5): 
+            for _ in range(5):
                 jogos_gerados.append(validar_kadosh_cirurgico(pool_usar, 15))
         else:
             info = ESTRATEGIA_MAPA[mod_est]
-            for _ in range(info.get("qtd", 10)): jogos_gerados.append(validar_kadosh_cirurgico(pool_usar, 15))
-            for _ in range(info.get("qtd_16", 0)): jogos_gerados.append(validar_kadosh_cirurgico(pool_usar, 16))
+            for _ in range(info.get("qtd", 10)): 
+                jogos_gerados.append(validar_kadosh_cirurgico(pool_usar, 15))
+            for _ in range(info.get("qtd_16", 0)): 
+                jogos_gerados.append(validar_kadosh_cirurgico(pool_usar, 16))
 
         st.session_state.temp_jogos = [j for j in jogos_gerados if j]
         st.success(f"Gerados {len(st.session_state.temp_jogos)} jogos!")
 
-    # Mostrar e Salvar
+    # Exibição e Salvamento
     if st.session_state.get('temp_jogos'):
         for idx, j in enumerate(st.session_state.temp_jogos):
             st.code(f"Jogo {idx+1:02d}: " + " ".join([f"{x:02d}" for x in j]))
@@ -389,13 +402,12 @@ with abas[0]:
                 st.session_state.jogos_salvos.append({
                     "concurso_alvo": id_alvo,
                     "n": j,
-                    "est": mod_est, # Se for avulso, salva como 'Avulso/Sem Estratégia'
+                    "est": mod_est, # Carimbo para o ranking
                     "data": pd.Timestamp.now().strftime("%d/%m/%Y %H:%M")
                 })
-            st.success("✅ Jogos salvos com a etiqueta correta!")
+            st.success("✅ Jogos salvos com sucesso!")
             st.session_state.temp_jogos = []
             st.rerun()
-with abas[1]:
     mostrar_status_backup()
     st.header("📐 Matrizes de Fechamento")
     
@@ -683,6 +695,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
