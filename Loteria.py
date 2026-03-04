@@ -450,6 +450,13 @@ with abas[0]:
                         
                     [cite_start]melhores = sorted(score_kadosh.items(), key=lambda x: x[1], reverse=True) [cite: 66]
                     [cite_start]st.session_state.favoritas[mod] = sorted([n for n, s in melhores[:n_pool_req]]) [cite: 67]
+                    st.session_state.favoritas[mod] = sorted([n for n, s in melhores[:n_pool_req]])
+                    
+                    # ADICIONE ESTAS DUAS LINHAS ABAIXO:
+                    if 'fixas_sugeridas_ia' not in st.session_state: st.session_state.fixas_sugeridas_ia = {}
+                    st.session_state.fixas_sugeridas_ia[mod] = sorted([n for n, s in melhores[:6]])
+                    
+                    st.rerun()
                     st.session_state.fixas_sugeridas_ia = {m: [] for m in st.session_state.custos.keys()} if 'fixas_sugeridas_ia' not in st.session_state else st.session_state.fixas_sugeridas_ia
                 st.session_state.fixas_sugeridas_ia[mod] = sorted([n for n, s in melhores[:6]])
                     
@@ -864,6 +871,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
