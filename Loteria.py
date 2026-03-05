@@ -82,6 +82,21 @@ st.markdown("""
         background: #f0f2f6;
         border: 1px solid #d1d1d1;
     }
+    /* Estilos para o Pool na Conferência */
+    .dezena-pool {
+        display: inline-block;
+        width: 35px;
+        height: 35px;
+        line-height: 35px;
+        text-align: center;
+        border-radius: 50%;
+        margin: 3px;
+        font-size: 14px;
+        font-weight: bold;
+        color: white;
+    }
+    .pool-vermelho { background-color: #ff4b4b; border: 1px solid #8b0000; }
+    .pool-verde { background-color: #28a745; border: 1px solid #145214; box-shadow: 0 0 8px #28a745; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -335,6 +350,10 @@ st.title("📊 GESTÃO ESTRATÉGICA LOTERIAS")
 abas = st.tabs(["🎯 GERADOR PRO", "🔍 CONFERIR", "⚙️ VALORES", "📥 DATABASE", "💾 BACKUP", "🧠 INTELIGÊNCIA", "🔗 AFINIDADE"])
 
 with abas[0]:
+    # --- CORREÇÃO DE SEGURANÇA (INICIALIZAÇÃO) ---
+    if 'analise_stats' not in st.session_state:
+        st.session_state.analise_stats = {}
+    
     mostrar_status_backup()
     mod = st.selectbox("Modalidade", list(st.session_state.custos.keys()), key="mod_selector")
     
@@ -416,7 +435,7 @@ with abas[0]:
                         for n in res_loto[c]: 
                             contagem[n] += 1
                             
-                    for n in range(1, 26):
+                    for n in range(1, max_v + 1):
                         atraso_n = 0
                         for c in conc_ordenados:
                             if n not in res_loto[c]: 
@@ -431,6 +450,19 @@ with abas[0]:
 
         pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
         st.session_state.favoritas[mod] = pool
+        
+        modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
+        fixas_final = []
+        if modo_fixa == "Manual":
+            fixas_final = st.multiselect("📌 CRAVAR DEZENAS:", options=pool)
+        elif modo_fixa == "IA Automática (Score)":
+            qtd_auto = st.slider("Qtd de Cravadas:", 1, 10, 6)
+            if mod in st.session_state.analise_stats:
+                stats = st.session_state.analise_stats[mod]
+                melhores = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
+                fixas_final = melhores[:qtd_auto]
+                st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
+        
         renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
 
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
@@ -440,48 +472,55 @@ with abas[0]:
             novos = []
             def gerar_com_matriz(tamanho, quantidade, filtragem=True):
                 sucessos, tentativas = 0, 0
-                while sucessos < quantidade and tentativas < 20000:
-                    comb = sorted(random.sample(pool, tamanho))
+                pool_para_sorteio = [n for n in pool if n not in fixas_final]
+                vagas_abertas = tamanho - len(fixas_final)
+
+                while sucessos < quantidade and tentativas < 30000:
+                    if len(pool_para_sorteio) >= vagas_abertas:
+                        complemento = random.sample(pool_para_sorteio, vagas_abertas)
+                        comb = sorted(fixas_final + complemento)
+                    else:
+                        comb = sorted(random.sample(pool, tamanho))
+                    
                     if any(set(comb) == set(existente['n']) for existente in novos):
                         tentativas += 1
                         continue
                         
                     passou = validar_kadosh_cirurgico(comb, mod, tamanho) if filtragem else True
                     if passou:
+                        tag_est = f"{fe_escolhido if info_fech else est_escolhida}"
+                        if fixas_final: tag_est += f" (FIXAS: {len(fixas_final)})"
+                        
+                        # SALVANDO O JOGO COM A LISTA DE FIXAS PARA O CONFERIDOR
                         novos.append({
                             "mod": mod, 
                             "n": comb, 
                             "tam": tamanho, 
+                            "fixas_utilizadas": list(fixas_final),
                             "chance": definir_label_chance(comb, mod), 
-                            "est": fe_escolhido if info_fech else est_escolhida
+                            "est": tag_est
                         })
                         sucessos += 1
                     tentativas += 1
 
             if info_fech:
                 if "DIAMANTE" in fe_escolhido: 
-                    gerar_com_matriz(16, 2)
-                    gerar_com_matriz(15, 10)
+                    gerar_com_matriz(16, 2); gerar_com_matriz(15, 10)
                 elif "CÉLULA" in fe_escolhido: 
-                    gerar_com_matriz(16, 1)
-                    gerar_com_matriz(15, 15)
+                    gerar_com_matriz(16, 1); gerar_com_matriz(15, 15)
                 else: 
                     gerar_com_matriz(15, qtd)
             elif est_escolhida == "8. RASTREAMENTO DE CICLO": 
-                gerar_com_matriz(16, 1)
-                gerar_com_matriz(15, 6)
+                gerar_com_matriz(16, 1); gerar_com_matriz(15, 6)
             elif est_escolhida == "9. CERCO POR ELIMINAÇÃO": 
                 gerar_com_matriz(15, 10)
             elif est_escolhida == "6. A MARRETA": 
-                gerar_com_matriz(18, 1)
-                gerar_com_matriz(16, 5)
+                gerar_com_matriz(18, 1); gerar_com_matriz(16, 5)
             elif est_escolhida == "7. SIMETRIA GEOMÉTRICA": 
-                gerar_com_matriz(16, 2)
-                gerar_com_matriz(15, 8)
+                gerar_com_matriz(16, 2); gerar_com_matriz(15, 8)
             elif est_escolhida != "Personalizado" and mod == "Lotofácil":
                 gerar_com_matriz(info_est['dez'], info_est.get('qtd', 1))
-                if "qtd_15" in info_est: 
-                    gerar_com_matriz(15, info_est['qtd_15'])
+                if "qtd_15" in info_est: gerar_com_matriz(15, info_est['qtd_15'])
             else: 
                 gerar_com_matriz(n_dez, qtd)
                 
@@ -495,8 +534,10 @@ with abas[0]:
     if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
         res_existentes = st.session_state.ultimo_res.get(mod, {})
         ultimo_c = int(max(res_existentes.keys(), key=int)) if res_existentes else 0
+        pool_atual = list(st.session_state.favoritas.get(mod, [])) 
         for jogo in st.session_state.jogos_gerados:
             jogo['concurso_alvo'] = ultimo_c + 1
+            jogo['pool_origem'] = pool_atual 
             st.session_state.jogos_salvos.append(jogo)
         st.session_state.jogos_gerados = []
         st.rerun()
@@ -506,8 +547,36 @@ with abas[1]:
     st.header("🔍 Painel de Conferência")
     mod_f = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="f_conf")
     
-    # ACRÉSCIMO 1: EXTRAIR PDF
     jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
+    
+    # --- NOVO BLOCO: VISUALIZAÇÃO DO POOL NA CONFERÊNCIA (MANTIDO) ---
+    if jogos_salvos_atual:
+        st.markdown("### 🎯 PERFORMANCE DO SEU POOL (CERCO)")
+        res_db = st.session_state.ultimo_res.get(mod_f, {})
+        
+        # Pega o pool do primeiro jogo
+        pool_salvo = jogos_salvos_atual[0].get('pool_origem', [])
+        alvo_pool = str(jogos_salvos_atual[0].get('concurso_alvo', ''))
+        
+        if pool_salvo:
+            html_pool = '<div style="background: #f8f9fa; padding: 20px; border-radius: 15px; border: 2px solid #1e3799; margin-bottom: 20px;">'
+            acertos_pool = 0
+            resultado_alvo = res_db.get(alvo_pool, [])
+            
+            for d in sorted(pool_salvo):
+                classe = "pool-vermelho"
+                if d in resultado_alvo:
+                    classe = "pool-verde"
+                    acertos_pool += 1
+                html_pool += f'<span class="dezena-pool {classe}">{d:02d}</span>'
+            
+            html_pool += f'<br><br><span style="font-size: 18px; color: #1e3799;">📊 <b>ACERTOS NO CERCO: {acertos_pool} DEZENAS</b></span>'
+            html_pool += '</div>'
+            st.markdown(html_pool, unsafe_allow_html=True)
+        else:
+            st.info("Pool não registrado nos jogos antigos.")
+
+    # --- EXTRAÇÃO EM PDF (MANTIDO) ---
     if jogos_salvos_atual:
         btn_pdf = gerar_pdf_bonito(jogos_salvos_atual, mod_f)
         st.download_button(label="📄 EXTRAIR JOGOS SALVOS EM PDF", data=btn_pdf, file_name=f"jogos_{mod_f}.pdf", mime="application/pdf")
@@ -518,24 +587,44 @@ with abas[1]:
         st.rerun()
         
     res_db = st.session_state.ultimo_res.get(mod_f, {})
-    jogos_na_espera = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
+    jogos_na_espera = [j for j in st.session_state.jogos_salvos if j.get('mod') == mod_f]
     
     if jogos_na_espera:
         total_ganho = 0
+        # Primeiro calculamos o total de prêmios
         for j in jogos_na_espera:
             alvo = str(j.get('concurso_alvo', ''))
             if alvo in res_db:
-                acertos = len(set(j['n']).intersection(set(res_db[alvo])))
+                sorteados = set(res_db[alvo])
+                acertos = len(set(j['n']).intersection(sorteados))
                 total_ganho += st.session_state.premios[mod_f].get(str(acertos), 0.0)
-                
+        
+        # Painel de Resumo Luxo
         st.markdown(f'<div class="painel-luxo-black"><div class="titulo-luxo-gold">🏆 Premiação Total 🏆</div><div class="valor-luxo-white">{formata_dinheiro(total_ganho)}</div></div>', unsafe_allow_html=True)
         
+        # Listagem dos Jogos com as Bolinhas das Fixas (ACRÉSCIMO SOLICITADO)
         for i, j in enumerate(jogos_na_espera):
             alvo = str(j.get('concurso_alvo', ''))
             txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
+            
             if alvo in res_db:
-                acertos = len(set(j['n']).intersection(set(res_db[alvo])))
+                sorteados = set(res_db[alvo])
+                acertos = len(set(j['n']).intersection(sorteados))
                 val = st.session_state.premios[mod_f].get(str(acertos), 0.0)
+                
+                # --- NOVO: SCANNER DE FIXAS ---
+                if "fixas_utilizadas" in j and j["fixas_utilizadas"]:
+                    fixas_u = j["fixas_utilizadas"]
+                    acertos_f = set(fixas_u).intersection(sorteados)
+                    
+                    bolinhas = ""
+                    for f in fixas_u:
+                        cor_f = "#2ecc71" if f in sorteados else "#e74c3c"
+                        bolinhas += f'<span style="background:{cor_f}; color:white; padding:2px 8px; border-radius:50%; margin-right:5px; border:1px solid black; font-size:11px; font-weight:bold;">{f:02d}</span>'
+                    
+                    st.markdown(f"📍 **FIXAS:** {bolinhas} | **Acertos: {len(acertos_f)}/{len(fixas_u)}**", unsafe_allow_html=True)
+
+                # Mantendo sua exibição original intacta
                 st.markdown(f"<div {'class=\"jogo-premiado\"' if val>0 else ''}>**ID {i+1:02d}** | `{txt_jogo}` | **{acertos} ACERTOS** ({formata_dinheiro(val)})</div>", unsafe_allow_html=True)
             else: 
                 st.markdown(f"**ID {i+1:02d}** | `{txt_jogo}` | ⏳ **AGUARDANDO CONCURSO {alvo}**")
@@ -555,19 +644,43 @@ with abas[2]:
         st.session_state.premios[mod_v] = novos_v
         st.success("✅ Valores atualizados!")
 
+
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database")
     m_db = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="m_db")
     id_c = st.number_input("Nº Concurso", 1, 9999, key="id_c")
-    txt_site = st.text_area("Cole os números sorteados aqui").strip()
+    
+    # Campo de entrada de texto 
+    txt_site = st.text_area("Cole os números sorteados aqui (aceita números grudados, com espaços ou traços)").strip()
+    
     if txt_site:
-        nums = sorted(list(set([int(n) for n in re.findall(r'\d+', txt_site) if 1 <= int(n) <= 80])))
-        st.code(" ".join([f"{x:02d}" for x in nums]))
-        if st.button("💾 GRAVAR RESULTADO"):
-            st.session_state.ultimo_res[m_db][str(int(id_c))] = nums
-            st.success("✅ Gravado!")
-
+        try:
+            # LÓGICA DE PROCESSAMENTO INTELIGENTE
+            # Se o texto for longo e não tiver espaços/traços, assume que está grudado de 2 em 2
+            if len(txt_site) > 10 and " " not in txt_site and "-" not in txt_site:
+                extraidos = [txt_site[i:i+2] for i in range(0, len(txt_site), 2)]
+            else:
+                # Caso contrário, usa busca padrão por números separados 
+                extraidos = re.findall(r'\d+', txt_site)
+            
+            # Converte para inteiros, remove duplicados e filtra pelo limite da loteria (até 80) 
+            nums = sorted(list(set([int(n) for n in extraidos if 1 <= int(n) <= 80])))
+            
+            if not nums:
+                st.warning("⚠️ Nenhum número válido foi encontrado. Verifique o formato colado.")
+            else:
+                # Exibe os números formatados para conferência visual 
+                st.code(" ".join([f"{x:02d}" for x in nums]))
+                
+                if st.button("💾 GRAVAR RESULTADO"):
+                    # Grava no banco de dados da sessão 
+                    st.session_state.ultimo_res[m_db][str(int(id_c))] = nums
+                    st.success(f"✅ Resultado do concurso {id_c} gravado com sucesso!")
+                    st.rerun()
+                    
+        except Exception as e:
+            st.error(f"❌ Erro técnico ao processar os dados: {e}")
 with abas[4]:
     mostrar_status_backup()
     st.header("💾 Backup e Status")
@@ -603,7 +716,6 @@ with abas[5]:
             })
     st.table(pd.DataFrame(dados_est))
 
-    # --- ACRÉSCIMO 2: TABELA DE MATRIZES ---
     st.markdown("---")
     st.subheader("📐 ANÁLISE TÉCNICA DE MATRIZES (ACRÉSCIMO)")
     dados_mat = []
@@ -663,7 +775,6 @@ with abas[5]:
 // 4. Paridade: Fórmula dinâmica integrada no motor de validação
         """, language="javascript")
 
-# --- CONTEÚDO DA NOVA ABA 7 ---
 with abas[6]:
     st.markdown("""
         <div class="painel-luxo-black">
