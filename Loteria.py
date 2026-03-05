@@ -503,7 +503,7 @@ with abas[0]:
                         sucessos += 1
                     tentativas += 1
 
-            # --- LOCAL EXATO DA CORREÇÃO (ABA 0) ---
+            # --- CORREÇÃO DA HIERARQUIA DE GERAÇÃO ---
             if info_fech:
                 if "DIAMANTE" in fe_escolhido: 
                     gerar_com_matriz(16, 2)
@@ -512,6 +512,7 @@ with abas[0]:
                     gerar_com_matriz(16, 1)
                     gerar_com_matriz(15, 15)
                 else: 
+                    # Fechamentos Padrão (18-15-14, etc)
                     gerar_com_matriz(15, qtd)
             elif est_escolhida == "8. RASTREAMENTO DE CICLO": 
                 gerar_com_matriz(16, 1)
@@ -528,6 +529,8 @@ with abas[0]:
                 gerar_com_matriz(info_est['dez'], info_est.get('qtd', 1))
                 if "qtd_15" in info_est: 
                     gerar_com_matriz(15, info_est['qtd_15'])
+            else: 
+                gerar_com_matriz(n_dez, qtd)
             else: 
                 # Este é o ELSE que estava causando o erro de sintaxe
                 gerar_com_matriz(n_dez, qtd)
@@ -844,5 +847,6 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
