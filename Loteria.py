@@ -504,10 +504,19 @@ with abas[0]:
                     tentativas += 1
 
             if info_fech:
+                # --- MATRIZ DIAMANTE: 2 de 16 + 10 de 15 ---
                 if "DIAMANTE" in fe_escolhido: 
-                    gerar_com_matriz(16, 2); gerar_com_matriz(15, 10)
+                    gerar_com_matriz(16, 2)  # Força 16 dezenas
+                    gerar_com_matriz(15, 10) # Força 15 dezenas
+                
+                # --- MATRIZ CÉLULA: 1 de 16 + 15 de 15 ---
                 elif "CÉLULA" in fe_escolhido: 
-                    gerar_com_matriz(16, 1); gerar_com_matriz(15, 15)
+                    gerar_com_matriz(16, 1)  # Força 16 dezenas
+                    gerar_com_matriz(15, 15) # Força 15 dezenas
+                
+                else: 
+                    # Fechamentos Padrão (18-15-14, etc)
+                    gerar_com_matriz(15, qtd)
                 else: 
                     gerar_com_matriz(15, qtd)
             elif est_escolhida == "8. RASTREAMENTO DE CICLO": 
@@ -817,3 +826,4 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
