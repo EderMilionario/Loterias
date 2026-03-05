@@ -503,16 +503,34 @@ with abas[0]:
                         sucessos += 1
                     tentativas += 1
 
+            # --- LOCAL EXATO DA CORREÇÃO (ABA 0) ---
             if info_fech:
-                # --- MATRIZ DIAMANTE: 2 de 16 + 10 de 15 ---
                 if "DIAMANTE" in fe_escolhido: 
-                    gerar_com_matriz(16, 2)  # Força 16 dezenas
-                    gerar_com_matriz(15, 10) # Força 15 dezenas
-                
-                # --- MATRIZ CÉLULA: 1 de 16 + 15 de 15 ---
+                    gerar_com_matriz(16, 2)
+                    gerar_com_matriz(15, 10)
                 elif "CÉLULA" in fe_escolhido: 
-                    gerar_com_matriz(16, 1)  # Força 16 dezenas
-                    gerar_com_matriz(15, 15) # Força 15 dezenas
+                    gerar_com_matriz(16, 1)
+                    gerar_com_matriz(15, 15)
+                else: 
+                    gerar_com_matriz(15, qtd)
+            elif est_escolhida == "8. RASTREAMENTO DE CICLO": 
+                gerar_com_matriz(16, 1)
+                gerar_com_matriz(15, 6)
+            elif est_escolhida == "9. CERCO POR ELIMINAÇÃO": 
+                gerar_com_matriz(15, 10)
+            elif est_escolhida == "6. A MARRETA": 
+                gerar_com_matriz(18, 1)
+                gerar_com_matriz(16, 5)
+            elif est_escolhida == "7. SIMETRIA GEOMÉTRICA": 
+                gerar_com_matriz(16, 2)
+                gerar_com_matriz(15, 8)
+            elif est_escolhida != "Personalizado" and mod == "Lotofácil":
+                gerar_com_matriz(info_est['dez'], info_est.get('qtd', 1))
+                if "qtd_15" in info_est: 
+                    gerar_com_matriz(15, info_est['qtd_15'])
+            else: 
+                # Este é o ELSE que estava causando o erro de sintaxe
+                gerar_com_matriz(n_dez, qtd)
                 
                 else: 
                     # Fechamentos Padrão (18-15-14, etc)
@@ -826,4 +844,5 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
