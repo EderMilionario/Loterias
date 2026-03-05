@@ -470,32 +470,31 @@ with abas[0]:
             st.error(f"Seu Pool precisa de pelo menos {info_fech['n_pool'] if info_fech else n_dez} dezenas!")
         else:
             novos = []
-            def gerar_com_matriz(tamanho, quantidade, filtragem=True):
+            def gerar_com_matriz(tamanho_solicitado, quantidade, filtragem=True):
                 sucessos, tentativas = 0, 0
                 pool_para_sorteio = [n for n in pool if n not in fixas_final]
-                vagas_abertas = tamanho - len(fixas_final)
+                vagas_abertas = tamanho_solicitado - len(fixas_final)
 
                 while sucessos < quantidade and tentativas < 30000:
-                    if len(pool_para_sorteio) >= vagas_abertas:
+                    if len(pool_para_sorteio) >= vagas_abertas and vagas_abertas >= 0:
                         complemento = random.sample(pool_para_sorteio, vagas_abertas)
                         comb = sorted(fixas_final + complemento)
                     else:
-                        comb = sorted(random.sample(pool, tamanho))
-                    
+                        comb = sorted(random.sample(pool, tamanho_solicitado))
+               
                     if any(set(comb) == set(existente['n']) for existente in novos):
                         tentativas += 1
                         continue
-                        
-                    passou = validar_kadosh_cirurgico(comb, mod, tamanho) if filtragem else True
+                  
+                    passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado) if filtragem else True
                     if passou:
                         tag_est = f"{fe_escolhido if info_fech else est_escolhida}"
                         if fixas_final: tag_est += f" (FIXAS: {len(fixas_final)})"
                         
-                        # SALVANDO O JOGO COM A LISTA DE FIXAS PARA O CONFERIDOR
                         novos.append({
                             "mod": mod, 
                             "n": comb, 
-                            "tam": tamanho, 
+                            "tam": tamanho_solicitado, 
                             "fixas_utilizadas": list(fixas_final),
                             "chance": definir_label_chance(comb, mod), 
                             "est": tag_est
@@ -503,7 +502,7 @@ with abas[0]:
                         sucessos += 1
                     tentativas += 1
 
-            # --- LOCAL EXATO DA CORREÇÃO (ESTRUTURA LIMPA) ---
+            # --- BLOCO DE DECISÃO TÉCNICA (SEM ERROS DE SINTAXE) ---
             if info_fech:
                 if "DIAMANTE" in fe_escolhido: 
                     gerar_com_matriz(16, 2)
@@ -512,31 +511,28 @@ with abas[0]:
                     gerar_com_matriz(16, 1)
                     gerar_com_matriz(15, 15)
                 else: 
-                    # Fechamentos Padrão (18-15-14, etc)
                     gerar_com_matriz(15, qtd)
-            
-            elif est_escolhida == "8. RASTREAMENTO DE CICLO": 
-                gerar_com_matriz(16, 1)
-                gerar_com_matriz(15, 6)
-            
-            elif est_escolhida == "9. CERCO POR ELIMINAÇÃO": 
-                gerar_com_matriz(15, 10)
-            
+
             elif est_escolhida == "6. A MARRETA": 
-                gerar_com_matriz(18, 1)
-                gerar_com_matriz(16, 5)
+                gerar_com_matriz(18, 1) # Gerando 1 jogo de 18
+                gerar_com_matriz(16, 5) # Gerando 5 jogos de 16
             
             elif est_escolhida == "7. SIMETRIA GEOMÉTRICA": 
                 gerar_com_matriz(16, 2)
                 gerar_com_matriz(15, 8)
-            
+
+            elif est_escolhida == "8. RASTREAMENTO DE CICLO": 
+                gerar_com_matriz(16, 1)
+                gerar_com_matriz(15, 6)
+
+            elif est_escolhida == "9. CERCO POR ELIMINAÇÃO": 
+                gerar_com_matriz(15, 10)
+
             elif est_escolhida != "Personalizado" and mod == "Lotofácil":
                 gerar_com_matriz(info_est['dez'], info_est.get('qtd', 1))
                 if "qtd_15" in info_est: 
                     gerar_com_matriz(15, info_est['qtd_15'])
-            
             else: 
-                # Este é o fallback para o modo Personalizado ou outras loterias
                 gerar_com_matriz(n_dez, qtd)
                 
             st.session_state.jogos_gerados = novos
@@ -831,6 +827,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
