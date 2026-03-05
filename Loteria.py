@@ -644,43 +644,19 @@ with abas[2]:
         st.session_state.premios[mod_v] = novos_v
         st.success("✅ Valores atualizados!")
 
-
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database")
     m_db = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="m_db")
     id_c = st.number_input("Nº Concurso", 1, 9999, key="id_c")
-    
-    # Campo de entrada de texto 
-    txt_site = st.text_area("Cole os números sorteados aqui (aceita números grudados, com espaços ou traços)").strip()
-    
+    txt_site = st.text_area("Cole os números sorteados aqui").strip()
     if txt_site:
-        try:
-            # LÓGICA DE PROCESSAMENTO INTELIGENTE
-            # Se o texto for longo e não tiver espaços/traços, assume que está grudado de 2 em 2
-            if len(txt_site) > 10 and " " not in txt_site and "-" not in txt_site:
-                extraidos = [txt_site[i:i+2] for i in range(0, len(txt_site), 2)]
-            else:
-                # Caso contrário, usa busca padrão por números separados 
-                extraidos = re.findall(r'\d+', txt_site)
-            
-            # Converte para inteiros, remove duplicados e filtra pelo limite da loteria (até 80) 
-            nums = sorted(list(set([int(n) for n in extraidos if 1 <= int(n) <= 80])))
-            
-            if not nums:
-                st.warning("⚠️ Nenhum número válido foi encontrado. Verifique o formato colado.")
-            else:
-                # Exibe os números formatados para conferência visual 
-                st.code(" ".join([f"{x:02d}" for x in nums]))
-                
-                if st.button("💾 GRAVAR RESULTADO"):
-                    # Grava no banco de dados da sessão 
-                    st.session_state.ultimo_res[m_db][str(int(id_c))] = nums
-                    st.success(f"✅ Resultado do concurso {id_c} gravado com sucesso!")
-                    st.rerun()
-                    
-        except Exception as e:
-            st.error(f"❌ Erro técnico ao processar os dados: {e}")
+        nums = sorted(list(set([int(n) for n in re.findall(r'\d+', txt_site) if 1 <= int(n) <= 80])))
+        st.code(" ".join([f"{x:02d}" for x in nums]))
+        if st.button("💾 GRAVAR RESULTADO"):
+            st.session_state.ultimo_res[m_db][str(int(id_c))] = nums
+            st.success("✅ Gravado!")
+
 with abas[4]:
     mostrar_status_backup()
     st.header("💾 Backup e Status")
