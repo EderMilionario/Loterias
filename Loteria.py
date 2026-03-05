@@ -502,37 +502,34 @@ with abas[0]:
                         sucessos += 1
                     tentativas += 1
 
-            # --- BLOCO DE DECISÃO TÉCNICA (SEM ERROS DE SINTAXE) ---
+# --- CORREÇÃO CIRÚRGICA: MATRIZES DIAMANTE E CÉLULA ---
             if info_fech:
                 if "DIAMANTE" in fe_escolhido: 
+                    # Diamante exige jogos de 16 e 15. Forçando agora:
                     gerar_com_matriz(16, 2)
                     gerar_com_matriz(15, 10)
                 elif "CÉLULA" in fe_escolhido: 
+                    # Célula exige jogos de 16 e 15. Forçando agora:
                     gerar_com_matriz(16, 1)
                     gerar_com_matriz(15, 15)
                 else: 
+                    # Outros fechamentos (18-15-14, etc)
                     gerar_com_matriz(15, qtd)
-
-            elif est_escolhida == "6. A MARRETA": 
-                gerar_com_matriz(18, 1) # Gerando 1 jogo de 18
-                gerar_com_matriz(16, 5) # Gerando 5 jogos de 16
             
+            elif est_escolhida == "6. A MARRETA": 
+                gerar_com_matriz(18, 1)
+                gerar_com_matriz(16, 5)
+                
             elif est_escolhida == "7. SIMETRIA GEOMÉTRICA": 
                 gerar_com_matriz(16, 2)
                 gerar_com_matriz(15, 8)
-
-            elif est_escolhida == "8. RASTREAMENTO DE CICLO": 
-                gerar_com_matriz(16, 1)
-                gerar_com_matriz(15, 6)
-
-            elif est_escolhida == "9. CERCO POR ELIMINAÇÃO": 
-                gerar_com_matriz(15, 10)
 
             elif est_escolhida != "Personalizado" and mod == "Lotofácil":
                 gerar_com_matriz(info_est['dez'], info_est.get('qtd', 1))
                 if "qtd_15" in info_est: 
                     gerar_com_matriz(15, info_est['qtd_15'])
             else: 
+                # Se nada acima bater, ele usa o n_dez (que pode ser 15)
                 gerar_com_matriz(n_dez, qtd)
                 
             st.session_state.jogos_gerados = novos
@@ -827,6 +824,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
