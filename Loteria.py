@@ -503,7 +503,7 @@ with abas[0]:
                         sucessos += 1
                     tentativas += 1
 
-            # --- CORREÇÃO DA HIERARQUIA DE GERAÇÃO ---
+            # --- CORREÇÃO DA ESTRUTURA DE DECISÃO (LINHA 209-222) ---
             if info_fech:
                 if "DIAMANTE" in fe_escolhido: 
                     gerar_com_matriz(16, 2)
@@ -512,27 +512,31 @@ with abas[0]:
                     gerar_com_matriz(16, 1)
                     gerar_com_matriz(15, 15)
                 else: 
-                    # Fechamentos Padrão (18-15-14, etc)
+                    # Trata fechamentos padrão como 18-15-14
                     gerar_com_matriz(15, qtd)
+            
             elif est_escolhida == "8. RASTREAMENTO DE CICLO": 
                 gerar_com_matriz(16, 1)
                 gerar_com_matriz(15, 6)
+                
             elif est_escolhida == "9. CERCO POR ELIMINAÇÃO": 
                 gerar_com_matriz(15, 10)
+                
             elif est_escolhida == "6. A MARRETA": 
                 gerar_com_matriz(18, 1)
                 gerar_com_matriz(16, 5)
+                
             elif est_escolhida == "7. SIMETRIA GEOMÉTRICA": 
                 gerar_com_matriz(16, 2)
                 gerar_com_matriz(15, 8)
+                
             elif est_escolhida != "Personalizado" and mod == "Lotofácil":
                 gerar_com_matriz(info_est['dez'], info_est.get('qtd', 1))
                 if "qtd_15" in info_est: 
                     gerar_com_matriz(15, info_est['qtd_15'])
+            
             else: 
-                gerar_com_matriz(n_dez, qtd)
-            else: 
-                # Este é o ELSE que estava causando o erro de sintaxe
+                # Caso padrão para modo Personalizado ou outras modalidades
                 gerar_com_matriz(n_dez, qtd)
                 
                 else: 
@@ -847,6 +851,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
