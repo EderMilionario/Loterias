@@ -475,7 +475,7 @@ with abas[0]:
                 pool_para_sorteio = [n for n in pool if n not in fixas_final]
                 vagas_abertas = tamanho_solicitado - len(fixas_final)
 
-                while sucessos < quantidade and tentativas < 30000:
+                while sucessos < quantidade and tentativas < 20000:
                     if len(pool_para_sorteio) >= vagas_abertas and vagas_abertas >= 0:
                         complemento = random.sample(pool_para_sorteio, vagas_abertas)
                         comb = sorted(fixas_final + complemento)
@@ -486,52 +486,42 @@ with abas[0]:
                         tentativas += 1
                         continue
                   
-                    passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado) if filtragem else True
+                    # Se for maior que 15, o filtro kadosh não pode ser rígido
+                    passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado) if (filtragem and tamanho_solicitado == 15) else True
+                    
                     if passou:
                         tag_est = f"{fe_escolhido if info_fech else est_escolhida}"
-                        if fixas_final: tag_est += f" (FIXAS: {len(fixas_final)})"
-                        
                         novos.append({
-                            "mod": mod, 
-                            "n": comb, 
-                            "tam": tamanho_solicitado, 
+                            "mod": mod, "n": comb, "tam": tamanho_solicitado, 
                             "fixas_utilizadas": list(fixas_final),
-                            "chance": definir_label_chance(comb, mod), 
-                            "est": tag_est
+                            "chance": definir_label_chance(comb, mod), "est": tag_est
                         })
                         sucessos += 1
                     tentativas += 1
 
-# --- CORREÇÃO CIRÚRGICA: MATRIZES DIAMANTE E CÉLULA ---
+            # --- BLOCO DE DECISÃO SEM ERROS ---
             if info_fech:
-                if "DIAMANTE" in fe_escolhido: 
-                    # Diamante exige jogos de 16 e 15. Forçando agora:
+                if "DIAMANTE" in fe_escolhido:
                     gerar_com_matriz(16, 2)
                     gerar_com_matriz(15, 10)
-                elif "CÉLULA" in fe_escolhido: 
-                    # Célula exige jogos de 16 e 15. Forçando agora:
+                elif "CÉLULA" in fe_escolhido:
                     gerar_com_matriz(16, 1)
                     gerar_com_matriz(15, 15)
-                else: 
-                    # Outros fechamentos (18-15-14, etc)
+                else:
                     gerar_com_matriz(15, qtd)
-            
-            elif est_escolhida == "6. A MARRETA": 
+            elif est_escolhida == "6. A MARRETA":
                 gerar_com_matriz(18, 1)
                 gerar_com_matriz(16, 5)
-                
-            elif est_escolhida == "7. SIMETRIA GEOMÉTRICA": 
+            elif est_escolhida == "7. SIMETRIA GEOMÉTRICA":
                 gerar_com_matriz(16, 2)
                 gerar_com_matriz(15, 8)
-
             elif est_escolhida != "Personalizado" and mod == "Lotofácil":
                 gerar_com_matriz(info_est['dez'], info_est.get('qtd', 1))
-                if "qtd_15" in info_est: 
+                if "qtd_15" in info_est:
                     gerar_com_matriz(15, info_est['qtd_15'])
-            else: 
-                # Se nada acima bater, ele usa o n_dez (que pode ser 15)
+            else:
                 gerar_com_matriz(n_dez, qtd)
-                
+            
             st.session_state.jogos_gerados = novos
             st.rerun()
     for i, j in enumerate(st.session_state.jogos_gerados):
@@ -824,6 +814,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
