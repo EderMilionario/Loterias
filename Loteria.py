@@ -191,9 +191,7 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
         linhas[(n-1)//5] += 1
         colunas[(n-1)%5] += 1
         
-    if any(l == 0 for l in linhas) or any(c == 0 for c in colunas): 
-        return False
-    if any(l > 5 for l in linhas) or any(c > 5 for c in colunas): 
+   if any(l > 5 for l in linhas) or any(c > 5 for c in colunas): 
         return False
 
     soma = sum(jogo)
@@ -364,6 +362,22 @@ with abas[0]:
         st.session_state.jogos_gerados = []
         st.session_state.ultima_mod_selecionada = mod
         st.rerun()
+        # --- INÍCIO DA ATIVAÇÃO DA IA ---
+    res_loto = st.session_state.ultimo_res.get(mod, {})
+    if res_loto:
+        conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
+        contagem = Counter()
+        for c in conc_ordenados[:20]:
+            for n in res_loto[c]: contagem[n] += 1
+        stats_temp = {}
+        for n in range(1, 26 if mod == "Lotofácil" else 61):
+            atraso_n = 0
+            for c in conc_ordenados:
+                if n not in res_loto[c]: atraso_n += 1
+                else: break
+            stats_temp[n] = {'score': contagem[n] + (atraso_n * 1.5)}
+        st.session_state.analise_stats[mod] = stats_temp
+    # --- FIM DA ATIVAÇÃO DA IA ---
     
     col_est1, col_est2 = st.columns(2)
     with col_est1:
@@ -843,6 +857,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
