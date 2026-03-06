@@ -433,7 +433,9 @@ with abas[0]:
         max_v = 25 if mod=="Lotofácil" else 60 if mod=="Mega-Sena" else 80
         col_btn1, col_btn2 = st.columns(2)
         
-     with col_btn1:
+    col_btn1, col_btn2 = st.columns(2)
+
+        with col_btn1:
             if st.button("✅ TODO O VOLANTE"):
                 st.session_state.favoritas[mod] = list(range(1, max_v + 1))
                 st.rerun()
@@ -442,12 +444,9 @@ with abas[0]:
             if st.button("🧠 POOL INTELIGENTE KADOSH"):
                 res_loto = st.session_state.ultimo_res.get(mod, {})
                 if len(res_loto) >= 5:
-                    n_pool_req = info_fech['n_pool'] if info_fech else 20
                     conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
-                    
                     moldura_list = [1,2,3,4,5,6,10,11,15,16,20,21,22,23,24,25]
                     miolo_list = [7,8,9,12,13,14,17,18,19]
-                    
                     score_kadosh = {}
                     for n in range(1, 26):
                         freq = sum(1 for c in conc_ordenados[:20] if n in res_loto[c])
@@ -456,12 +455,9 @@ with abas[0]:
                             if n not in res_loto[c]: atraso += 1
                             else: break
                         score_kadosh[n] = freq + (atraso * 1.5)
-
                     m_mold = sorted(moldura_list, key=lambda x: score_kadosh[x], reverse=True)
                     m_miol = sorted(miolo_list, key=lambda x: score_kadosh[x], reverse=True)
-                    
                     pool_final = m_mold[:12] + m_miol[:8]
-                    
                     st.session_state.favoritas[mod] = sorted(pool_final)
                     st.success("✅ Pool Equilibrado Gerado!")
                     st.rerun()
@@ -850,6 +846,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
