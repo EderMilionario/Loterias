@@ -435,6 +435,8 @@ with abas[0]:
         
     col_btn1, col_btn2 = st.columns(2)
 
+    col_btn1, col_btn2 = st.columns(2)
+
         with col_btn1:
             if st.button("✅ TODO O VOLANTE"):
                 st.session_state.favoritas[mod] = list(range(1, max_v + 1))
@@ -846,6 +848,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
