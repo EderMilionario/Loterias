@@ -423,33 +423,53 @@ with abas[0]:
                 st.rerun()
                 
         with col_btn2:
-            if st.button("🧠 POOL INTELIGENTE KADOSH"):
+           if st.button("🧠 POOL INTELIGENTE KADOSH"):
                 res_loto = st.session_state.ultimo_res.get(mod, {})
                 if len(res_loto) >= 5:
                     n_pool_req = info_fech['n_pool'] if info_fech else 20
-                    conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)[:20]
-                    score_kadosh = {}
-                    contagem = Counter()
+                    conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
                     
+                    # --- [SUGESTÃO 1: FOCO EM CICLO] ---
+                    sorteadas_no_ciclo = set()
                     for c in conc_ordenados:
-                        for n in res_loto[c]: 
-                            contagem[n] += 1
-                            
+                        sorteadas_no_ciclo.update(res_loto[c])
+                        if len(sorteadas_no_ciclo) == 25: break
+                    faltantes_ciclo = list(set(range(1, 26)) - sorteadas_no_ciclo)
+                    
+                    # --- [SUGESTÃO 2: AFINIDADE INTEGRADA] ---
+                    matriz_af = calcular_matriz_afinidade_kadosh(mod)
+                    score_kadosh = {n: 0 for n in range(1, max_v + 1)}
+                    contagem = Counter()
+                    for c in conc_ordenados[:20]:
+                        for n in res_loto[c]: contagem[n] += 1
+                    
                     for n in range(1, max_v + 1):
                         atraso_n = 0
                         for c in conc_ordenados:
-                            if n not in res_loto[c]: 
-                                atraso_n += 1
-                            else: 
-                                break
-                        score_kadosh[n] = contagem[n] + (atraso_n * 1.5)
+                            if n not in res_loto[c]: atraso_n += 1
+                            else: break
                         
+                        # Bonus por falta no ciclo e afinidade base
+                        bonus_ciclo = 10 if n in faltantes_ciclo else 0
+                        score_kadosh[n] = contagem[n] + (atraso_n * 1.5) + bonus_ciclo
+
                     melhores = sorted(score_kadosh.items(), key=lambda x: x[1], reverse=True)
-                    st.session_state.favoritas[mod] = sorted([n for n, s in melhores[:n_pool_req]])
+                    pool_final = [n for n, s in melhores[:n_pool_req]]
+                    st.session_state.favoritas[mod] = sorted(pool_final)
                     st.rerun()
 
         pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
         st.session_state.favoritas[mod] = pool
+        # --- [SUGESTÃO 3: ANÁLISE DE QUADRANTES NO POOL] ---
+        if pool and mod == "Lotofácil":
+            linhas_p = [0]*5
+            for n in pool: linhas_p[(n-1)//5] += 1
+            if any(l == 0 for l in linhas_p):
+                st.warning("⚠️ Atenção: Seu Pool possui linhas vazias! Isso pode reduzir a eficácia dos filtros Kadosh.")
+            with st.expander("📊 Distribuição Geográfica do Pool"):
+                cols_q = st.columns(5)
+                for idx, qtd_l in enumerate(linhas_p):
+                    cols_q[idx].metric(f"Linha {idx+1}", f"{qtd_l} dez")
         
         modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
         fixas_final = []
@@ -814,6 +834,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
