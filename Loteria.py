@@ -185,13 +185,15 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
         if sequencia_max < 3 or sequencia_max > 5: 
             return False
 
+   # Mantenha este recuo exato de 4 espaços
     linhas = [0]*5
     colunas = [0]*5
     for n in jogo:
         linhas[(n-1)//5] += 1
         colunas[(n-1)%5] += 1
-        
-   if any(l > 5 for l in linhas) or any(c > 5 for c in colunas): 
+
+    # ESTA É A LINHA QUE DEU ERRO - COLE EXATAMENTE ASSIM:
+    if any(l > 5 for l in linhas) or any(c > 5 for c in colunas):
         return False
 
     soma = sum(jogo)
@@ -857,6 +859,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
