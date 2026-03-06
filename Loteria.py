@@ -450,7 +450,7 @@ with abas[0]:
                             else: break
                         
                         # Bonus por falta no ciclo e afinidade base
-                        bonus_ciclo = 10 if n in faltantes_ciclo else 0
+                        bonus_ciclo = 3.5 if n in faltantes_ciclo else 0
                         score_kadosh[n] = contagem[n] + (atraso_n * 1.5) + bonus_ciclo
 
                     melhores = sorted(score_kadosh.items(), key=lambda x: x[1], reverse=True)
@@ -843,6 +843,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
