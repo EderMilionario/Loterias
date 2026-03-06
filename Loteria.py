@@ -450,12 +450,21 @@ col_btn1, col_btn2 = st.columns(2)
             if st.button("🧠 POOL INTELIGENTE KADOSH"):
                 res_loto = st.session_state.ultimo_res.get(mod, {})
                 if len(res_loto) >= 5:
+                    n_pool_req = info_fech['n_pool'] if info_fech else 20
                     conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
                     
-                    # Definição Geográfica para evitar conflito de filtros
+                    # 1. Regiões Geométricas (Garante que os filtros não travem)
                     moldura_list = [1,2,3,4,5,6,10,11,15,16,20,21,22,23,24,25]
                     miolo_list = [7,8,9,12,13,14,17,18,19]
                     
+                    # 2. Identificação de Ciclo
+                    sorteadas_no_ciclo = set()
+                    for c in conc_ordenados:
+                        sorteadas_no_ciclo.update(res_loto[c])
+                        if len(sorteadas_no_ciclo) == 25: break
+                    faltantes_ciclo = list(set(range(1, 26)) - sorteadas_no_ciclo)
+                    
+                    # 3. Cálculo de Scores Kadosh (Atraso 3.5 + Ciclo)
                     score_kadosh = {}
                     for n in range(1, 26):
                         freq = sum(1 for c in conc_ordenados[:20] if n in res_loto[c])
@@ -464,18 +473,16 @@ col_btn1, col_btn2 = st.columns(2)
                             if n not in res_loto[c]: atraso += 1
                             else: break
                         
-                        # PESO 3.5 NO ATRASO (Prioridade Máxima para fechar ciclo)
-                        score_kadosh[n] = freq + (atraso * 3.5)
-                    
-                    # Ordenação por Score (IA Kadosh)
+                        bonus_ciclo = 3.5 if n in faltantes_ciclo else 0
+                        score_kadosh[n] = freq + (atraso * 3.5) + bonus_ciclo
+
+                    # 4. Seleção Equilibrada (12 moldura + 8 miolo)
                     m_mold = sorted(moldura_list, key=lambda x: score_kadosh[x], reverse=True)
                     m_miol = sorted(miolo_list, key=lambda x: score_kadosh[x], reverse=True)
                     
-                    # Monta o Pool: 12 Moldura + 8 Miolo = 20 dezenas equilibradas
                     pool_final = m_mold[:12] + m_miol[:8]
-                    
                     st.session_state.favoritas[mod] = sorted(pool_final)
-                    st.success(f"✅ Pool Kadosh Gerado! (Atraso com Peso 3.5)")
+                    st.success("✅ Pool Inteligente Gerado (Atraso 3.5)!")
                     st.rerun()
         pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
         st.session_state.favoritas[mod] = pool
@@ -862,6 +869,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
