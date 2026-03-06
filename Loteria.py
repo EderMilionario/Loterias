@@ -549,28 +549,28 @@ with abas[0]:
         st.code(f"JOGO {i+1:02d} | {j['est']} | {j['tam']} DEZ | {txt_jogo} / {j['chance']}")
     if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
         res_existentes = st.session_state.ultimo_res.get(mod, {})
-        prox_c = int(max(res_existentes.keys(), key=int)) + 1 if res_existentes else 1
-        
-        # Captura o Pool exato que está selecionado agora
-        pool_da_sessao = list(st.session_state.favoritas.get(mod, []))
+        # Define o concurso alvo de forma robusta
+        try:
+            ultimo_c = int(max(res_existentes.keys(), key=int))
+        except:
+            ultimo_c = 0
+            
+        # Captura o Pool (Cerco) atual antes de salvar
+        pool_da_rodada = list(st.session_state.favoritas.get(mod, []))
         
         for jogo in st.session_state.jogos_gerados:
-            novo_jogo = jogo.copy()
-            novo_jogo['concurso_alvo'] = prox_c
-            novo_jogo['pool_origem'] = pool_da_sessao
-            
-            # GRAVA AS FIXAS AQUI (Isso ativa o Scanner na Aba 1)
-            if 'fixas_utilizadas' not in novo_jogo:
-                # Tenta pegar das variáveis de fixação manual ou IA
-                try:
-                    novo_jogo['fixas_utilizadas'] = list(fixas_final)
-                except:
-                    novo_jogo['fixas_utilizadas'] = []
-            
-            st.session_state.jogos_salvos.append(novo_jogo)
+            # Criamos um dicionário novo para não perder dados
+            dados_jogo = {
+                'dezenas': jogo['dezenas'],
+                'concurso_alvo': ultimo_c + 1,
+                'pool_origem': pool_da_rodada,
+                # O SEGREDO: Aqui guardamos as fixas!
+                'fixas_utilizadas': list(fixas_final) if 'fixas_final' in locals() else []
+            }
+            st.session_state.jogos_salvos.append(dados_jogo)
         
         st.session_state.jogos_gerados = []
-        st.success(f"✅ Sucesso! Jogos salvos para o Concurso {prox_c}")
+        st.success(f"✅ GRAVADO! Pool e Fixas registrados para o Concurso {ultimo_c + 1}")
         st.rerun()
                         
   
@@ -849,6 +849,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
