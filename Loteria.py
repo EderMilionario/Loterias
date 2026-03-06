@@ -548,7 +548,7 @@ with abas[0]:
         txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
         st.code(f"JOGO {i+1:02d} | {j['est']} | {j['tam']} DEZ | {txt_jogo} / {j['chance']}")
     
-   if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
+    if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
         res_existentes = st.session_state.ultimo_res.get(mod, {})
         ultimo_c = int(max(res_existentes.keys(), key=int)) if res_existentes else 0
         pool_atual = list(st.session_state.favoritas.get(mod, [])) 
@@ -842,6 +842,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
