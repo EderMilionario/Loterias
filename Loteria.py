@@ -438,41 +438,37 @@ with abas[0]:
                 st.session_state.favoritas[mod] = list(range(1, max_v + 1))
                 st.rerun()
                 
-        with col_btn2:
-          # --- [VERSÃO DEFINITIVA: POOL COM EQUILÍBRIO GEOMÉTRICO] ---
-            # --- [VERSÃO DEFINITIVA: POOL COM EQUILÍBRIO GEOMÉTRICO] ---
-if st.button("🧠 POOL INTELIGENTE KADOSH"):
-    res_loto = st.session_state.ultimo_res.get(mod, {})
-    if len(res_loto) >= 5:
-        n_pool_req = info_fech['n_pool'] if info_fech else 20
-        conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
-        
-        # 1. Mapeamento de Regiões
-        moldura_list = [1,2,3,4,5,6,10,11,15,16,20,21,22,23,24,25]
-        miolo_list = [7,8,9,12,13,14,17,18,19]
-        
-        # 2. Cálculo de Scores (IA Kadosh)
-        score_kadosh = {}
-        for n in range(1, 26):
-            # Frequência (últimos 20) + Atraso
-            freq = sum(1 for c in conc_ordenados[:20] if n in res_loto[c])
-            atraso = 0
-            for c in conc_ordenados:
-                if n not in res_loto[c]: atraso += 1
-                else: break
-            score_kadosh[n] = freq + (atraso * 1.5)
+      with col_btn2:
+            if st.button("🧠 POOL INTELIGENTE KADOSH"):
+                res_loto = st.session_state.ultimo_res.get(mod, {})
+                if len(res_loto) >= 5:
+                    n_pool_req = info_fech['n_pool'] if info_fech else 20
+                    conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
+                    
+                    # 1. Mapeamento de Regiões
+                    moldura_list = [1,2,3,4,5,6,10,11,15,16,20,21,22,23,24,25]
+                    miolo_list = [7,8,9,12,13,14,17,18,19]
+                    
+                    # 2. Cálculo de Scores (IA Kadosh)
+                    score_kadosh = {}
+                    for n in range(1, 26):
+                        freq = sum(1 for c in conc_ordenados[:20] if n in res_loto[c])
+                        atraso = 0
+                        for c in conc_ordenados:
+                            if n not in res_loto[c]: atraso += 1
+                            else: break
+                        score_kadosh[n] = freq + (atraso * 1.5)
 
-        # 3. Seleção Proporcional (Evita Conflito de Filtros)
-        # Seleciona as melhores de cada grupo para garantir que o jogo possa ser gerado
-        melhores_moldura = sorted([n for n in moldura_list], key=lambda x: score_kadosh[x], reverse=True)
-        melhores_miolo = sorted([n for n in miolo_list], key=lambda x: score_kadosh[x], reverse=True)
-        
-        # Construção do Pool: 12 da moldura + 8 do miolo (para n_pool=20)
-        pool_final = melhores_moldura[:12] + melhores_miolo[:8]
-        
-        st.session_state.favoritas[mod] = sorted(pool_final)
-        st.success("✅ Pool Equilibrado Gerado! (Geometria + Score)")
-        st.rerun()
+                    # 3. Seleção Proporcional (Evita Conflito de Filtros)
+                    melhores_moldura = sorted(moldura_list, key=lambda x: score_kadosh[x], reverse=True)
+                    melhores_miolo = sorted(miolo_list, key=lambda x: score_kadosh[x], reverse=True)
+                    
+                    # Monta o Pool equilibrado para não travar a validação depois
+                    pool_final = melhores_moldura[:12] + melhores_miolo[:8]
+                    
+                    st.session_state.favoritas[mod] = sorted(pool_final)
+                    st.success("✅ Pool Equilibrado Gerado! (Geometria + Score)")
+                    st.rerun()
 
         pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
         st.session_state.favoritas[mod] = pool
@@ -859,6 +855,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
