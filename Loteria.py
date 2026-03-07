@@ -497,9 +497,8 @@ with abas[0]:
                 st.session_state.favoritas[mod] = list(range(1, max_v + 1))
                 st.rerun()
                 
-        with col_btn2:
+               with col_btn2:
             if st.button("🧠 POOL INTELIGENTE KADOSH"):
-                           if st.button("🧠 POOL INTELIGENTE KADOSH"):
                 res_loto = st.session_state.ultimo_res.get(mod, {})
                 if len(res_loto) >= 5:
                     n_pool_req = info_fech['n_pool'] if info_fech else 20
@@ -539,19 +538,10 @@ with abas[0]:
                     st.session_state.favoritas[mod] = sorted(pool_final)
                     st.rerun()
  
+        # Seleção do Pool e Fixação (Fora do botão)
         pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
         st.session_state.favoritas[mod] = pool
-        # --- [SUGESTÃO 3: ANÁLISE DE QUADRANTES NO POOL] ---
-        if pool and mod == "Lotofácil":
-            linhas_p = [0]*5
-            for n in pool: linhas_p[(n-1)//5] += 1
-            if any(l == 0 for l in linhas_p):
-                st.warning("⚠️ Atenção: Seu Pool possui linhas vazias! Isso pode reduzir a eficácia dos filtros Kadosh.")
-            with st.expander("📊 Distribuição Geográfica do Pool"):
-                cols_q = st.columns(5)
-                for idx, qtd_l in enumerate(linhas_p):
-                    cols_q[idx].metric(f"Linha {idx+1}", f"{qtd_l} dez")
-        
+
         modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
         fixas_final = []
         if modo_fixa == "Manual":
@@ -560,10 +550,10 @@ with abas[0]:
             qtd_auto = st.slider("Qtd de Cravadas:", 1, 10, 6)
             if mod in st.session_state.analise_stats:
                 stats = st.session_state.analise_stats[mod]
-                melhores = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
-                fixas_final = melhores[:qtd_auto]
+                melhores_f = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
+                fixas_final = melhores_f[:qtd_auto]
                 st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
-        
+ 
         renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
 
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
@@ -1016,6 +1006,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
