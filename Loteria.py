@@ -610,7 +610,8 @@ with abas[0]:
             st.rerun()
     for i, j in enumerate(st.session_state.jogos_gerados):
         txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
-        st.code(f"JOGO {i+1:02d} | {j['est']} | {len(j['n'])} DEZ | {txt_jogo} / {j['chance']}")
+        st.code(f"ID {i+1:02d} | {j['est'][:15]:<15} | {len(j['n']):02d} DEZ | {txt_jogo} | {j['chance']}")
+ 
 
     
     if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
@@ -755,7 +756,6 @@ with abas[3]:
                 st.success(f"🚀 SUCESSO! Concurso {c_api} gravado na base.")
                 st.toast(f"✅ Concurso {c_api} adicionado!", icon="💰")
                 
-                import time
                 time.sleep(3) # Aguarda 3 segundos para você conseguir ler
                 st.rerun()
             else:
@@ -992,6 +992,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
