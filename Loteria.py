@@ -785,16 +785,81 @@ with abas[3]:
 
 with abas[4]:
     mostrar_status_backup()
-    st.header("💾 Backup e Status")
-    data_b = json.dumps({"salvos": st.session_state.jogos_salvos, "premios": st.session_state.premios, "res": st.session_state.ultimo_res}, indent=4)
-    st.download_button("📤 EXPORTAR BACKUP", data_b, "backup_kadosh.json")
-    f = st.file_uploader("Importar Backup", type="json")
-    if f and st.button("📥 CONFIRMAR IMPORTAÇÃO"):
-        d = json.load(f)
-        st.session_state.jogos_salvos = d.get("salvos", [])
-        st.session_state.premios = d.get("premios", st.session_state.premios)
-        st.session_state.ultimo_res = d.get("res", st.session_state.ultimo_res)
-        st.rerun()
+    st.header("💾 Gestão de Dados e Backup")
+    
+    # 1. PREPARAÇÃO DO PACOTE DE DADOS (O QUE VAI DENTRO DO ARQUIVO)
+    dados_para_backup = {
+        "salvos": st.session_state.jogos_salvos, 
+        "premios": st.session_state.premios, 
+        "res": st.session_state.ultimo_res,
+        "favoritas": st.session_state.favoritas
+    }
+    
+    # Transforma o dicionário em texto formatado JSON
+    try:
+        data_json = json.dumps(dados_para_backup, indent=4)
+    except Exception as e:
+        st.error(f"Erro ao preparar dados: {e}")
+        data_json = "{}"
+
+    # 2. INTERFACE DE USUÁRIO (COLUNAS)
+    col_back1, col_back2 = st.columns(2)
+    
+    with col_back1:
+        st.subheader("📤 Exportar Sistema")
+        st.markdown("""
+        <div style='background-color: #e3f2fd; padding: 15px; border-radius: 10px; border-left: 5px solid #1e3799;'>
+            <p style='color: #0d47a1; margin: 0;'><b>💡 Dica Kadosh:</b> Sempre baixe o backup após cadastrar novos resultados ou gerar jogos importantes. O Streamlit Cloud limpa a memória periodicamente.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.write("") # Espaçador
+        
+        st.download_button(
+            label="🚀 BAIXAR BACKUP AGORA (.JSON)",
+            data=data_json,
+            file_name="backup_kadosh_loterias.json",
+            mime="application/json",
+            use_container_width=True
+        )
+
+    with col_back2:
+        st.subheader("📥 Restaurar Sistema")
+        st.write("Se o sistema resetar, suba seu arquivo aqui:")
+        f = st.file_uploader("Selecione o arquivo .json", type="json", label_visibility="collapsed")
+        
+        if f is not None:
+            if st.button("⚠️ CONFIRMAR RESTAURAÇÃO TOTAL", use_container_width=True):
+                try:
+                    d = json.load(f)
+                    # Atualiza cada parte do estado do sistema
+                    st.session_state.jogos_salvos = d.get("salvos", [])
+                    st.session_state.premios = d.get("premios", st.session_state.premios)
+                    st.session_state.ultimo_res = d.get("res", st.session_state.ultimo_res)
+                    st.session_state.favoritas = d.get("favoritas", st.session_state.favoritas)
+                    
+                    st.success("✅ Sistema Restaurado com Sucesso!")
+                    st.balloons()
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Erro crítico na restauração: {e}")
+
+    st.markdown("---")
+    
+    # 3. PAINEL DE MONITORAMENTO
+    st.subheader("📊 Integridade da Base de Dados")
+    c1, c2, c3 = st.columns(3)
+    
+    with c1:
+        st.metric("Jogos Salvos", len(st.session_state.jogos_salvos))
+    with c2:
+        total_res = sum(len(v) for v in st.session_state.ultimo_res.values())
+        st.metric("Resultados em Memória", total_res)
+    with c3:
+        # Tamanho aproximado em KB
+        tamanho_kb = len(data_json) / 1024
+        st.metric("Tamanho do Backup", f"{tamanho_kb:.1f} KB")
+
 
 with abas[5]:
     mostrar_status_backup()
@@ -919,6 +984,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
