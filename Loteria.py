@@ -180,26 +180,33 @@ def jogo_ja_saiu(jogo, mod):
     return False
 
 def validar_kadosh_cirurgico(jogo, mod, n_dez):
+    # AJUSTE FINO: A variável diff_n deve ser a primeira coisa aqui dentro
+    diff_n = n_dez - 15 
+    
     if mod != "Lotofácil": 
         return True
     
+    # Validação de Início e Fim (Âncoras)
     if not (jogo[0] in [1, 2, 3] and jogo[-1] in [23, 24, 25]): 
         return False
     
+    # Validação de saltos (máximo 5 números de distância)
     for i in range(len(jogo)-1):
         if (jogo[i+1] - jogo[i]) > 5: 
             return False
 
+    # Paridade Adaptativa
     pares = len([n for n in jogo if n % 2 == 0])
-    diff_n = n_dez - 15
     if not ( (7 + int(diff_n*0.4)) <= pares <= (9 + int(diff_n*0.6)) ): 
         return False
 
+    # Fibonacci Adaptativo
     fibo_ref = [1, 2, 3, 5, 8, 13, 21]
     fibo_count = len([n for n in jogo if n in fibo_ref])
     if not (3 <= fibo_count <= 5 + int(diff_n*0.5)): 
         return False
 
+    # Lógica de Vizinhança e Sequência
     is_atypical = random.random() < 0.12 
     if not is_atypical:
         vizinhos = 0
@@ -217,14 +224,14 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
         if sequencia_max < 3 or sequencia_max > 5: 
             return False
 
-       # --- BLOCO GEOMÉTRICO E ESTATÍSTICO ADAPTATIVO ---
+    # --- BLOCO GEOMÉTRICO E ESTATÍSTICO ADAPTATIVO ---
     linhas = [0]*5
     colunas = [0]*5
     for n in jogo:
         linhas[(n-1)//5] += 1
         colunas[(n-1)%5] += 1
 
-    # Limite flexível para permitir jogos de 15 a 20 dezenas
+    # Limite de 5 permite que o volante seja preenchido até o máximo (essencial para 18 dezenas)
     if any(l > 5 for l in linhas) or any(c > 5 for c in colunas):
         return False
 
@@ -234,25 +241,22 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
     primos = len([n for n in jogo if n in primos_list])
     moldura = len([n for n in jogo if n in moldura_list])
     
-    # CONFIGURAÇÃO DINÂMICA (Se adapta ao número de dezenas - diff_n)
+    # CONFIGURAÇÃO DINÂMICA (Ajusta os alvos de Soma, Primos e Moldura para 15-18 dezenas)
     cfg = {
         's': (165 + (diff_n * 12), 215 + (diff_n * 14)),
         'p': (4 + int(diff_n * 0.5), 7 + int(diff_n * 0.8)),
         'm': (8 + int(diff_n * 0.7), 11 + int(diff_n * 0.9))
     }
     
-    if not (cfg['s'][0] <= soma <= cfg['s'][1]): 
-        return False
-    if not (cfg['p'][0] <= primos <= cfg['p'][1]): 
-        return False
-    if not (cfg['m'][0] <= moldura <= cfg['m'][1]): 
-        return False
-
+    if not (cfg['s'][0] <= soma <= cfg['s'][1]): return False
+    if not (cfg['p'][0] <= primos <= cfg['p'][1]): return False
+    if not (cfg['m'][0] <= moldura <= cfg['m'][1]): return False
 
     if jogo_ja_saiu(jogo, mod): 
         return False
         
     return True
+
 
 def renderizar_heatmap(mod, res_loto):
     if not res_loto or mod != "Lotofácil": 
@@ -986,6 +990,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
