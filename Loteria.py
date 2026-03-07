@@ -707,61 +707,62 @@ with abas[2]:
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database")
-    m_db = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="m_db")
-    id_c = st.number_input("Nº Concurso", 1, 9999, key="id_c")
-    # --- COLE ESTE BLOCO DENTRO DA ABA 3 ---
-st.markdown("### 📡 Sincronização em Tempo Real")
-col_sync, col_info = st.columns([1, 2])
-
-with col_sync:
-    if st.button("🔄 Atualizar Online"):
-        conc_api, dezenas_api = buscar_ultimo_resultado_api()
-        
-        if conc_api:
-            # Acessa o dicionário de resultados que você já usa no sistema
-            if "Lotofácil" not in st.session_state.ultimo_res:
-                st.session_state.ultimo_res["Lotofácil"] = {}
-                
-            if conc_api not in st.session_state.ultimo_res["Lotofácil"]:
-                st.session_state.ultimo_res["Lotofácil"][conc_api] = dezenas_api
-                st.success(f"Concurso {conc_api} adicionado!")
-                st.rerun() # Comando para atualizar a tela e o Pool ler o novo dado
-            else:
-                st.info(f"O concurso {conc_api} já está atualizado.")
-        else:
-            st.error("Servidor da Caixa indisponível. Tente novamente em instantes.")
-
     
-    # Campo de entrada de texto 
-    txt_site = st.text_area("Cole os números sorteados aqui (aceita números grudados, com espaços ou traços)").strip()
+    # --- 1. SELEÇÃO DA LOTERIA ---
+    m_db = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="m_db_aba3")
+    
+    # --- 2. BOTÃO DE ATUALIZAÇÃO ONLINE (A MÁGICA) ---
+    st.markdown("---")
+    st.markdown("### 📡 Sincronização em Tempo Real")
+    col_sync, col_vazio = st.columns([1, 2])
+    
+    with col_sync:
+        if st.button("🔄 Atualizar Online"):
+            conc_api, dezenas_api = buscar_ultimo_resultado_api()
+            
+            if conc_api:
+                # Garante que a chave da loteria existe no dicionário
+                if m_db not in st.session_state.ultimo_res:
+                    st.session_state.ultimo_res[m_db] = {}
+                
+                # Adiciona o resultado se ele não existir
+                if conc_api not in st.session_state.ultimo_res[m_db]:
+                    # Converte dezenas da API (que são strings) para INT para manter seu padrão
+                    dezenas_int = [int(n) for n in dezenas_api]
+                    st.session_state.ultimo_res[m_db][conc_api] = dezenas_int
+                    st.success(f"✅ Concurso {conc_api} de {m_db} adicionado com sucesso!")
+                    st.rerun()
+                else:
+                    st.info(f"ℹ️ O concurso {conc_api} já consta no seu banco de dados.")
+            else:
+                st.error("❌ Não foi possível conectar à API. Tente novamente ou use o modo manual.")
+
+    st.markdown("---")
+
+    # --- 3. ENTRADA MANUAL (O QUE VOCÊ JÁ TINHA) ---
+    st.subheader("✍️ Entrada Manual / Colar do Site")
+    id_c = st.number_input("Nº Concurso Manual", 1, 9999, key="id_c_manual")
+    
+    txt_site = st.text_area("Cole os números sorteados aqui (aceita qualquer formato)", key="txt_area_db").strip()
     
     if txt_site:
         try:
-            # LÓGICA DE PROCESSAMENTO INTELIGENTE
-            # Se o texto for longo e não tiver espaços/traços, assume que está grudado de 2 em 2
             if len(txt_site) > 10 and " " not in txt_site and "-" not in txt_site:
                 extraidos = [txt_site[i:i+2] for i in range(0, len(txt_site), 2)]
             else:
-                # Caso contrário, usa busca padrão por números separados 
                 extraidos = re.findall(r'\d+', txt_site)
             
-            # Converte para inteiros, remove duplicados e filtra pelo limite da loteria (até 80) 
             nums = sorted(list(set([int(n) for n in extraidos if 1 <= int(n) <= 80])))
             
-            if not nums:
-                st.warning("⚠️ Nenhum número válido foi encontrado. Verifique o formato colado.")
-            else:
-                # Exibe os números formatados para conferência visual 
+            if nums:
                 st.code(" ".join([f"{x:02d}" for x in nums]))
-                
-                if st.button("💾 GRAVAR RESULTADO"):
-                    # Grava no banco de dados da sessão 
+                if st.button("💾 GRAVAR RESULTADO MANUAL"):
                     st.session_state.ultimo_res[m_db][str(int(id_c))] = nums
-                    st.success(f"✅ Resultado do concurso {id_c} gravado com sucesso!")
+                    st.success(f"✅ Resultado do concurso {id_c} gravado!")
                     st.rerun()
-                    
         except Exception as e:
-            st.error(f"❌ Erro técnico ao processar os dados: {e}")
+            st.error(f"❌ Erro ao processar: {e}")
+
 with abas[4]:
     mostrar_status_backup()
     st.header("💾 Backup e Status")
@@ -898,6 +899,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
