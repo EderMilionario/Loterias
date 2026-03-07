@@ -931,47 +931,54 @@ with abas[5]:
         """, language="javascript")
 
 with abas[6]:
-    st.markdown("""
-        <div class="painel-luxo-black">
-            <div class="moeda-animada">💰</div>
-            <div class="titulo-luxo-gold">🔗 ANÁLISE DE AFINIDADE E VÍNCULOS</div>
-            <div style="color:white; font-size:12px; margin-top:10px;">Identificação de pares de dezenas com alta frequência conjunta</div>
-        </div>
-    """, unsafe_allow_html=True)
+    st.header("🔗 Afinidade e Vínculos de Dezenas")
+    mod_af = st.selectbox("Loteria para Análise", list(st.session_state.custos.keys()), key="af_sel_final")
     
-    mod_af = st.selectbox("Selecione a Loteria para Estudo", list(st.session_state.custos.keys()), key="af_selector_new")
-    matriz_vinculos = calcular_matriz_afinidade_kadosh(mod_af)
-    
-    if matriz_vinculos:
-        col_vin1, col_vin2 = st.columns(2)
-        with col_vin1:
-            st.subheader("🔥 Top 15 Pares Mais Fortes")
-            lista_pares = []
-            for i in range(1, len(matriz_vinculos)):
-                for j in range(i + 1, len(matriz_vinculos)):
-                    freq = matriz_vinculos[i][j]
-                    if freq > 0:
-                        lista_pares.append({
-                            "Par": f"{i:02d} + {j:02d}", 
-                            "Frequência": freq, 
-                            "Afinidade": f"{(freq/max(1, len(st.session_state.ultimo_res[mod_af])))*100:.1f}%"
-                        })
-            st.table(pd.DataFrame(sorted(lista_pares, key=lambda x: x['Frequência'], reverse=True)[:15]))
-            
-        with col_vin2:
-            st.subheader("🚫 Pares em Vácuo (Exemplos)")
-            vacuos, cont_v = [], 0
-            for i in range(1, len(matriz_vinculos)):
-                for j in range(i + 1, len(matriz_vinculos)):
-                    if matriz_vinculos[i][j] == 0 and cont_v < 15: 
-                        vacuos.append(f"{i:02d} + {j:02d}")
-                        cont_v += 1
-            for v in vacuos: 
-                st.markdown(f"❌ `{v}`")
-                
-        st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
+    res_af = st.session_state.ultimo_res.get(mod_af, {})
+    if len(res_af) < 5:
+        st.warning("⚠️ Adicione mais resultados para calcular afinidade (mínimo 5).")
     else:
-        st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+        dezenas_lista = list(res_af.values())
+        total_jogos = len(dezenas_lista)
+        
+        # --- TABELA 1: CASAIS DE OURO ---
+        st.subheader("🔥 Casais de Ouro (Mais Frequentes)")
+        vinculos = []
+        for i in range(1, 26):
+            for j in range(i + 1, 26):
+                par = sum(1 for jogo in dezenas_lista if i in jogo and j in jogo)
+                porcentagem = (par / total_jogos) * 100
+                if porcentagem > 65: # Mostra quem sai junto em mais de 65% das vezes
+                    vinculos.append({"Par": f"{i:02d} & {j:02d}", "Afinidade %": f"{porcentagem:.1f}%", "Vezes": par})
+        
+        if vinculos:
+            st.table(pd.DataFrame(vinculos).sort_values(by="Vezes", ascending=False).head(10))
+        
+        st.markdown("---")
+        
+        # --- TABELA 2: PARES EM VÁCUO (INIMIGOS) ---
+        st.subheader("🚫 Pares em Vácuo (Raramente saem juntos)")
+        vacuos = []
+        for i in range(1, 26):
+            for j in range(i + 1, 26):
+                par = sum(1 for jogo in dezenas_lista if i in jogo and j in jogo)
+                # AJUSTE KADOSH: Se saíram juntos no máximo 2 vezes em 30 concursos
+                if par <= 2: 
+                    vacuos.append({"Inimigos": f"{i:02d} + {j:02d}", "Encontros": par})
+        
+        if vacuos:
+            st.info(f"🔎 Com base nos últimos {total_jogos} jogos, estas dezenas quase não se cruzam. Evite usá-las juntas como FIXAS.")
+            # Mostra os 15 vácuos mais fortes
+            df_v = pd.DataFrame(vacuos).sort_values(by="Encontros").head(15)
+            
+            # Exibição em colunas para ficar elegante
+            cols_v = st.columns(3)
+            for idx, row in df_v.iterrows():
+                cols_v[idx % 3].error(f"❌ {row['Inimigos']} ({row['Encontros']}x)")
+        else:
+            st.success("✅ Todas as dezenas têm boa convivência nos dados atuais.")
+
+
 
 
 
