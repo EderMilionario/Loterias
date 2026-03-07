@@ -1,5 +1,9 @@
 import streamlit as st
 import requests
+import time  # <--- ADICIONE ESTA LINHA AQUI
+import json
+# ... resto dos imports
+
 
 def buscar_ultimo_resultado_api():
     try:
@@ -213,14 +217,14 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
         if sequencia_max < 3 or sequencia_max > 5: 
             return False
 
-   # Mantenha este recuo exato de 4 espaços
+       # --- BLOCO GEOMÉTRICO E ESTATÍSTICO ADAPTATIVO ---
     linhas = [0]*5
     colunas = [0]*5
     for n in jogo:
         linhas[(n-1)//5] += 1
         colunas[(n-1)%5] += 1
 
-    # ESTA É A LINHA QUE DEU ERRO - COLE EXATAMENTE ASSIM:
+    # Limite flexível para permitir jogos de 15 a 20 dezenas
     if any(l > 5 for l in linhas) or any(c > 5 for c in colunas):
         return False
 
@@ -230,6 +234,7 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
     primos = len([n for n in jogo if n in primos_list])
     moldura = len([n for n in jogo if n in moldura_list])
     
+    # CONFIGURAÇÃO DINÂMICA (Se adapta ao número de dezenas - diff_n)
     cfg = {
         's': (165 + (diff_n * 12), 215 + (diff_n * 14)),
         'p': (4 + int(diff_n * 0.5), 7 + int(diff_n * 0.8)),
@@ -242,6 +247,7 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
         return False
     if not (cfg['m'][0] <= moldura <= cfg['m'][1]): 
         return False
+
 
     if jogo_ja_saiu(jogo, mod): 
         return False
@@ -980,6 +986,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
