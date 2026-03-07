@@ -456,20 +456,27 @@ with abas[0]:
     c1, c2 = st.columns(2)
     with c1:
         n_dez = st.selectbox("Dezenas por Bilhete", list(st.session_state.custos[mod].keys()))
-        qtd = st.number_input("Quantidade de Jogos", 1, 1000, 20) # Voltamos para o padrão de volume
+        qtd = st.number_input("Quantidade de Jogos", 1, 1000, 20)
         est_escolhida = st.selectbox("💎 ESTRATÉGIA", list(ESTRATEGIA_MAPA.keys()))
 
     with c2:
-        if st.button("🧠 CARREGAR POOL INTELIGENTE"):
-            if mod in st.session_state.analise_stats:
-                melhores = sorted(st.session_state.analise_stats[mod].items(), key=lambda x: x[1]['score'], reverse=True)
-                st.session_state.favoritas[mod] = sorted([n for n, s in melhores[:20]])
+        # BOTOÕES DE ATALHO DO POOL (VOLTARAM TODOS)
+        col_btn1, col_btn2 = st.columns(2)
+        with col_btn1:
+            if st.button("✅ TODO O VOLANTE"):
+                st.session_state.favoritas[mod] = list(range(1, (26 if mod=="Lotofácil" else 61)))
                 st.rerun()
+        with col_btn2:
+            if st.button("🧠 POOL INTELIGENTE"):
+                if mod in st.session_state.analise_stats:
+                    melhores = sorted(st.session_state.analise_stats[mod].items(), key=lambda x: x[1]['score'], reverse=True)
+                    st.session_state.favoritas[mod] = sorted([n for n, s in melhores[:20]])
+                    st.rerun()
 
         pool = st.multiselect("SEU POOL:", range(1, (26 if mod=="Lotofácil" else 61)), default=st.session_state.favoritas.get(mod, []))
         st.session_state.favoritas[mod] = pool
         
-        # --- 3. BLOCO DE FIXAS (O QUE SUMIU) ---
+        # --- 3. BLOCO DE FIXAS (IA COM SLIDER E VISUAL) ---
         st.markdown("#### 📌 CONFIGURAÇÃO DE FIXAS")
         modo_fixa = st.radio("SISTEMA DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática"], horizontal=True)
         
@@ -478,46 +485,51 @@ with abas[0]:
             fixas_final = st.multiselect("Selecione as fixas do seu pool:", options=pool)
         
         elif modo_fixa == "IA Automática":
-            num_fixas_ia = st.slider("Quantas dezenas a IA deve fixar?", 1, 10, 6)
+            num_fixas_ia = st.slider("Quantas dezenas fixar?", 1, 12, 6) # Slider liberado
             if mod in st.session_state.analise_stats:
                 stats = st.session_state.analise_stats[mod]
-                # A IA escolhe as melhores dezenas DENTRO do seu pool
+                # IA pega as top dezenas do radar QUE ESTÃO no seu pool
                 melhores_do_pool = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
                 fixas_final = melhores_do_pool[:num_fixas_ia]
-                st.warning(f"💎 IA DETERMINOU FIXAS: {', '.join([f'{x:02d}' for x in fixas_final])}")
+                if fixas_final:
+                    st.warning(f"💎 IA DETERMINOU FIXAS: {', '.join([f'{x:02d}' for x in fixas_final])}")
 
-    # --- 4. MOTOR GERADOR ---
+    # --- 4. MOTOR GERADOR KADOSH ---
     if st.button("🚀 EXECUTAR MOTOR KADOSH"):
         if len(pool) < n_dez:
-            st.error(f"Erro: Seu pool tem {len(pool)} dezenas, mas o bilhete precisa de {n_dez}!")
+            st.error(f"Erro: Seu pool tem {len(pool)} dezenas, precisa de {n_dez}!")
         else:
             novos = []
             p_sorteio = [n for n in pool if n not in fixas_final]
             tentativas = 0
-            # Aumentei o limite de busca para o motor não desistir fácil
-            while len(novos) < qtd and tentativas < 30000:
+            while len(novos) < qtd and tentativas < 35000: # Motor com fôlego
                 vagas = n_dez - len(fixas_final)
+                if len(p_sorteio) < vagas: break # Trava de segurança
                 comb = sorted(fixas_final + random.sample(p_sorteio, vagas))
                 if validar_kadosh_cirurgico(comb, mod, n_dez):
                     novos.append({"mod": mod, "n": comb, "tam": n_dez, "est": est_escolhida, "fixas_utilizadas": list(fixas_final), "pool_origem": list(pool)})
                 tentativas += 1
             st.session_state.jogos_gerados = novos
-            st.success(f"Motor finalizado! {len(novos)} jogos gerados com filtros aplicados.")
             st.rerun()
 
     # --- 5. LISTAGEM E SALVAMENTO ---
     if st.session_state.jogos_gerados:
+        st.markdown(f"### 📋 {len(st.session_state.jogos_gerados)} Jogos Prontos")
         for i, j in enumerate(st.session_state.jogos_gerados):
-            st.code(f"JOGO {i+1:02d} | {' '.join([f'{x:02d}' for x in j['n']])}")
+            st.code(f"ID {i+1:02d} | {' '.join([f'{x:02d}' for x in j['n']])}")
         
         c_alvo = st.number_input("Concurso Alvo:", 1, 9999, key="save_target_final")
-        if st.button("💾 SALVAR TUDO NO HISTÓRICO"):
+        if st.button("💾 CONFIRMAR E SALVAR TUDO"):
             for jogo in st.session_state.jogos_gerados:
                 jogo['concurso_alvo'] = c_alvo
                 st.session_state.jogos_salvos.append(jogo)
             st.session_state.jogos_gerados = []
-            st.success("Tudo salvo e pronto para conferir!")
+            st.success("Dados salvos no histórico!")
             st.rerun()
+
+        
+
+   
 
 
          
@@ -890,6 +902,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
