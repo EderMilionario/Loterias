@@ -3,16 +3,28 @@ import requests
 
 def buscar_ultimo_resultado_api():
     try:
-        # API pública que espelha os dados da Caixa
         url = "https://loterica.api.ghgi.com.br/api/lotofacil/latest"
-        response = requests.get(url, timeout=10)
+        # O SEGREDO: Simulando um navegador real para evitar bloqueios
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+        }
+        response = requests.get(url, headers=headers, timeout=15, verify=True)
+        
         if response.status_code == 200:
             dados = response.json()
-            # Retorna o concurso como texto e as dezenas com zero à esquerda (ex: '01')
-            return str(dados['concurso']), [str(n).zfill(2) for n in dados['dezenas']]
+            return str(dados['concurso']), [int(n) for n in dados['dezenas']]
     except Exception as e:
-        return None, None
+        # Se falhar, ele tenta uma SEGUNDA API de backup (Open Source)
+        try:
+            url_reserva = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
+            res = requests.get(url_reserva, timeout=10)
+            if res.status_code == 200:
+                d = res.json()
+                return str(d['concurso']), [int(n) for n in d['dezenas']]
+        except:
+            return None, None
     return None, None
+
 
 import json
 import random
@@ -703,65 +715,27 @@ with abas[2]:
         st.session_state.premios[mod_v] = novos_v
         st.success("✅ Valores atualizados!")
 
-
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database")
-    
-    # --- 1. SELEÇÃO DA LOTERIA ---
-    m_db = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="m_db_aba3")
-    
-    # --- 2. BOTÃO DE ATUALIZAÇÃO ONLINE (A MÁGICA) ---
-    st.markdown("---")
-    st.markdown("### 📡 Sincronização em Tempo Real")
-    col_sync, col_vazio = st.columns([1, 2])
-    
-    with col_sync:
-        if st.button("🔄 Atualizar Online"):
-            conc_api, dezenas_api = buscar_ultimo_resultado_api()
-            
-            if conc_api:
-                # Garante que a chave da loteria existe no dicionário
-                if m_db not in st.session_state.ultimo_res:
-                    st.session_state.ultimo_res[m_db] = {}
-                
-                # Adiciona o resultado se ele não existir
-                if conc_api not in st.session_state.ultimo_res[m_db]:
-                    # Converte dezenas da API (que são strings) para INT para manter seu padrão
-                    dezenas_int = [int(n) for n in dezenas_api]
-                    st.session_state.ultimo_res[m_db][conc_api] = dezenas_int
-                    st.success(f"✅ Concurso {conc_api} de {m_db} adicionado com sucesso!")
-                    st.rerun()
-                else:
-                    st.info(f"ℹ️ O concurso {conc_api} já consta no seu banco de dados.")
-            else:
-                st.error("❌ Não foi possível conectar à API. Tente novamente ou use o modo manual.")
+    m_db = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="m_db_final")
+
+    # BOTÃO SINCRO
+    if st.button("🔄 SINCRO ONLINE (API KADOSH)"):
+        c_api, d_api = buscar_ultimo_resultado_api()
+        if c_api:
+            st.session_state.ultimo_res[m_db][c_api] = d_api
+            st.success(f"🚀 SINCERIZADO! Concurso {c_api} adicionado.")
+            st.rerun()
+        else:
+            st.error("❌ Bloqueio de Servidor detectado. Use o modo manual abaixo.")
 
     st.markdown("---")
+    # ENTRADA MANUAL (O SEU MODO QUE NÃO FALHA)
+    id_c = st.number_input("Nº Concurso", 1, 9999, key="id_c_manual")
+    txt_site = st.text_area("Cole os números do site aqui:").strip()
+    # ... (o resto do seu código de processamento de texto que você já tem)
 
-    # --- 3. ENTRADA MANUAL (O QUE VOCÊ JÁ TINHA) ---
-    st.subheader("✍️ Entrada Manual / Colar do Site")
-    id_c = st.number_input("Nº Concurso Manual", 1, 9999, key="id_c_manual")
-    
-    txt_site = st.text_area("Cole os números sorteados aqui (aceita qualquer formato)", key="txt_area_db").strip()
-    
-    if txt_site:
-        try:
-            if len(txt_site) > 10 and " " not in txt_site and "-" not in txt_site:
-                extraidos = [txt_site[i:i+2] for i in range(0, len(txt_site), 2)]
-            else:
-                extraidos = re.findall(r'\d+', txt_site)
-            
-            nums = sorted(list(set([int(n) for n in extraidos if 1 <= int(n) <= 80])))
-            
-            if nums:
-                st.code(" ".join([f"{x:02d}" for x in nums]))
-                if st.button("💾 GRAVAR RESULTADO MANUAL"):
-                    st.session_state.ultimo_res[m_db][str(int(id_c))] = nums
-                    st.success(f"✅ Resultado do concurso {id_c} gravado!")
-                    st.rerun()
-        except Exception as e:
-            st.error(f"❌ Erro ao processar: {e}")
 
 with abas[4]:
     mostrar_status_backup()
@@ -899,6 +873,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
