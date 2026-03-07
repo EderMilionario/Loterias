@@ -182,6 +182,26 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
     # 1. Âncoras de Início e Fim
     if not (jogo[0] in [1, 2, 3] and jogo[-1] in [23, 24, 25]): 
         return False
+           # --- INÍCIO DA ATUALIZAÇÃO: QUADRANTES KADOSH ---
+    q1 = [1, 2, 3, 6, 7, 8, 11, 12, 13]
+    q2 = [4, 5, 9, 10, 14, 15]
+    q3 = [16, 17, 21, 22]
+    q4 = [18, 19, 20, 23, 24, 25]
+    
+    cq1 = len([n for n in jogo if n in q1])
+    cq2 = len([n for n in jogo if n in q2])
+    cq3 = len([n for n in jogo if n in q3])
+    cq4 = len([n for n in jogo if n in q4])
+    
+    # Sincronia com o Pool para evitar loop infinito
+    pool_atual = st.session_state.get('pool_selecionado', [])
+    if len(pool_atual) >= 18:
+        # Filtro de equilíbrio geográfico
+        distribuicao = [cq1, cq2, cq3, cq4]
+        if any(q < 1 for q in distribuicao) or any(q > 7 for q in distribuicao):
+            return False
+    # --- FIM DA ATUALIZAÇÃO ---
+ 
     
     # 2. Salto Máximo entre dezenas
     for i in range(len(jogo)-1):
@@ -988,6 +1008,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
