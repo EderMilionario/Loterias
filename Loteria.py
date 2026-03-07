@@ -719,67 +719,66 @@ with abas[2]:
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database - Gerenciar Resultados")
-    m_db = st.selectbox("Selecione a Loteria", list(st.session_state.custos.keys()), key="m_db_final")
+    
+    # Seletor de qual loteria estamos mexendo
+    m_db = st.selectbox("Selecione a Loteria", list(st.session_state.custos.keys()), key="m_db_final_novo")
 
-    # --- PARTE 1: SINCRO AUTOMÁTICO ---
-    col_api1, col_api2 = st.columns([2, 1])
-    with col_api1:
-        st.markdown("### 🌐 Sincronização Online")
-        if st.button("🔄 BUSCAR ÚLTIMO RESULTADO (API)", use_container_width=True):
-            with st.spinner("Consultando servidores da Caixa..."):
-                c_api, d_api = buscar_ultimo_resultado_api()
-                if c_api:
-                    # Salva no banco de dados interno
-                    st.session_state.ultimo_res[m_db][str(c_api)] = d_api
-                    st.success(f"✅ SUCESSO! Concurso {c_api} adicionado à base.")
-                    st.balloons()
-                    st.rerun()
-                else:
-                    st.error("❌ Falha na API. O servidor pode estar instável. Use o modo manual abaixo.")
+    # --- PARTE 1: SINCRO AUTOMÁTICO (API) ---
+    st.markdown("### 🌐 Sincronização Online")
+    if st.button("🔄 BUSCAR ÚLTIMO RESULTADO (API)", use_container_width=True):
+        with st.spinner("Consultando servidores da Caixa..."):
+            c_api, d_api = buscar_ultimo_resultado_api()
+            if c_api:
+                st.session_state.ultimo_res[m_db][str(c_api)] = d_api
+                
+                # MENSAGEM DE SUCESSO COM TRAVA DE TEMPO
+                st.success(f"🚀 SUCESSO! Concurso {c_api} gravado na base.")
+                st.toast(f"✅ Concurso {c_api} adicionado!", icon="💰")
+                
+                import time
+                time.sleep(3) # Aguarda 3 segundos para você conseguir ler
+                st.rerun()
+            else:
+                st.error("❌ Falha na API. O servidor pode estar instável. Use o modo manual abaixo.")
 
     st.markdown("---")
 
-    # --- PARTE 2: ENTRADA MANUAL (O SEU MODO DE COPIAR E COLAR) ---
+    # --- PARTE 2: ENTRADA MANUAL (O SEU MODO COPIA E COLA) ---
     st.markdown("### ✍️ Cadastro Manual / Cópia de Site")
     col_man1, col_man2 = st.columns(2)
     
     with col_man1:
-        id_c_manual = st.number_input("Número do Concurso", 1, 9999, key="id_manual_input")
+        id_c_manual = st.number_input("Número do Concurso", 1, 9999, key="id_manual_input_novo")
     
-    txt_site = st.text_area("Cole aqui o resultado (pode vir com texto, o sistema limpa):", placeholder="Ex: 01 02 03... ou 'Resultado: 01, 02...'").strip()
+    txt_site = st.text_area("Cole aqui o resultado do site:", placeholder="Ex: 01 02 03...", height=100).strip()
 
     if txt_site:
-        # A MÁGICA: O re.findall extrai apenas os números do que você colou
+        # Extrai apenas números do texto colado (filtro inteligente)
         numeros_extraidos = [int(n) for n in re.findall(r'\d+', txt_site)]
-        
-        # Filtra números válidos (ex: remove o número do concurso se ele vier no bolo)
-        # Na Lotofácil, esperamos números de 1 a 25
         max_v = 25 if m_db == "Lotofácil" else 60
-        dezenas_limpas = sorted([n for n in numeros_extraidos if 1 <= n <= max_v])
-        
-        # Remove duplicados mantendo a ordem
-        dezenas_limpas = sorted(list(set(dezenas_limpas)))
+        dezenas_limpas = sorted(list(set([n for n in numeros_extraidos if 1 <= n <= max_v])))
 
         if len(dezenas_limpas) > 0:
             st.warning(f"🔎 Detectamos {len(dezenas_limpas)} dezenas: {dezenas_limpas}")
             
-            if st.button(f"💾 GRAVAR CONCURSO {id_c_manual} NO BANCO"):
+            if st.button(f"💾 GRAVAR CONCURSO {id_c_manual} NO BANCO", use_container_width=True):
                 st.session_state.ultimo_res[m_db][str(id_c_manual)] = dezenas_limpas
+                
+                # MENSAGEM DE SUCESSO COM TRAVA DE TEMPO
                 st.success(f"✅ Concurso {id_c_manual} gravado com sucesso!")
+                st.toast("Dados salvos no Banco!", icon="💾")
+                
+                import time
+                time.sleep(3) # Aguarda 3 segundos para conferência visual
                 st.rerun()
         else:
             st.info("Aguardando dezenas válidas no campo de texto...")
 
-    # --- PARTE 3: VISUALIZAÇÃO DO QUE JÁ ESTÁ SALVO ---
-    with st.expander("📊 Ver Resultados Salvos nesta Sessão"):
+    # Visualização rápida do que já existe
+    with st.expander("📊 Ver Resultados Salvos"):
         if st.session_state.ultimo_res[m_db]:
-            df_res = pd.DataFrame([
-                {"Concurso": k, "Dezenas": str(v)} 
-                for k, v in st.session_state.ultimo_res[m_db].items()
-            ])
-            st.table(df_res.sort_values(by="Concurso", ascending=False))
-        else:
-            st.write("Nenhum resultado cadastrado ainda.")
+            dados_tabela = [{"Concurso": k, "Dezenas": ", ".join([f"{x:02d}" for x in v])} for k, v in st.session_state.ultimo_res[m_db].items()]
+            st.table(pd.DataFrame(dados_tabela).sort_values(by="Concurso", ascending=False))
 
 
 
@@ -787,78 +786,59 @@ with abas[4]:
     mostrar_status_backup()
     st.header("💾 Gestão de Dados e Backup")
     
-    # 1. PREPARAÇÃO DO PACOTE DE DADOS (O QUE VAI DENTRO DO ARQUIVO)
+    # Lógica para definir o nome do arquivo baseado no último concurso salvo
+    res_loto = st.session_state.ultimo_res.get("Lotofácil", {})
+    if res_loto:
+        # Pega o maior ID de concurso cadastrado
+        ultimo_id = max(res_loto.keys(), key=int)
+        nome_arquivo = f"KADOSH_LOTO_{ultimo_id}_BKP.json"
+    else:
+        nome_arquivo = "KADOSH_BACKUP_VAZIO.json"
+
+    # Prepara o pacote completo de dados para download
     dados_para_backup = {
         "salvos": st.session_state.jogos_salvos, 
         "premios": st.session_state.premios, 
         "res": st.session_state.ultimo_res,
         "favoritas": st.session_state.favoritas
     }
-    
-    # Transforma o dicionário em texto formatado JSON
-    try:
-        data_json = json.dumps(dados_para_backup, indent=4)
-    except Exception as e:
-        st.error(f"Erro ao preparar dados: {e}")
-        data_json = "{}"
+    data_json = json.dumps(dados_para_backup, indent=4)
 
-    # 2. INTERFACE DE USUÁRIO (COLUNAS)
     col_back1, col_back2 = st.columns(2)
     
     with col_back1:
         st.subheader("📤 Exportar Sistema")
-        st.markdown("""
-        <div style='background-color: #e3f2fd; padding: 15px; border-radius: 10px; border-left: 5px solid #1e3799;'>
-            <p style='color: #0d47a1; margin: 0;'><b>💡 Dica Kadosh:</b> Sempre baixe o backup após cadastrar novos resultados ou gerar jogos importantes. O Streamlit Cloud limpa a memória periodicamente.</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.write("") # Espaçador
-        
+        st.info(f"📂 O arquivo será baixado como: {nome_arquivo}")
         st.download_button(
             label="🚀 BAIXAR BACKUP AGORA (.JSON)",
             data=data_json,
-            file_name="backup_kadosh_loterias.json",
+            file_name=nome_arquivo, # Nome inteligente aqui
             mime="application/json",
             use_container_width=True
         )
 
     with col_back2:
         st.subheader("📥 Restaurar Sistema")
-        st.write("Se o sistema resetar, suba seu arquivo aqui:")
-        f = st.file_uploader("Selecione o arquivo .json", type="json", label_visibility="collapsed")
-        
+        f = st.file_uploader("Suba seu arquivo .json de backup", type="json")
         if f is not None:
             if st.button("⚠️ CONFIRMAR RESTAURAÇÃO TOTAL", use_container_width=True):
                 try:
                     d = json.load(f)
-                    # Atualiza cada parte do estado do sistema
                     st.session_state.jogos_salvos = d.get("salvos", [])
                     st.session_state.premios = d.get("premios", st.session_state.premios)
                     st.session_state.ultimo_res = d.get("res", st.session_state.ultimo_res)
                     st.session_state.favoritas = d.get("favoritas", st.session_state.favoritas)
-                    
                     st.success("✅ Sistema Restaurado com Sucesso!")
-                    st.balloons()
                     st.rerun()
                 except Exception as e:
-                    st.error(f"❌ Erro crítico na restauração: {e}")
+                    st.error(f"Erro ao ler arquivo: {e}")
 
     st.markdown("---")
-    
-    # 3. PAINEL DE MONITORAMENTO
-    st.subheader("📊 Integridade da Base de Dados")
-    c1, c2, c3 = st.columns(3)
-    
-    with c1:
-        st.metric("Jogos Salvos", len(st.session_state.jogos_salvos))
-    with c2:
-        total_res = sum(len(v) for v in st.session_state.ultimo_res.values())
-        st.metric("Resultados em Memória", total_res)
-    with c3:
-        # Tamanho aproximado em KB
-        tamanho_kb = len(data_json) / 1024
-        st.metric("Tamanho do Backup", f"{tamanho_kb:.1f} KB")
+    st.subheader("📊 Status da Memória")
+    c1, c2 = st.columns(2)
+    c1.metric("Jogos Salvos", len(st.session_state.jogos_salvos))
+    c2.metric("Resultados em Banco", sum(len(v) for v in st.session_state.ultimo_res.values()))
+
 
 
 with abas[5]:
@@ -984,6 +964,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
