@@ -718,24 +718,69 @@ with abas[2]:
 
 with abas[3]:
     mostrar_status_backup()
-    st.header("📥 Database")
-    m_db = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="m_db_final")
+    st.header("📥 Database - Gerenciar Resultados")
+    m_db = st.selectbox("Selecione a Loteria", list(st.session_state.custos.keys()), key="m_db_final")
 
-    # BOTÃO SINCRO
-    if st.button("🔄 SINCRO ONLINE (API KADOSH)"):
-        c_api, d_api = buscar_ultimo_resultado_api()
-        if c_api:
-            st.session_state.ultimo_res[m_db][c_api] = d_api
-            st.success(f"🚀 SINCERIZADO! Concurso {c_api} adicionado.")
-            st.rerun()
-        else:
-            st.error("❌ Bloqueio de Servidor detectado. Use o modo manual abaixo.")
+    # --- PARTE 1: SINCRO AUTOMÁTICO ---
+    col_api1, col_api2 = st.columns([2, 1])
+    with col_api1:
+        st.markdown("### 🌐 Sincronização Online")
+        if st.button("🔄 BUSCAR ÚLTIMO RESULTADO (API)", use_container_width=True):
+            with st.spinner("Consultando servidores da Caixa..."):
+                c_api, d_api = buscar_ultimo_resultado_api()
+                if c_api:
+                    # Salva no banco de dados interno
+                    st.session_state.ultimo_res[m_db][str(c_api)] = d_api
+                    st.success(f"✅ SUCESSO! Concurso {c_api} adicionado à base.")
+                    st.balloons()
+                    st.rerun()
+                else:
+                    st.error("❌ Falha na API. O servidor pode estar instável. Use o modo manual abaixo.")
 
     st.markdown("---")
-    # ENTRADA MANUAL (O SEU MODO QUE NÃO FALHA)
-    id_c = st.number_input("Nº Concurso", 1, 9999, key="id_c_manual")
-    txt_site = st.text_area("Cole os números do site aqui:").strip()
-    # ... (o resto do seu código de processamento de texto que você já tem)
+
+    # --- PARTE 2: ENTRADA MANUAL (O SEU MODO DE COPIAR E COLAR) ---
+    st.markdown("### ✍️ Cadastro Manual / Cópia de Site")
+    col_man1, col_man2 = st.columns(2)
+    
+    with col_man1:
+        id_c_manual = st.number_input("Número do Concurso", 1, 9999, key="id_manual_input")
+    
+    txt_site = st.text_area("Cole aqui o resultado (pode vir com texto, o sistema limpa):", placeholder="Ex: 01 02 03... ou 'Resultado: 01, 02...'").strip()
+
+    if txt_site:
+        # A MÁGICA: O re.findall extrai apenas os números do que você colou
+        numeros_extraidos = [int(n) for n in re.findall(r'\d+', txt_site)]
+        
+        # Filtra números válidos (ex: remove o número do concurso se ele vier no bolo)
+        # Na Lotofácil, esperamos números de 1 a 25
+        max_v = 25 if m_db == "Lotofácil" else 60
+        dezenas_limpas = sorted([n for n in numeros_extraidos if 1 <= n <= max_v])
+        
+        # Remove duplicados mantendo a ordem
+        dezenas_limpas = sorted(list(set(dezenas_limpas)))
+
+        if len(dezenas_limpas) > 0:
+            st.warning(f"🔎 Detectamos {len(dezenas_limpas)} dezenas: {dezenas_limpas}")
+            
+            if st.button(f"💾 GRAVAR CONCURSO {id_c_manual} NO BANCO"):
+                st.session_state.ultimo_res[m_db][str(id_c_manual)] = dezenas_limpas
+                st.success(f"✅ Concurso {id_c_manual} gravado com sucesso!")
+                st.rerun()
+        else:
+            st.info("Aguardando dezenas válidas no campo de texto...")
+
+    # --- PARTE 3: VISUALIZAÇÃO DO QUE JÁ ESTÁ SALVO ---
+    with st.expander("📊 Ver Resultados Salvos nesta Sessão"):
+        if st.session_state.ultimo_res[m_db]:
+            df_res = pd.DataFrame([
+                {"Concurso": k, "Dezenas": str(v)} 
+                for k, v in st.session_state.ultimo_res[m_db].items()
+            ])
+            st.table(df_res.sort_values(by="Concurso", ascending=False))
+        else:
+            st.write("Nenhum resultado cadastrado ainda.")
+
 
 
 with abas[4]:
@@ -874,6 +919,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
