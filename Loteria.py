@@ -286,6 +286,7 @@ ESTRATEGIA_MAPA = {
     "7. SIMETRIA GEOMÉTRICA": {"dez": 16, "qtd": 2, "desc": "02 de 16 + 08 de 15", "qtd_15": 8, "prob": "1/81.719", "peso": 0.85},
     "8. RASTREAMENTO DE CICLO": {"dez": 16, "qtd": 1, "desc": "01 de 16 + 06 de 15 (Tendência)", "qtd_15": 6, "prob": "Alta Recorrência", "peso": 0.88},
     "9. CERCO POR ELIMINAÇÃO": {"dez": 15, "qtd": 10, "desc": "10 Jogos de 15 (Quentes vs Atrasados)", "prob": "Equilibrada", "peso": 0.75}
+    "10. KADOSH PRESTIGE 20": {"dez": 15, "qtd": 36, "desc": "Pool 20 | 36 Jogos | ~91% de chance para 14 pts", "prob": "1/90.800", "peso": 0.91}
 }
 
 MATRIZES_FECHAMENTO = {
@@ -548,7 +549,10 @@ with abas[0]:
                 gerar_com_matriz(16, 5)
             elif est_escolhida == "7. SIMETRIA GEOMÉTRICA":
                 gerar_com_matriz(16, 2)
-                gerar_com_matriz(15, 8)
+                gerar_com_matriz(15, 8
+            elif est_escolhida == "10. KADOSH PRESTIGE 20":
+                # Esta função já existe no seu código e fará todo o trabalho
+                gerar_com_matriz(15, 36)                    
             elif est_escolhida != "Personalizado" and mod == "Lotofácil":
                 gerar_com_matriz(info_est['dez'], info_est.get('qtd', 1))
                 if "qtd_15" in info_est:
@@ -857,6 +861,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
