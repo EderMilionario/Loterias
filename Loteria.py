@@ -395,19 +395,22 @@ st.info(f"📡 **RADAR KADOSH:** Base sincronizada até o Concurso **{ultimo_c_t
 # --- A PRÓXIMA LINHA JÁ EXISTE NO SEU CÓDIGO (NÃO PRECISA RECOPIAR) ---
 abas = st.tabs(["🎯 GERADOR PRO", "🔍 CONFERIR", "⚙️ VALORES", "📥 DATABASE", "💾 BACKUP", "🧠 INTELIGÊNCIA", "🔗 AFINIDADE"])
 
+
 with abas[0]:
     mostrar_status_backup()
     mod = st.selectbox("Modalidade", list(st.session_state.custos.keys()), key="mod_selector")
     
-    # Motor de IA: Score, Quentes e Frios
+    # Atualiza estatísticas se houver resultados
     res_loto = st.session_state.ultimo_res.get(mod, {})
     if res_loto:
         conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
         contagem = Counter()
         for c in conc_ordenados[:20]:
             for n in res_loto[c]: contagem[n] += 1
+        
         stats_temp = {}
-        for n in range(1, 26 if mod == "Lotofácil" else 61):
+        max_n = 26 if mod == "Lotofácil" else 61
+        for n in range(1, max_n):
             atraso_n = 0
             for c in conc_ordenados:
                 if n not in res_loto[c]: atraso_n += 1
@@ -415,7 +418,6 @@ with abas[0]:
             stats_temp[n] = {'score': contagem[n] + (atraso_n * 1.5)}
         st.session_state.analise_stats[mod] = stats_temp
 
-    # Layout de Seleção
     col_est1, col_est2 = st.columns(2)
     with col_est1:
         est_escolhida = st.selectbox("💎 ESTRATÉGIA KADOSH", list(ESTRATEGIA_MAPA.keys()))
@@ -427,8 +429,7 @@ with abas[0]:
     with c1:
         n_dez = st.selectbox("Dezenas por Bilhete", list(st.session_state.custos[mod].keys()))
         qtd = st.number_input("Quantidade de Jogos", 1, 500, 10)
-        # VISUALIZAÇÃO DOS QUENTES
-        if mod in st.session_state.analise_stats:
+        if mod in st.session_state.analise_stats and st.session_state.analise_stats[mod]:
             quentes = sorted(st.session_state.analise_stats[mod].items(), key=lambda x: x[1]['score'], reverse=True)[:5]
             st.caption(f"🔥 TOP SCORING: {', '.join([str(x[0]) for x in quentes])}")
 
@@ -440,7 +441,7 @@ with abas[0]:
                 st.rerun()
         with col_btn2:
             if st.button("🧠 POOL INTELIGENTE"):
-                if mod in st.session_state.analise_stats:
+                if mod in st.session_state.analise_stats and st.session_state.analise_stats[mod]:
                     melhores = sorted(st.session_state.analise_stats[mod].items(), key=lambda x: x[1]['score'], reverse=True)
                     st.session_state.favoritas[mod] = sorted([n for n, s in melhores[:20]])
                     st.rerun()
@@ -448,49 +449,50 @@ with abas[0]:
         pool = st.multiselect("SELECIONE SEU POOL", range(1, (26 if mod=="Lotofácil" else 61)), default=st.session_state.favoritas.get(mod, []))
         st.session_state.favoritas[mod] = pool
         
-        # MODO DE FIXAÇÃO INTELIGENTE (O QUE VOCÊ SENTIU FALTA)
         modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática"], horizontal=True)
         fixas_final = []
         if modo_fixa == "Manual":
             fixas_final = st.multiselect("📌 FIXAR (DO POOL):", options=pool)
         elif modo_fixa == "IA Automática":
-            if mod in st.session_state.analise_stats:
+            if mod in st.session_state.analise_stats and st.session_state.analise_stats[mod]:
                 stats = st.session_state.analise_stats[mod]
                 melhores_do_pool = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
                 fixas_final = melhores_do_pool[:6]
                 st.warning(f"💎 IA FIXOU: {', '.join(map(str, fixas_final))}")
 
-    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-        # TRAVA DE SEGURANÇA (ITEM 2)
-        if len(fixas_final) >= 2:
-            fixas_ord = sorted(fixas_final)
-            seq, atual = 1, 1
-            for i in range(len(fixas_ord)-1):
-                if fixas_ord[i+1] - fixas_ord[i] == 1:
-                    atual += 1
-                    seq = max(seq, atual)
-                else: atual = 1
-            if seq > 5:
-                st.error(f"❌ SEQUÊNCIA DE {seq} FIXAS: O filtro Kadosh não aceita. Máximo é 5!")
-                st.stop()
+    if st.button("🚀 GERAR JOGOS"):
+        if len(pool) < n_dez:
+            st.error(f"Selecione pelo menos {n_dez} dezenas no Pool!")
+        else:
+            novos = []
+            p_sorteio = [n for n in pool if n not in fixas_final]
+            tentativas = 0
+            while len(novos) < qtd and tentativas < 10000:
+                vagas = n_dez - len(fixas_final)
+                comb = sorted(fixas_final + random.sample(p_sorteio, vagas))
+                if validar_kadosh_cirurgico(comb, mod, n_dez):
+                    novos.append({"mod": mod, "n": comb, "tam": n_dez, "est": est_escolhida, "fixas_utilizadas": list(fixas_final), "pool_origem": list(pool)})
+                tentativas += 1
+            st.session_state.jogos_gerados = novos
+            st.rerun()
 
-        # MOTOR DE GERAÇÃO
-        novos = []
-        p_sorteio = [n for n in pool if n not in fixas_final]
-        tentativas = 0
-        while len(novos) < qtd and tentativas < 15000:
-            vagas = n_dez - len(fixas_final)
-            comb = sorted(fixas_final + random.sample(p_sorteio, vagas))
-            if validar_kadosh_cirurgico(comb, mod, n_dez):
-                novos.append({"mod": mod, "n": comb, "tam": n_dez, "est": est_escolhida, "chance": definir_label_chance(comb, mod), "fixas_utilizadas": list(fixas_final)})
-            tentativas += 1
-        st.session_state.jogos_gerados = novos
-        st.rerun()
-
-    # LISTAGEM COM QUADRANTES
-    for i, j in enumerate(st.session_state.jogos_gerados):
-        quads = analisar_quadrantes(j['n'])
-        st.code(f"ID {i+1:02d} | Q[{quads}] | {j['est'][:12]:<12} | {' '.join([f'{x:02d}' for x in j['n']])}")
+    # --- LISTAGEM E BOTÃO DE SALVAR ---
+    if st.session_state.jogos_gerados:
+        st.markdown("### 📋 Jogos Gerados")
+        for i, j in enumerate(st.session_state.jogos_gerados):
+            quads = analisar_quadrantes(j['n'])
+            st.code(f"ID {i+1:02d} | Q[{quads}] | {' '.join([f'{x:02d}' for x in j['n']])}")
+        
+        st.markdown("---")
+        c_alvo = st.number_input("Concurso Alvo para salvar:", 1, 9999, key="save_target")
+        if st.button("💾 CONFIRMAR E SALVAR NO HISTÓRICO"):
+            for jogo in st.session_state.jogos_gerados:
+                jogo['concurso_alvo'] = c_alvo
+                st.session_state.jogos_salvos.append(jogo)
+            st.success(f"✅ {len(st.session_state.jogos_gerados)} jogos salvos para o concurso {c_alvo}!")
+            st.session_state.jogos_gerados = []
+            st.rerun()
+        
 
          
 
@@ -862,6 +864,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
