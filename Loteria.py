@@ -702,18 +702,19 @@ with abas[1]:
                 sorteados = set(res_db[alvo])
                 acertos = len(set(j['n']).intersection(sorteados))
                 val = st.session_state.premios[mod_f].get(str(acertos), 0.0)
-                
-                # --- NOVO: SCANNER DE FIXAS ---
-                if "fixas_utilizadas" in j and j["fixas_utilizadas"]:
-                    fixas_u = j["fixas_utilizadas"]
+                                # --- NOVO: SCANNER DE FIXAS (VERSÃO BLINDADA) ---
+                fixas_u = j.get("fixas_utilizadas", [])
+                if fixas_u:
                     acertos_f = set(fixas_u).intersection(sorteados)
                     
                     bolinhas = ""
                     for f in fixas_u:
+                        # Cor verde se acertou a fixa, vermelho se errou
                         cor_f = "#2ecc71" if f in sorteados else "#e74c3c"
                         bolinhas += f'<span style="background:{cor_f}; color:white; padding:2px 8px; border-radius:50%; margin-right:5px; border:1px solid black; font-size:11px; font-weight:bold;">{f:02d}</span>'
                     
                     st.markdown(f"📍 **FIXAS:** {bolinhas} | **Acertos: {len(acertos_f)}/{len(fixas_u)}**", unsafe_allow_html=True)
+
 
                 # Mantendo sua exibição original intacta
                 st.markdown(f"<div {'class=\"jogo-premiado\"' if val>0 else ''}>**ID {i+1:02d}** | `{txt_jogo}` | **{acertos} ACERTOS** ({formata_dinheiro(val)})</div>", unsafe_allow_html=True)
@@ -991,6 +992,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
