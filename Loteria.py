@@ -256,6 +256,20 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
         return False
         
     return True
+def analisar_quadrantes(jogo):
+    # Divide o volante 5x5 em 4 partes (Q1, Q2, Q3, Q4)
+    # Q1: 1,2,3 / 6,7,8 | Q2: 4,5 / 9,10 ... e assim por diante
+    q1 = q2 = q3 = q4 = 0
+    for n in jogo:
+        # Lógica de Quadrantes para Lotofácil (1-25)
+        linha = (n-1) // 5
+        coluna = (n-1) % 5
+        if linha <= 2 and coluna <= 2: q1 += 1
+        elif linha <= 2 and coluna > 2: q2 += 1
+        elif linha > 2 and coluna <= 2: q3 += 1
+        else: q4 += 1
+    return [q1, q2, q3, q4]
+    
 
 
 def renderizar_heatmap(mod, res_loto):
@@ -553,17 +567,26 @@ with abas[0]:
         
         renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
 
-    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-        if len(pool) < (info_fech['n_pool'] if info_fech else n_dez):
-            st.error(f"Seu Pool precisa de pelo menos {info_fech['n_pool'] if info_fech else n_dez} dezenas!")
-        else:
-            novos = []
-            def gerar_com_matriz(tamanho_solicitado, quantidade, filtragem=True):
-                sucessos, tentativas = 0, 0
-                pool_para_sorteio = [n for n in pool if n not in fixas_final]
-                vagas_abertas = tamanho_solicitado - len(fixas_final)
+        if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
+        # --- NOVO: TRAVA ANTI-TRAVAMENTO (ITEM 2) ---
+        if len(fixas_final) >= 2:
+            fixas_ord = sorted(fixas_final)
+            sequencia_nas_fixas = 1
+            atual = 1
+            for i in range(len(fixas_ord)-1):
+                if fixas_ord[i+1] - fixas_ord[i] == 1:
+                    atual += 1
+                    sequencia_nas_fixas = max(sequencia_nas_fixas, atual)
+                else: atual = 1
+            
+            if sequencia_nas_fixas > 5:
+                st.error(f"❌ SEQUÊNCIA INVÁLIDA: Suas fixas têm {sequencia_nas_fixas} números seguidos. O filtro Kadosh só aceita até 5. Mude suas fixas!")
+                st.stop()
+        # --- FIM DA TRAVA ---
 
-                while sucessos < quantidade and tentativas < 20000:
+        if len(pool) < (info_fech['n_pool'] if info_fech else n_dez):
+            # ... resto do código que você já tem (if len(pool)...)
+
                     if len(pool_para_sorteio) >= vagas_abertas and vagas_abertas >= 0:
                         complemento = random.sample(pool_para_sorteio, vagas_abertas)
                         comb = sorted(fixas_final + complemento)
@@ -615,13 +638,22 @@ with abas[0]:
             
             st.session_state.jogos_gerados = novos
             st.rerun()
+        # --- BLOCO DE EXIBIÇÃO DOS JOGOS (VERSÃO COM QUADRANTES) ---
     for i, j in enumerate(st.session_state.jogos_gerados):
+        # 1. Formata os números (01 02...)
         txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
-        st.code(f"ID {i+1:02d} | {j['est'][:15]:<15} | {len(j['n']):02d} DEZ | {txt_jogo} | {j['chance']}")
- 
-
+        
+        # 2. Calcula os quadrantes usando a função nova
+        quads = analisar_quadrantes(j['n']) 
+        
+        # 3. Mostra na tela com o novo layout
+        # ID | Q[Canto1|Canto2|Canto3|Canto4] | Estratégia | Números | Chance
+        st.code(f"ID {i+1:02d} | Q[{quads}] | {j['est'][:12]:<12} | {txt_jogo} | {j['chance']}")
     
+    # --- BOTÃO DE SALVAR (VEM LOGO ABAIXO) ---
     if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
+        # ... seu código de salvar continua aqui ...
+
         res_existentes = st.session_state.ultimo_res.get(mod, {})
         ultimo_c = int(max(res_existentes.keys(), key=int)) if res_existentes else 0
         pool_atual = list(st.session_state.favoritas.get(mod, [])) 
@@ -999,6 +1031,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
