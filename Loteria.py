@@ -397,12 +397,19 @@ st.info(f"📡 **RADAR KADOSH:** Base sincronizada até o Concurso **{ultimo_c_t
 abas = st.tabs(["🎯 GERADOR PRO", "🔍 CONFERIR", "⚙️ VALORES", "📥 DATABASE", "💾 BACKUP", "🧠 INTELIGÊNCIA", "🔗 AFINIDADE"])
 
 with abas[0]:
-    # --- CORREÇÃO DE SEGURANÇA (INICIALIZAÇÃO) ---
+    # --- 1. INICIALIZAÇÃO DE SEGURANÇA (O PULO DO GATO) ---
+    est_escolhida = "Personalizado" # Valor padrão se não entrar no IF
+    fe_escolhido = "Nenhum"         # Valor padrão
+    fixas_final = []               # Garante que a lista de fixas exista sempre
+    
     if 'analise_stats' not in st.session_state:
         st.session_state.analise_stats = {}
     
     mostrar_status_backup()
     mod = st.selectbox("Modalidade", list(st.session_state.custos.keys()), key="mod_selector")
+    
+    # ... resto do seu código (os IFs que vêm abaixo vão sobrescrever esses valores se necessário)
+
     
     if 'ultima_mod_selecionada' not in st.session_state:
         st.session_state.ultima_mod_selecionada = mod
@@ -992,6 +999,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
