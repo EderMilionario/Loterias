@@ -567,17 +567,23 @@ with abas[0]:
                 for idx, qtd_l in enumerate(linhas_p):
                     cols_q[idx].metric(f"Linha {idx+1}", f"{qtd_l} dez")
         
+                # --- INÍCIO DA CORREÇÃO DE INDENTAÇÃO ---
         modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
         fixas_final = []
+        
         if modo_fixa == "Manual":
             fixas_final = st.multiselect("📌 CRAVAR DEZENAS:", options=pool)
-                elif modo_fixa == "IA Automática (Score)":
+            
+        elif modo_fixa == "IA Automática (Score)":
             qtd_auto = st.slider("Qtd de Cravadas:", 1, 10, 6)
-            # Usa o ranking científico calculado acima para cravar as fixas
-            if 'score_kadosh' in locals():
+            # Verifica se o motor de score foi processado no botão do Pool
+            if 'score_kadosh' in locals() or 'score_kadosh' in globals():
                 melhores_fixas = sorted([n for n in pool], key=lambda x: score_kadosh.get(x, 0), reverse=True)
                 fixas_final = melhores_fixas[:qtd_auto]
-                st.info(f"💎 IA KADOSH CRAVOU (50/30/20): {', '.join(map(str, fixas_final))}")
+                st.info(f"💎 IA KADOSH (50/30/20): {', '.join(map(str, fixas_final))}")
+            else:
+                st.warning("⚠️ Clique em 'POOL INTELIGENTE' primeiro para calcular o Score 50/30/20.")
+        # --- FIM DA CORREÇÃO ---
 
         
         renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
@@ -1032,6 +1038,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
