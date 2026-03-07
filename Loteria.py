@@ -179,23 +179,28 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
     if mod != "Lotofácil": 
         return True
     
+    # 1. Âncoras de Início e Fim
     if not (jogo[0] in [1, 2, 3] and jogo[-1] in [23, 24, 25]): 
         return False
     
+    # 2. Salto Máximo entre dezenas
     for i in range(len(jogo)-1):
         if (jogo[i+1] - jogo[i]) > 5: 
             return False
 
+    # 3. Equilíbrio de Pares
     pares = len([n for n in jogo if n % 2 == 0])
     diff_n = n_dez - 15
     if not ( (7 + int(diff_n*0.4)) <= pares <= (9 + int(diff_n*0.6)) ): 
         return False
 
+    # 4. Sequência de Fibonacci
     fibo_ref = [1, 2, 3, 5, 8, 13, 21]
     fibo_count = len([n for n in jogo if n in fibo_ref])
     if not (3 <= fibo_count <= 5 + int(diff_n*0.5)): 
         return False
 
+    # 5. Distribuição de Vizinhos (Sequências)
     is_atypical = random.random() < 0.12 
     if not is_atypical:
         vizinhos = 0
@@ -213,17 +218,17 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
         if sequencia_max < 3 or sequencia_max > 5: 
             return False
 
-   # Mantenha este recuo exato de 4 espaços
+    # 6. Geometria de Volante (LINHAS E COLUNAS - CORRIGIDO)
     linhas = [0]*5
     colunas = [0]*5
     for n in jogo:
         linhas[(n-1)//5] += 1
         colunas[(n-1)%5] += 1
 
-    # ESTA É A LINHA QUE DEU ERRO - COLE EXATAMENTE ASSIM:
     if any(l > 5 for l in linhas) or any(c > 5 for c in colunas):
         return False
 
+    # 7. Filtros de Soma, Primos e Moldura
     soma = sum(jogo)
     primos_list = [2,3,5,7,11,13,17,19,23]
     moldura_list = [1,2,3,4,5,6,10,11,15,16,20,21,22,23,24,25]
@@ -236,17 +241,14 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
         'm': (8 + int(diff_n * 0.7), 11 + int(diff_n * 0.9))
     }
     
-    if not (cfg['s'][0] <= soma <= cfg['s'][1]): 
-        return False
-    if not (cfg['p'][0] <= primos <= cfg['p'][1]): 
-        return False
-    if not (cfg['m'][0] <= moldura <= cfg['m'][1]): 
-        return False
+    if not (cfg['s'][0] <= soma <= cfg['s'][1]): return False
+    if not (cfg['p'][0] <= primos <= cfg['p'][1]): return False
+    if not (cfg['m'][0] <= moldura <= cfg['m'][1]): return False
 
-    if jogo_ja_saiu(jogo, mod): 
-        return False
+    if jogo_ja_saiu(jogo, mod): return False
         
     return True
+
 
 def renderizar_heatmap(mod, res_loto):
     if not res_loto or mod != "Lotofácil": 
@@ -602,7 +604,7 @@ with abas[0]:
         txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
         st.code(f"JOGO {i+1:02d} | {j['est']} | {j['tam']} DEZ | {txt_jogo} / {j['chance']}")
     
-    if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
+        if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
         res_existentes = st.session_state.ultimo_res.get(mod, {})
         ultimo_c = int(max(res_existentes.keys(), key=int)) if res_existentes else 0
         pool_atual = list(st.session_state.favoritas.get(mod, [])) 
@@ -610,16 +612,16 @@ with abas[0]:
         for jogo in st.session_state.jogos_gerados:
             jogo['concurso_alvo'] = ultimo_c + 1
             jogo['pool_origem'] = pool_atual 
-            # --- REGISTRO DAS FIXAS PARA O SCANNER ---
+            # Se por algum motivo as fixas sumiram da memória, salva como lista vazia
             if 'fixas_utilizadas' not in jogo:
-                # Usa a variável fixas_final que foi definida na geração
-                jogo['fixas_utilizadas'] = list(fixas_final) 
+                jogo['fixas_utilizadas'] = [] 
             
             st.session_state.jogos_salvos.append(jogo)
         
         st.session_state.jogos_gerados = []
-        st.success(f"✅ Jogos salvos com sucesso para o Concurso {ultimo_c + 1}!")
+        st.success(f"✅ Jogos salvos para o Concurso {ultimo_c + 1}!")
         st.rerun()
+
                         
   
 with abas[1]:
@@ -980,3 +982,4 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
