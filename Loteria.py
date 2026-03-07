@@ -26,6 +26,7 @@ def buscar_ultimo_resultado_api():
     return None, None
 
 
+
 import json
 import random
 import re
@@ -873,6 +874,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
