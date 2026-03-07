@@ -510,33 +510,50 @@ with abas[0]:
                     n_pool_req = info_fech['n_pool'] if info_fech else 20
                     conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
                     
-                    # 1. Identificação de Ciclo
-                    sorteadas_no_ciclo = set()
-                    for c in conc_ordenados:
-                        sorteadas_no_ciclo.update(res_loto[c])
-                        if len(sorteadas_no_ciclo) == 25: break
-                    faltantes_ciclo = list(set(range(1, 26)) - sorteadas_no_ciclo)
-                    
-                    # 2. Score IA Kadosh (VOLTANDO PESO ATRASO PARA 1.5)
-                    score_kadosh = {}
-                    contagem = Counter()
-                    for c in conc_ordenados[:20]:
-                        for n in res_loto[c]: contagem[n] += 1
-                        
-                    for n in range(1, max_v + 1):
-                        atraso_n = 0
-                        for c in conc_ordenados:
-                            if n not in res_loto[c]: atraso_n += 1
-                            else: break
-                        
-                        bonus_ciclo = 3.5 if n in faltantes_ciclo else 0
-                        # PESO VOLTADO PARA O ORIGINAL (1.5)
-                        score_kadosh[n] = contagem[n] + (atraso_n * 1.5) + bonus_ciclo
+                                # --- MOTOR DE PRECISÃO KADOSH (50% QUENTES / 30% CICLO / 20% AFINIDADE) ---
+            res_loto = st.session_state.ultimo_res.get(mod, {})
+            conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
+            
+            # 1. MATRIZ DE AFINIDADE (PESO 20%)
+            matriz_af = calcular_matriz_afinidade_kadosh(mod)
+            
+            # 2. IDENTIFICAÇÃO DE CICLO (PESO 30% JUNTO COM ATRASO)
+            sorteadas_no_ciclo = set()
+            for c in conc_ordenados:
+                sorteadas_no_ciclo.update(res_loto[c])
+                if len(sorteadas_no_ciclo) == 25: break
+            faltantes_ciclo = list(set(range(1, max_v + 1)) - sorteadas_no_ciclo)
+            
+            # 3. CÁLCULO DO SCORE CIENTÍFICO
+            score_kadosh = {}
+            contagem = Counter()
+            for c in conc_ordenados[:20]: # Frequência nos últimos 20
+                for n in res_loto[c]: contagem[n] += 1
+                
+            for n in range(1, max_v + 1):
+                # A. PESO QUENTES (50%) - Normalizado para escala de 0-10
+                frequencia = (contagem[n] / 20) * 10 
+                
+                # B. PESO CICLO/ATRASO (30%)
+                atraso_n = 0
+                for c in conc_ordenados:
+                    if n not in res_loto[c]: atraso_n += 1
+                    else: break
+                bonus_ciclo = 5.0 if n in faltantes_ciclo else 0
+                ponto_atraso = (atraso_n * 1.2) + bonus_ciclo
+                
+                # C. PESO AFINIDADE (20%) - Baseado na vizinhança do topo
+                ponto_afinidade = 0
+                if matriz_af:
+                    # Pega a afinidade com as 5 mais frequentes do histórico
+                    top5_geral = [num for num, _ in contagem.most_common(5)]
+                    for top_n in top5_geral:
+                        if n < len(matriz_af) and top_n < len(matriz_af):
+                            ponto_afinidade += matriz_af[n][top_n]
+                
+                # EQUAÇÃO FINAL KADOSH
+                score_kadosh[n] = (frequencia * 0.5) + (ponto_atraso * 0.3) + (ponto_afinidade * 0.2)
 
-                    melhores = sorted(score_kadosh.items(), key=lambda x: x[1], reverse=True)
-                    pool_final = [n for n, s in melhores[:n_pool_req]]
-                    st.session_state.favoritas[mod] = sorted(pool_final)
-                    st.rerun()
         pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
         st.session_state.favoritas[mod] = pool
         # --- [SUGESTÃO 3: ANÁLISE DE QUADRANTES NO POOL] ---
@@ -554,13 +571,14 @@ with abas[0]:
         fixas_final = []
         if modo_fixa == "Manual":
             fixas_final = st.multiselect("📌 CRAVAR DEZENAS:", options=pool)
-        elif modo_fixa == "IA Automática (Score)":
+                elif modo_fixa == "IA Automática (Score)":
             qtd_auto = st.slider("Qtd de Cravadas:", 1, 10, 6)
-            if mod in st.session_state.analise_stats:
-                stats = st.session_state.analise_stats[mod]
-                melhores = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
-                fixas_final = melhores[:qtd_auto]
-                st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
+            # Usa o ranking científico calculado acima para cravar as fixas
+            if 'score_kadosh' in locals():
+                melhores_fixas = sorted([n for n in pool], key=lambda x: score_kadosh.get(x, 0), reverse=True)
+                fixas_final = melhores_fixas[:qtd_auto]
+                st.info(f"💎 IA KADOSH CRAVOU (50/30/20): {', '.join(map(str, fixas_final))}")
+
         
         renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
 
@@ -1014,6 +1032,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
