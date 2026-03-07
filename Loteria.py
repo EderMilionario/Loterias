@@ -517,6 +517,8 @@ with abas[0]:
         st.session_state.jogos_gerados = []
         st.rerun()
 
+            
+
                 
         
         
@@ -880,6 +882,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
