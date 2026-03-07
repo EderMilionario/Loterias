@@ -1,4 +1,19 @@
 import streamlit as st
+import requests
+
+def buscar_ultimo_resultado_api():
+    try:
+        # API pública que espelha os dados da Caixa
+        url = "https://loterica.api.ghgi.com.br/api/lotofacil/latest"
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            dados = response.json()
+            # Retorna o concurso como texto e as dezenas com zero à esquerda (ex: '01')
+            return str(dados['concurso']), [str(n).zfill(2) for n in dados['dezenas']]
+    except Exception as e:
+        return None, None
+    return None, None
+
 import json
 import random
 import re
@@ -694,6 +709,28 @@ with abas[3]:
     st.header("📥 Database")
     m_db = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="m_db")
     id_c = st.number_input("Nº Concurso", 1, 9999, key="id_c")
+    # --- COLE ESTE BLOCO DENTRO DA ABA 3 ---
+st.markdown("### 📡 Sincronização em Tempo Real")
+col_sync, col_info = st.columns([1, 2])
+
+with col_sync:
+    if st.button("🔄 Atualizar Online"):
+        conc_api, dezenas_api = buscar_ultimo_resultado_api()
+        
+        if conc_api:
+            # Acessa o dicionário de resultados que você já usa no sistema
+            if "Lotofácil" not in st.session_state.ultimo_res:
+                st.session_state.ultimo_res["Lotofácil"] = {}
+                
+            if conc_api not in st.session_state.ultimo_res["Lotofácil"]:
+                st.session_state.ultimo_res["Lotofácil"][conc_api] = dezenas_api
+                st.success(f"Concurso {conc_api} adicionado!")
+                st.rerun() # Comando para atualizar a tela e o Pool ler o novo dado
+            else:
+                st.info(f"O concurso {conc_api} já está atualizado.")
+        else:
+            st.error("Servidor da Caixa indisponível. Tente novamente em instantes.")
+
     
     # Campo de entrada de texto 
     txt_site = st.text_area("Cole os números sorteados aqui (aceita números grudados, com espaços ou traços)").strip()
@@ -861,6 +898,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
