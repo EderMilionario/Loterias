@@ -932,51 +932,55 @@ with abas[5]:
 
 with abas[6]:
     st.header("🔗 Afinidade e Vínculos de Dezenas")
-    mod_af = st.selectbox("Loteria para Análise", list(st.session_state.custos.keys()), key="af_sel_final")
+    mod_af = st.selectbox("Loteria para Análise", list(st.session_state.custos.keys()), key="af_sel_universal")
     
     res_af = st.session_state.ultimo_res.get(mod_af, {})
-    if len(res_af) < 5:
-        st.warning("⚠️ Adicione mais resultados para calcular afinidade (mínimo 5).")
+    if len(res_af) < 2:
+        st.warning("⚠️ Base de dados insuficiente. Adicione resultados para análise.")
     else:
         dezenas_lista = list(res_af.values())
         total_jogos = len(dezenas_lista)
         
-        # --- TABELA 1: CASAIS DE OURO ---
-        st.subheader("🔥 Casais de Ouro (Mais Frequentes)")
-        vinculos = []
+        # 1. CRIAR MATRIZ DE ENCONTROS (Para não processar mil vezes)
+        matriz = {}
+        todos_pares = []
         for i in range(1, 26):
             for j in range(i + 1, 26):
-                par = sum(1 for jogo in dezenas_lista if i in jogo and j in jogo)
-                porcentagem = (par / total_jogos) * 100
-                if porcentagem > 65: # Mostra quem sai junto em mais de 65% das vezes
-                    vinculos.append({"Par": f"{i:02d} & {j:02d}", "Afinidade %": f"{porcentagem:.1f}%", "Vezes": par})
+                # Conta quantas vezes saíram juntos
+                par_count = sum(1 for jogo in dezenas_lista if i in jogo and j in jogo)
+                porc = (par_count / total_jogos) * 100
+                dados_par = {"Par": f"{i:02d} & {j:02d}", "Vezes": par_count, "Porc": porc}
+                todos_pares.append(dados_par)
         
-        if vinculos:
-            st.table(pd.DataFrame(vinculos).sort_values(by="Vezes", ascending=False).head(10))
+        df_completo = pd.DataFrame(todos_pares)
+
+        # --- LÓGICA DINÂMICA DE OURO E VÁCUO ---
+        # Casais de Ouro: Os 15 pares que MAIS saíram juntos (Independente da % fixa)
+        df_ouro = df_completo.sort_values(by="Vezes", ascending=False).head(15)
         
+        # Pares em Vácuo: Os 15 pares que MENOS saíram juntos (Os inimigos)
+        df_vacuo = df_completo.sort_values(by="Vezes", ascending=True).head(15)
+
+        # --- EXIBIÇÃO ---
+        st.subheader(f"🔥 Casais de Ouro (Top 15 de {total_jogos} jogos)")
+        st.info("Estes pares têm a maior taxa de convivência da sua base atual.")
+        
+        # Formata a tabela para ficar bonita
+        df_ouro_show = df_ouro.copy()
+        df_ouro_show["Afinidade %"] = df_ouro_show["Porc"].map("{:.1f}%".format)
+        st.table(df_ouro_show[["Par", "Vezes", "Afinidade %"]].reset_index(drop=True))
+
         st.markdown("---")
+
+        st.subheader("🚫 Pares em Vácuo (Os que menos se encontram)")
+        st.warning("Evite usar estas duplas como FIXAS no mesmo bilhete.")
         
-        # --- TABELA 2: PARES EM VÁCUO (INIMIGOS) ---
-        st.subheader("🚫 Pares em Vácuo (Raramente saem juntos)")
-        vacuos = []
-        for i in range(1, 26):
-            for j in range(i + 1, 26):
-                par = sum(1 for jogo in dezenas_lista if i in jogo and j in jogo)
-                # AJUSTE KADOSH: Se saíram juntos no máximo 2 vezes em 30 concursos
-                if par <= 2: 
-                    vacuos.append({"Inimigos": f"{i:02d} + {j:02d}", "Encontros": par})
-        
-        if vacuos:
-            st.info(f"🔎 Com base nos últimos {total_jogos} jogos, estas dezenas quase não se cruzam. Evite usá-las juntas como FIXAS.")
-            # Mostra os 15 vácuos mais fortes
-            df_v = pd.DataFrame(vacuos).sort_values(by="Encontros").head(15)
-            
-            # Exibição em colunas para ficar elegante
-            cols_v = st.columns(3)
-            for idx, row in df_v.iterrows():
-                cols_v[idx % 3].error(f"❌ {row['Inimigos']} ({row['Encontros']}x)")
-        else:
-            st.success("✅ Todas as dezenas têm boa convivência nos dados atuais.")
+        # Exibição em colunas para os Inimigos
+        cols_v = st.columns(3)
+        for idx, row in df_vacuo.reset_index().iterrows():
+            with cols_v[idx % 3]:
+                st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
