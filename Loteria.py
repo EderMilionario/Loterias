@@ -274,7 +274,7 @@ def renderizar_heatmap(mod, res_loto):
     if not res_loto or mod != "Lotofácil": 
         return
         
-    st.markdown("### 🗺️ MAPA DE CALOR E ANÁLISE DE CICLO (Últimos 20)")
+    st.markdown("### 🌡️ RADAR DE TEMPERATURA KADOSH")
     conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)[:20]
     
     frequencia = Counter()
@@ -289,25 +289,31 @@ def renderizar_heatmap(mod, res_loto):
                 ja_apareceu.add(n)
             elif n not in ja_apareceu:
                 atraso[n] += 1
-                
-    cols = st.columns(5)
-    for n in range(1, 26):
-        freq = frequencia[n]
-        atr = atraso[n]
-        bg_color = "#f1f2f6"
-        texto = "black"
-        
-        if freq >= 12: 
-            bg_color = "#eb4d4b"
-            texto = "white"
-        elif atr >= 3: 
-            bg_color = "#0984e3"
-            texto = "white"
+
+    # Divisão em Blocos Cromáticos Kadosh
+    quentes = [n for n in range(1, 26) if frequencia[n] >= 12]
+    frias = [n for n in range(1, 26) if frequencia[n] < 8]
+    atrasadas = [n for n in range(1, 26) if atraso[n] >= 3]
+
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown('<p style="color:#eb4d4b; font-size:18px;">🔥 DEZENAS QUENTES</p>', unsafe_allow_html=True)
+        for n in quentes:
+            st.markdown(f'<div style="background:#eb4d4b; color:white; padding:5px; border-radius:5px; margin-bottom:2px; text-align:center;">{n:02d} (Freq: {frequencia[n]})</div>', unsafe_allow_html=True)
             
-        with cols[(n-1)%5]:
-            st.markdown(f'<div style="background-color:{bg_color}; color:{texto}; border-radius:10px; padding:10px; text-align:center; border:2px solid #2d3436; margin-bottom:5px;"><span style="font-size:20px;">{n:02d}</span><br><span style="font-size:10px;">F:{freq} | A:{atr}</span></div>', unsafe_allow_html=True)
+    with col2:
+        st.markdown('<p style="color:#0984e3; font-size:18px;">❄️ DEZENAS FRIAS</p>', unsafe_allow_html=True)
+        for n in frias:
+            st.markdown(f'<div style="background:#0984e3; color:white; padding:5px; border-radius:5px; margin-bottom:2px; text-align:center;">{n:02d} (Freq: {frequencia[n]})</div>', unsafe_allow_html=True)
+            
+    with col3:
+        st.markdown('<p style="color:#f1c40f; font-size:18px;">⏳ ALERTA ATRASO</p>', unsafe_allow_html=True)
+        for n in atrasadas:
+            st.markdown(f'<div style="background:#f1c40f; color:black; padding:5px; border-radius:5px; margin-bottom:2px; text-align:center;">{n:02d} (Atraso: {atraso[n]})</div>', unsafe_allow_html=True)
             
     st.markdown("---")
+
 
 def calcular_matriz_afinidade_kadosh(mod):
     res_db = st.session_state.ultimo_res.get(mod, {})
@@ -1008,6 +1014,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
