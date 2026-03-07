@@ -348,34 +348,21 @@ MATRIZES_FECHAMENTO = {
     "MATRIZ CÉLULA [1x16 + 15x15] (Pool 18)": {"n_pool": 18, "garantia": 15, "desc": "1 de 16 + 15 de 15 (Malha Fina)", "prob": "Máxima para 15", "peso": 0.96}
 }
 
-# --- 4. ESTADOS E ABAS ---
-for key in ['auth', 'jogos_gerados', 'jogos_salvos']:
-    if key not in st.session_state: 
-        st.session_state[key] = False if key == 'auth' else []
-        
+# --- 4. ESTADOS E ABAS (COLE ISSO AQUI) ---
+if 'auth' not in st.session_state: st.session_state.auth = False
+if 'jogos_gerados' not in st.session_state: st.session_state.jogos_gerados = []
+if 'jogos_salvos' not in st.session_state: st.session_state.jogos_salvos = []
+
+# ESSA LINHA ABAIXO É A QUE ESTAVA FALTANDO E DANDO ERRO:
+if 'analise_stats' not in st.session_state: 
+    st.session_state.analise_stats = {m: {} for m in ["Lotofácil", "Mega-Sena", "Quina", "+Milionária", "Dupla-Sena"]}
+
 if 'ultimo_res' not in st.session_state: 
     st.session_state.ultimo_res = {m: {} for m in ["Lotofácil", "Mega-Sena", "Quina", "+Milionária", "Dupla-Sena"]}
-    
+
 if 'favoritas' not in st.session_state: 
     st.session_state.favoritas = {m: [] for m in ["Lotofácil", "Mega-Sena", "Quina", "+Milionária", "Dupla-Sena"]}
-    
-if 'premios' not in st.session_state:
-    st.session_state.premios = {
-        "Lotofácil": {"11": 7.0, "12": 14.0, "13": 35.0, "14": 1500.0, "15": 1700000.0},
-        "Mega-Sena": {"4": 1200.0, "5": 45000.0, "6": 50000000.0},
-        "Quina": {"2": 4.0, "3": 150.0, "4": 8000.0, "5": 600000.0},
-        "+Milionária": {"2": 6.0, "3": 24.0, "4": 1500.0, "5": 50000.0, "6": 10000000.0},
-        "Dupla-Sena": {"3": 6.0, "4": 150.0, "5": 4000.0, "6": 500000.0}
-    }
-    
-if 'custos' not in st.session_state:
-    st.session_state.custos = {
-        "Lotofácil": {15: 3.5, 16: 56.0, 17: 408.0, 18: 2448.0, 19: 11628.0, 20: 46512.0},
-        "Mega-Sena": {6: 6.0, 7: 42.0, 8: 168.0, 9: 504.0, 10: 1260.0},
-        "Quina": {5: 2.5, 6: 15.0, 7: 52.5, 8: 140.0},
-        "+Milionária": {6: 6.0},
-        "Dupla-Sena": {6: 2.5, 7: 17.5, 8: 70.0}
-    }
+
 
 # --- 5. ACESSO ---
 if not st.session_state.auth:
@@ -875,6 +862,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
