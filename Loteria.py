@@ -348,7 +348,7 @@ MATRIZES_FECHAMENTO = {
     "MATRIZ CÉLULA [1x16 + 15x15] (Pool 18)": {"n_pool": 18, "garantia": 15, "desc": "1 de 16 + 15 de 15 (Malha Fina)", "prob": "Máxima para 15", "peso": 0.96}
 }
 
-# --- 4. ESTADOS E ABAS (SUBSTITUA O SEU POR ESTE COMPLETO) ---
+# --- 4. ESTADOS E ABAS (SUBSTITUA PELO CONTEÚDO ABAIXO) ---
 if 'auth' not in st.session_state: st.session_state.auth = False
 if 'jogos_gerados' not in st.session_state: st.session_state.jogos_gerados = []
 if 'jogos_salvos' not in st.session_state: st.session_state.jogos_salvos = []
@@ -362,7 +362,7 @@ if 'ultimo_res' not in st.session_state:
 if 'favoritas' not in st.session_state: 
     st.session_state.favoritas = {m: [] for m in ["Lotofácil", "Mega-Sena", "Quina", "+Milionária", "Dupla-Sena"]}
 
-# --- TABELA DE CUSTOS E PRÊMIOS (ESSENCIAL PARA NÃO DAR ERRO) ---
+# TABELA DE CUSTOS (Essencial para as seleções de dezenas funcionarem)
 if 'custos' not in st.session_state:
     st.session_state.custos = {
         "Lotofácil": {15: 3.5, 16: 56.0, 17: 408.0, 18: 2448.0, 19: 11628.0, 20: 46512.0},
@@ -372,6 +372,7 @@ if 'custos' not in st.session_state:
         "Dupla-Sena": {6: 2.5, 7: 17.5, 8: 70.0}
     }
 
+# TABELA DE PRÊMIOS (Essencial para a aba de conferência não dar erro)
 if 'premios' not in st.session_state:
     st.session_state.premios = {
         "Lotofácil": {"11": 7.0, "12": 14.0, "13": 35.0, "14": 1500.0, "15": 1700000.0},
@@ -380,6 +381,7 @@ if 'premios' not in st.session_state:
         "+Milionária": {"2": 6.0, "3": 24.0, "4": 1500.0, "5": 50000.0, "6": 10000000.0},
         "Dupla-Sena": {"3": 6.0, "4": 150.0, "5": 4000.0, "6": 500000.0}
     }
+
 
 
 
@@ -883,6 +885,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
