@@ -419,7 +419,7 @@ abas = st.tabs(["🎯 GERADOR PRO", "🔍 CONFERIR", "⚙️ VALORES", "📥 DAT
 
 
 
-  with abas[0]:
+with abas[0]:
     mostrar_status_backup()
     mod = st.selectbox("Modalidade", list(st.session_state.custos.keys()), key="mod_selector")
     
@@ -530,6 +530,8 @@ abas = st.tabs(["🎯 GERADOR PRO", "🔍 CONFERIR", "⚙️ VALORES", "📥 DAT
             st.session_state.jogos_gerados = []
             st.success("Salvo com sucesso!")
             st.rerun()
+
+
            
 
             
@@ -898,6 +900,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
