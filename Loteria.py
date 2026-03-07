@@ -375,7 +375,15 @@ def mostrar_status_backup():
     st.markdown(f'<div class="status-backup">📁 Backup Ativo: {total_jogos} jogos | {total_res} resultados</div>', unsafe_allow_html=True)
 
 # --- 6. INTERFACE ---
+# --- ENCONTRE ESTA LINHA ---
 st.title("📊 GESTÃO ESTRATÉGICA LOTERIAS")
+
+# --- COLE ESTAS 3 LINHAS LOGO ABAIXO DELA ---
+res_loto_topo = st.session_state.ultimo_res.get("Lotofácil", {})
+ultimo_c_topo = max(res_loto_topo.keys(), key=int) if res_loto_topo else "Vazio"
+st.info(f"📡 **RADAR KADOSH:** Base sincronizada até o Concurso **{ultimo_c_topo}**")
+
+# --- A PRÓXIMA LINHA JÁ EXISTE NO SEU CÓDIGO (NÃO PRECISA RECOPIAR) ---
 abas = st.tabs(["🎯 GERADOR PRO", "🔍 CONFERIR", "⚙️ VALORES", "📥 DATABASE", "💾 BACKUP", "🧠 INTELIGÊNCIA", "🔗 AFINIDADE"])
 
 with abas[0]:
@@ -964,6 +972,7 @@ with abas[6]:
         st.info("💡 **DICA:** Use estes dados para refinar seu Pool na Aba 0. Pares com alta afinidade tendem a se repetir.")
     else:
         st.warning("⚠️ Database insuficiente para análise de afinidade. Insira mais resultados na aba DATABASE.")
+
 
 
 
