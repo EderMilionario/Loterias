@@ -421,11 +421,12 @@ with abas[0]:
     mostrar_status_backup()
     mod = st.selectbox("Modalidade", list(st.session_state.custos.keys()), key="mod_selector")
     
-    # Atualiza estatísticas se houver resultados
+    # --- BLOCO DE INTELIGÊNCIA: SINCRONIZAÇÃO COM O BACKUP ---
     res_loto = st.session_state.ultimo_res.get(mod, {})
     if res_loto:
         conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
         contagem = Counter()
+        # Analisa os últimos 20 para o Heatmap/Tendência
         for c in conc_ordenados[:20]:
             for n in res_loto[c]: contagem[n] += 1
         
@@ -436,10 +437,32 @@ with abas[0]:
             for c in conc_ordenados:
                 if n not in res_loto[c]: atraso_n += 1
                 else: break
-            stats_temp[n] = {'score': contagem[n] + (atraso_n * 1.5)}
+            # FÓRMULA KADOSH: Frequência + Peso de Atraso
+            stats_temp[n] = {'score': contagem[n] + (atraso_n * 1.5), 'freq': contagem[n], 'atraso': atraso_n}
+        
         st.session_state.analise_stats[mod] = stats_temp
 
+        # --- EXIBIÇÃO VISUAL DAS QUENTES E FRIAS (O QUE TINHA SUMIDO) ---
+        st.markdown("### 📊 RADAR DE TENDÊNCIAS (ÚLTIMOS 20 JOGOS)")
+        col_q, col_f = st.columns(2)
+        
+        quentes = sorted(stats_temp.items(), key=lambda x: x[1]['score'], reverse=True)[:6]
+        frias = sorted(stats_temp.items(), key=lambda x: x[1]['score'], reverse=False)[:6]
+        
+        with col_q:
+            txt_q = " ".join([f"**{n:02d}**" for n, s in quentes])
+            st.success(f"🔥 **QUENTES/TENDÊNCIA:** \n\n {txt_q}")
+        
+        with col_f:
+            txt_f = " ".join([f"**{n:02d}**" for n, s in frias])
+            st.error(f"❄️ **FRIAS/ATRASADAS:** \n\n {txt_f}")
+        st.markdown("---")
+    else:
+        st.warning("⚠️ Sem dados no histórico. Vá em DATABASE ou suba um BACKUP para ativar a inteligência.")
+
+    # --- RESTO DO CÓDIGO (ESTRATÉGIAS E POOL) ---
     col_est1, col_est2 = st.columns(2)
+
     with col_est1:
         est_escolhida = st.selectbox("💎 ESTRATÉGIA KADOSH", list(ESTRATEGIA_MAPA.keys()))
     with col_est2:
@@ -885,6 +908,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
