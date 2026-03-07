@@ -610,7 +610,8 @@ with abas[0]:
             st.rerun()
     for i, j in enumerate(st.session_state.jogos_gerados):
         txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
-        st.code(f"JOGO {i+1:02d} | {j['est']} | {j['tam']} DEZ | {txt_jogo} / {j['chance']}")
+        st.code(f"JOGO {i+1:02d} | {j['est']} | {len(j['n'])} DEZ | {txt_jogo} / {j['chance']}")
+
     
     if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
         res_existentes = st.session_state.ultimo_res.get(mod, {})
@@ -990,6 +991,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
