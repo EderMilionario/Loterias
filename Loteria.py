@@ -182,7 +182,7 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
     # 1. Âncoras de Início e Fim
     if not (jogo[0] in [1, 2, 3] and jogo[-1] in [23, 24, 25]): 
         return False
-           # --- INÍCIO DA ATUALIZAÇÃO: QUADRANTES KADOSH ---
+    # --- INÍCIO DA ATUALIZAÇÃO: QUADRANTES KADOSH ---
     q1 = [1, 2, 3, 6, 7, 8, 11, 12, 13]
     q2 = [4, 5, 9, 10, 14, 15]
     q3 = [16, 17, 21, 22]
@@ -1008,6 +1008,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
