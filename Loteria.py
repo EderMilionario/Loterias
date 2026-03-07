@@ -261,26 +261,12 @@ def analisar_quadrantes(jogo):
     for n in jogo:
         linha = (n-1) // 5
         coluna = (n-1) % 5
-        if linha <= 1 and coluna <= 2: q1 += 1      # Quadrante 1
-        elif linha <= 1 and coluna > 2: q2 += 1     # Quadrante 2
-        elif linha > 1 and coluna <= 2: q3 += 1     # Quadrante 3
-        else: q4 += 1                               # Quadrante 4
+        if linha <= 1 and coluna <= 2: q1 += 1      # Topo Esq
+        elif linha <= 1 and coluna > 2: q2 += 1     # Topo Dir
+        elif linha > 1 and coluna <= 2: q3 += 1     # Base Esq
+        else: q4 += 1                               # Base Dir
     return f"{q1}|{q2}|{q3}|{q4}"
 
-    
-def analisar_quadrantes(jogo):
-    # Divide o volante 5x5 em 4 partes (Q1, Q2, Q3, Q4)
-    # Q1: 1,2,3 / 6,7,8 | Q2: 4,5 / 9,10 ... e assim por diante
-    q1 = q2 = q3 = q4 = 0
-    for n in jogo:
-        # Lógica de Quadrantes para Lotofácil (1-25)
-        linha = (n-1) // 5
-        coluna = (n-1) % 5
-        if linha <= 2 and coluna <= 2: q1 += 1
-        elif linha <= 2 and coluna > 2: q2 += 1
-        elif linha > 2 and coluna <= 2: q3 += 1
-        else: q4 += 1
-    return [q1, q2, q3, q4]
     
 
 
@@ -950,6 +936,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
