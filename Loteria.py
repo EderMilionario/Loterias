@@ -422,8 +422,10 @@ st.info(f"📡 **RADAR KADOSH:** Base sincronizada até o Concurso **{ultimo_c_t
 # --- A PRÓXIMA LINHA JÁ EXISTE NO SEU CÓDIGO (NÃO PRECISA RECOPIAR) ---
 abas = st.tabs(["🎯 GERADOR PRO", "🔍 CONFERIR", "⚙️ VALORES", "📥 DATABASE", "💾 BACKUP", "🧠 INTELIGÊNCIA", "🔗 AFINIDADE"])
 
+        
+
 with abas[0]:
-    # 1. Inicialização de Segurança
+    # --- 1. INICIALIZAÇÃO E SEGURANÇA ---
     est_escolhida = "Personalizado"
     fe_escolhido = "Nenhum"
     fixas_final = []
@@ -434,36 +436,69 @@ with abas[0]:
     mostrar_status_backup()
     mod = st.selectbox("Modalidade", list(st.session_state.custos.keys()), key="mod_selector")
     
-    # Lógica de troca de modalidade
     if 'ultima_mod_selecionada' not in st.session_state:
         st.session_state.ultima_mod_selecionada = mod
+        
     if st.session_state.ultima_mod_selecionada != mod:
         st.session_state.jogos_gerados = []
         st.session_state.ultima_mod_selecionada = mod
         st.rerun()
 
-    # Seleção de Estratégia e Fechamento
+    # --- 2. ATIVAÇÃO DA IA (SCORE E ATRASO) ---
+    res_loto = st.session_state.ultimo_res.get(mod, {})
+    if res_loto:
+        conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
+        contagem = Counter()
+        for c in conc_ordenados[:20]:
+            for n in res_loto[c]: contagem[n] += 1
+        stats_temp = {}
+        for n in range(1, 26 if mod == "Lotofácil" else 61):
+            atraso_n = 0
+            for c in conc_ordenados:
+                if n not in res_loto[c]: atraso_n += 1
+                else: break
+            stats_temp[n] = {'score': contagem[n] + (atraso_n * 1.5)}
+        st.session_state.analise_stats[mod] = stats_temp
+    
+    # --- 3. SELEÇÃO DE ESTRATÉGIA ---
     col_est1, col_est2 = st.columns(2)
     with col_est1:
         if mod == "Lotofácil":
             est_escolhida = st.selectbox("💎 ESTRATÉGIA KADOSH", list(ESTRATEGIA_MAPA.keys()))
             est_info = ESTRATEGIA_MAPA[est_escolhida]
+            st.progress(est_info["peso"])
     with col_est2:
         if mod == "Lotofácil":
             fe_escolhido = st.selectbox("📐 MODO FECHAMENTO (MATRIZ)", list(MATRIZES_FECHAMENTO.keys()))
 
     info_fech = MATRIZES_FECHAMENTO.get(fe_escolhido) if mod == "Lotofácil" else None
     info_est = ESTRATEGIA_MAPA.get(est_escolhida) if mod == "Lotofácil" else ESTRATEGIA_MAPA["Personalizado"]
-
+    
     st.markdown("---")
 
-    # Configurações de Dezenas e Pool
+    # --- 4. CONFIGURAÇÃO DE JOGOS E POOL ---
     c1, c2 = st.columns(2)
     with c1:
-        n_dez = st.selectbox("Dezenas por Bilhete", list(st.session_state.custos[mod].keys()))
+        opcoes_dez = list(st.session_state.custos[mod].keys())
+        n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez)
         qtd = st.number_input("Quantidade de Jogos", 1, 300, 10)
+        
     with c2:
         max_v = 25 if mod=="Lotofácil" else 60
+        col_btn1, col_btn2 = st.columns(2)
+        with col_btn1:
+            if st.button("✅ TODO O VOLANTE"):
+                st.session_state.favoritas[mod] = list(range(1, max_v + 1))
+                st.rerun()
+        with col_btn2:
+            if st.button("🧠 POOL INTELIGENTE KADOSH"):
+                if len(res_loto) >= 5:
+                    n_pool_req = info_fech['n_pool'] if info_fech else 20
+                    scores = st.session_state.analise_stats.get(mod, {})
+                    melhores = sorted(scores.items(), key=lambda x: x[1]['score'], reverse=True)
+                    st.session_state.favoritas[mod] = sorted([n for n, s in melhores[:n_pool_req]])
+                    st.rerun()
+
         pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
         st.session_state.favoritas[mod] = pool
         
@@ -471,52 +506,72 @@ with abas[0]:
         if modo_fixa == "Manual":
             fixas_final = st.multiselect("📌 CRAVAR DEZENAS:", options=pool)
 
-    # --- BOTÃO GERAR COM AS TRAVAS NOVAS ---
+    # --- 5. BOTÃO GERAR COM TRAVAS E MOTOR KADOSH ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-        # Trava de Segurança (Item 2)
+        # TRAVA DE SEGURANÇA (ITEM 2)
         if len(fixas_final) >= 2:
             fixas_ord = sorted(fixas_final)
-            seq = 1
+            seq, atual = 1, 1
             for i in range(len(fixas_ord)-1):
-                if fixas_ord[i+1] - fixas_ord[i] == 1: seq += 1
-                else: seq = 1
+                if fixas_ord[i+1] - fixas_ord[i] == 1:
+                    atual += 1
+                    seq = max(seq, atual)
+                else: atual = 1
             if seq > 5:
-                st.error(f"❌ SEQUÊNCIA DE {seq} FIXAS: O filtro Kadosh não aceita. Mude suas fixas!")
+                st.error(f"❌ SEQUÊNCIA DE {seq} FIXAS INVÁLIDA! Máximo permitido: 5.")
                 st.stop()
 
         if len(pool) < (info_fech['n_pool'] if info_fech else n_dez):
-            st.error("Pool insuficiente!")
+            st.error(f"Seu Pool precisa de pelo menos {info_fech['n_pool'] if info_fech else n_dez} dezenas!")
         else:
             novos = []
-            # Função interna de geração
-            def gerar_com_matriz(tam, quant):
+            def gerar_com_matriz(tam_sol, qtd_sol):
+                sucessos, tentativas = 0, 0
                 p_sorteio = [n for n in pool if n not in fixas_final]
-                tentativas = 0
-                while len(novos) < quant and tentativas < 10000:
-                    comb = sorted(fixas_final + random.sample(p_sorteio, tam - len(fixas_final)))
-                    if validar_kadosh_cirurgico(comb, mod, tam):
-                        novos.append({"mod": mod, "n": comb, "tam": tam, "est": fe_escolhido if info_fech else est_escolhida, "chance": "ALTA", "fixas_utilizadas": list(fixas_final)})
+                while sucessos < qtd_sol and tentativas < 15000:
+                    vagas = tam_sol - len(fixas_final)
+                    comb = sorted(fixas_final + random.sample(p_sorteio, vagas))
+                    if validar_kadosh_cirurgico(comb, mod, tam_sol):
+                        novos.append({
+                            "mod": mod, "n": comb, "tam": tam_sol, 
+                            "fixas_utilizadas": list(fixas_final),
+                            "chance": definir_label_chance(comb, mod), "est": fe_escolhido if info_fech else est_escolhida
+                        })
+                        sucessos += 1
                     tentativas += 1
+
+            # Lógica de Estratégias
+            if info_fech:
+                if "DIAMANTE" in fe_escolhido:
+                    gerar_com_matriz(16, 2); gerar_com_matriz(15, 10)
+                elif "CÉLULA" in fe_escolhido:
+                    gerar_com_matriz(16, 1); gerar_com_matriz(15, 15)
+                else: gerar_com_matriz(15, qtd)
+            elif est_escolhida == "6. A MARRETA":
+                gerar_com_matriz(18, 1); gerar_com_matriz(16, 5)
+            else:
+                gerar_com_matriz(n_dez, qtd)
             
-            # Chama a geração baseada na estratégia
-            gerar_com_matriz(n_dez, qtd)
             st.session_state.jogos_gerados = novos
             st.rerun()
 
-    # --- EXIBIÇÃO COM QUADRANTES (Item 3) ---
+    # --- 6. EXIBIÇÃO COM QUADRANTES (ITEM 3) ---
     for i, j in enumerate(st.session_state.jogos_gerados):
         txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
         quads = analisar_quadrantes(j['n'])
-        st.code(f"ID {i+1:02d} | Q[{quads}] | {j['est'][:12]:<12} | {txt_jogo}")
+        st.code(f"ID {i+1:02d} | Q[{quads}] | {j['est'][:12]:<12} | {txt_jogo} | {j['chance']}")
 
-    # --- BOTÃO SALVAR ---
+    # --- 7. SALVAMENTO ---
     if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
+        res_ex = st.session_state.ultimo_res.get(mod, {})
+        ult_c = int(max(res_ex.keys(), key=int)) if res_ex else 0
         for jogo in st.session_state.jogos_gerados:
+            jogo['concurso_alvo'] = ult_c + 1
+            jogo['pool_origem'] = list(pool)
             st.session_state.jogos_salvos.append(jogo)
-        st.success("Salvo!")
         st.session_state.jogos_gerados = []
+        st.success("✅ Salvo com sucesso!")
         st.rerun()
-
             
 
                 
@@ -882,6 +937,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
