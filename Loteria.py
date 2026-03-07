@@ -510,14 +510,15 @@ with abas[0]:
                     n_pool_req = info_fech['n_pool'] if info_fech else 20
                     conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
                     
-                    # 1. Identificação de Ciclo
+                                        # 1. Identificação de Ciclo
                     sorteadas_no_ciclo = set()
                     for c in conc_ordenados:
                         sorteadas_no_ciclo.update(res_loto[c])
                         if len(sorteadas_no_ciclo) == 25: break
                     faltantes_ciclo = list(set(range(1, 26)) - sorteadas_no_ciclo)
                     
-                    # 2. Score IA Kadosh (VOLTANDO PESO ATRASO PARA 1.5)
+                    # --- NOVO: CÁLCULO DE AFINIDADE PARA O SCORE (80/20) ---
+                    matriz_af = calcular_matriz_afinidade_kadosh(mod)
                     score_kadosh = {}
                     contagem = Counter()
                     for c in conc_ordenados[:20]:
@@ -530,13 +531,21 @@ with abas[0]:
                             else: break
                         
                         bonus_ciclo = 3.5 if n in faltantes_ciclo else 0
-                        # PESO VOLTADO PARA O ORIGINAL (1.5)
-                        score_kadosh[n] = contagem[n] + (atraso_n * 1.5) + bonus_ciclo
+                        
+                        # Força de Afinidade (Vínculo histórico)
+                        forca_af = 0
+                        if matriz_af and n < len(matriz_af):
+                            conexoes = [matriz_af[n][outra] for outra in range(1, max_v + 1) if outra != n]
+                            forca_af = (sum(conexoes) / len(conexoes)) * 0.2 if conexoes else 0
+                        
+                        # SCORE KADOSH FINAL
+                        score_kadosh[n] = (contagem[n] + (atraso_n * 1.5) + bonus_ciclo) + forca_af
 
                     melhores = sorted(score_kadosh.items(), key=lambda x: x[1], reverse=True)
                     pool_final = [n for n, s in melhores[:n_pool_req]]
                     st.session_state.favoritas[mod] = sorted(pool_final)
                     st.rerun()
+
         pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
         st.session_state.favoritas[mod] = pool
         # --- [SUGESTÃO 3: ANÁLISE DE QUADRANTES NO POOL] ---
@@ -1014,6 +1023,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
