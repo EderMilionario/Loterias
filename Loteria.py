@@ -604,7 +604,7 @@ with abas[0]:
         txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
         st.code(f"JOGO {i+1:02d} | {j['est']} | {j['tam']} DEZ | {txt_jogo} / {j['chance']}")
     
-           if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
+    if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
         res_existentes = st.session_state.ultimo_res.get(mod, {})
         if res_existentes:
             ultimo_c = int(max(res_existentes.keys(), key=int))
@@ -988,6 +988,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
