@@ -604,17 +604,19 @@ with abas[0]:
         txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
         st.code(f"JOGO {i+1:02d} | {j['est']} | {j['tam']} DEZ | {txt_jogo} / {j['chance']}")
     
-        if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
-        # Tudo aqui embaixo tem que ter 8 espaços (ou 2 tabs) de recuo
+           if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
         res_existentes = st.session_state.ultimo_res.get(mod, {})
-        ultimo_c = int(max(res_existentes.keys(), key=int)) if res_existentes else 0
+        if res_existentes:
+            ultimo_c = int(max(res_existentes.keys(), key=int))
+        else:
+            ultimo_c = 0
+            
         pool_atual = list(st.session_state.favoritas.get(mod, [])) 
         
         for jogo in st.session_state.jogos_gerados:
             jogo['concurso_alvo'] = ultimo_c + 1
             jogo['pool_origem'] = pool_atual 
             
-            # Garante que as fixas existam no dicionário do jogo
             if 'fixas_utilizadas' not in jogo:
                 jogo['fixas_utilizadas'] = [] 
             
@@ -623,6 +625,7 @@ with abas[0]:
         st.session_state.jogos_gerados = []
         st.success(f"✅ Jogos salvos com sucesso para o Concurso {ultimo_c + 1}!")
         st.rerun()
+ 
 
 
                         
@@ -985,5 +988,6 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
