@@ -650,27 +650,25 @@ with abas[0]:
                 
         with col_btn2:
             if st.button("🧠 POOL INTELIGENTE KADOSH"):
-                # ... (todo o código que já existe do Pool Inteligente) ...
+                # ... (mantenha o código que já existia aqui dentro se houver)
                 st.session_state.favoritas[mod] = sorted(pool_final)
                 st.rerun()
 
-            # --- INÍCIO DO QUE VOCÊ VAI COLAR ---
-                       if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
+            if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
                 if len(st.session_state.favoritas[mod]) <= 15:
-                    st.error("Selecione mais de 15 dezenas para poder refinar.")
+                    st.error("Selecione mais de 15 dezenas para refinar.")
                 else:
                     if 'matriz_ativa' not in st.session_state or st.session_state['matriz_ativa'] is None:
                         st.session_state['matriz_ativa'] = calcular_matriz_afinidade_kadosh(mod)
                     
-                    pool_antes = len(st.session_state.favoritas[mod])
                     pool_refinado = refinar_pool_kadosh(
                         st.session_state.favoritas[mod], 
                         st.session_state['matriz_ativa']
                     )
                     st.session_state.favoritas[mod] = pool_refinado
-                    removidas = pool_antes - len(pool_refinado)
-                    st.success(f"🔥 Otimizado! {removidas} dezenas de baixo desempenho removidas.")
+                    st.success("🔥 Pool Otimizado!")
                     st.rerun()
+
  
         pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
  
@@ -1226,6 +1224,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
