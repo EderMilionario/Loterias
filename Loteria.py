@@ -213,6 +213,32 @@ def definir_label_chance(jogo, mod):
     if (media_esperada - 10) <= soma <= (media_esperada + 10): 
         return "ALTA"
     return "PADRÃO"
+def calcular_premio_multiplo_lotofacil(n_dezenas_jogadas, n_acertos):
+    """Calcula a premiação multiplicada oficial da Lotofácil para apostas múltiplas."""
+    if n_acertos < 11:
+        return 0.0
+    
+    tabela_premios = {
+        15: {15: (1, 0, 0, 0, 0), 14: (0, 1, 0, 0, 0), 13: (0, 0, 1, 0, 0), 12: (0, 0, 0, 1, 0), 11: (0, 0, 0, 0, 1)},
+        16: {15: (1, 15, 0, 0, 0), 14: (0, 2, 14, 0, 0), 13: (0, 0, 3, 13, 0), 12: (0, 0, 0, 4, 12), 11: (0, 0, 0, 0, 5)},
+        17: {15: (1, 30, 105, 0, 0), 14: (0, 3, 42, 91, 0), 13: (0, 0, 6, 39, 91), 12: (0, 0, 0, 10, 65), 11: (0, 0, 0, 0, 15)},
+        18: {15: (1, 45, 315, 455, 0), 14: (0, 4, 84, 364, 364), 13: (0, 0, 10, 80, 350), 12: (0, 0, 0, 20, 220), 11: (0, 0, 0, 0, 35)},
+        19: {15: (1, 60, 630, 1820, 1365), 14: (0, 5, 140, 910, 2275), 13: (0, 0, 15, 150, 975), 12: (0, 0, 0, 35, 560), 11: (0, 0, 0, 0, 70)},
+        20: {15: (1, 75, 1050, 4550, 9825), 14: (0, 6, 210, 1820, 7280), 13: (0, 0, 21, 252, 2247), 12: (0, 0, 0, 56, 1232), 11: (0, 0, 0, 0, 126)}
+    }
+
+    if n_dezenas_jogadas not in tabela_premios or n_acertos not in tabela_premios[n_dezenas_jogadas]:
+        return 0.0
+
+    qtds = tabela_premios[n_dezenas_jogadas][n_acertos]
+    valores = st.session_state.premios["Lotofácil"]
+    
+    total = (qtds[0] * valores.get("15", 0) +
+             qtds[1] * valores.get("14", 0) +
+             qtds[2] * valores.get("13", 0) +
+             qtds[3] * valores.get("12", 0) +
+             qtds[4] * valores.get("11", 0))
+    return total
 
 def jogo_ja_saiu(jogo, mod):
     res_hist = st.session_state.ultimo_res.get(mod, {})
@@ -1175,6 +1201,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
