@@ -620,49 +620,30 @@ with abas[0]:
                 
         with col_btn2:
             if st.button("🧠 POOL INTELIGENTE KADOSH"):
-                res_loto = st.session_state.ultimo_res.get(mod, {})
-                if len(res_loto) >= 5:
-                    n_pool_req = info_fech['n_pool'] if info_fech else 20
-                    conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
-                    
-                    # 1. Identificação de Ciclo
-                    sorteadas_no_ciclo = set()
-                    for c in conc_ordenados:
-                        sorteadas_no_ciclo.update(res_loto[c])
-                        if len(sorteadas_no_ciclo) == 25: break
-                    faltantes_ciclo = list(set(range(1, 26)) - sorteadas_no_ciclo)
-                    
-                    # 2. Score IA Kadosh (VOLTANDO PESO ATRASO PARA 1.5)
-                    score_kadosh = {}
-                    contagem = Counter()
-                    for c in conc_ordenados[:20]:
-                        for n in res_loto[c]: 
-                            contagem[n] += 1
-                        
-                    # NOVA LÓGICA COM ABA 6 INTEGRADA (Espaçamento Corrigido)
-                    res_af = list(res_loto.values())
-                    bonus_afinidade = calcular_afinidade_pool(res_af) # Chama a inteligência da Aba 6
+                # ... (todo o código que já existe do Pool Inteligente) ...
+                st.session_state.favoritas[mod] = sorted(pool_final)
+                st.rerun()
 
-                    for n in range(1, max_v + 1):
-                        contagem[n] = sum(1 for jogo in res_loto.values() if n in jogo)
-                        atraso_n = 0
-                        for c_id in sorted(res_loto.keys(), key=lambda x: int(x), reverse=True):
-                            if n in res_loto[c_id]: break
-                            atraso_n += 1
-                        
-                        bonus_ciclo = 3.5 if n in faltantes_ciclo else 0
-                        ponto_afinidade = bonus_afinidade.get(n, 0) # Pega o bônus da Aba 6
-                        
-                        # Score Final: Frequência + Atraso(1.5) + Ciclo(3.5) + Afinidade Aba 6
-                        score_kadosh[n] = contagem[n] + (atraso_n * 1.5) + bonus_ciclo + ponto_afinidade
-
-                    melhores = sorted(score_kadosh.items(), key=lambda x: x[1], reverse=True)
-                    pool_final = [n for n, s in melhores[:n_pool_req]]
-                    st.session_state.favoritas[mod] = sorted(pool_final)
+            # --- INÍCIO DO QUE VOCÊ VAI COLAR ---
+            if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
+                if len(st.session_state.favoritas[mod]) < 15:
+                    st.error("Selecione pelo menos 15 dezenas para refinar.")
+                else:
+                    if 'matriz_ativa' not in st.session_state or st.session_state['matriz_ativa'] is None:
+                        st.session_state['matriz_ativa'] = calcular_matriz_afinidade_kadosh(mod)
+                    
+                    # Chama a função que analisa quem 'briga' no Pool
+                    pool_refinado = refinar_pool_kadosh(
+                        st.session_state.favoritas[mod], 
+                        st.session_state['matriz_ativa']
+                    )
+                    st.session_state.favoritas[mod] = pool_refinado
+                    st.success("🔥 Pool Otimizado para Alta Afinidade!")
                     st.rerun()
+            # --- FIM DO QUE VOCÊ VAI COLAR ---
 
         pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
-        st.session_state.favoritas[mod] = pool
+ 
 
         # --- [SUGESTÃO 3: ANÁLISE DE QUADRANTES NO POOL] ---
         if pool and mod == "Lotofácil":
@@ -1215,6 +1196,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
