@@ -661,7 +661,7 @@ with abas[0]:
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
        # Tenta pegar a matriz já calculada, se não existir, calcula na hora
        matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)     
-        else:
+            else:
             novos = []
             # --- CONEXÃO INTELIGENTE: BUSCA A MATRIZ JÁ PROCESSADA OU GERA UMA NOVA ---
             if 'matriz_ativa' in st.session_state:
@@ -1166,6 +1166,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
