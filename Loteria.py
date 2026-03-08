@@ -660,12 +660,15 @@ with abas[0]:
 
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
         if len(pool) < (info_fech['n_pool'] if info_fech else n_dez):
+            if len(pool) < (info_fech['n_pool'] if info_fech else n_dez):
             st.error(f"Seu Pool precisa de pelo menos {info_fech['n_pool'] if info_fech else n_dez} dezenas!")
         else:
             novos = []
-            # --- NOVO MOTOR DE GERAÇÃO PONDERADO (HARMONIZADO) ---
-            matriz_af = calcular_matriz_afinidade_kadosh(mod) # Busca a inteligência da Aba 6
-
+            # --- CONEXÃO INTELIGENTE: BUSCA A MATRIZ JÁ PROCESSADA OU GERA UMA NOVA ---
+            if 'matriz_ativa' in st.session_state:
+                matriz_af = st.session_state['matriz_ativa']
+            else:
+                matriz_af = calcular_matriz_afinidade_kadosh(mod)
             def gerar_com_matriz(tamanho_solicitado, quantidade, filtragem=True):
                 sucessos, tentativas = 0, 0
                 while sucessos < quantidade and tentativas < 20000:
@@ -1164,6 +1167,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
