@@ -846,11 +846,11 @@ with abas[1]:
             custo_jogo = st.session_state.custos[mod_f].get(tam_jogo, 0)
             total_gasto += custo_jogo
             
-           if conc_alvo in res_db:
-                resultado = res_db[conc_alvo]
-                acertos = len(set(num_jogo) & set(resultado))
-                premio_jogo = st.session_state.premios[mod_f].get(str(acertos), 0.0)
-                total_premio += premio_jogo 
+        if conc_alvo in res_db:
+            resultado = res_db[conc_alvo]
+            acertos = len(set(num_jogo) & set(resultado))
+            premio_jogo = st.session_state.premios[mod_f].get(str(acertos), 0.0)
+            total_premio += premio_jogo 
                 
                 classe_premiado = "jogo-premiado" if premio_jogo > 0 else ""
                 
@@ -1201,6 +1201,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
