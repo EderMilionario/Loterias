@@ -494,7 +494,8 @@ with abas[0]:
         n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao)
         qtd = st.number_input("Quantidade de Jogos", 1, 300, def_qtd)
         
-   with c2:
+
+  with c2:
         max_v = 25 if mod=="Lotofácil" else 60 if mod=="Mega-Sena" else 80
         col_btn1, col_btn2 = st.columns(2)
         
@@ -507,11 +508,9 @@ with abas[0]:
             if st.button("🧠 POOL INTELIGENTE KADOSH"):
                 res_loto = st.session_state.ultimo_res.get(mod, {})
                 if len(res_loto) >= 3:
-                    # Define quantas dezenas a IA vai escolher
                     n_pool_req = info_fech['n_pool'] if (mod == "Lotofácil" and info_fech) else 20
                     conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
                     
-                    # --- CÁLCULO DA IA (Sua lógica original mantida) ---
                     matriz_af = calcular_matriz_afinidade_kadosh(mod)
                     sorteadas_no_ciclo = set()
                     for c in conc_ordenados:
@@ -532,25 +531,26 @@ with abas[0]:
                             else: break
                         bonus_ciclo = 5.0 if n in faltantes_ciclo else 0
                         ponto_atraso = (atraso_n * 1.2) + bonus_ciclo
-                        ponto_afinidade = sum(matriz_af[n][tn] for tn in [num for num, _ in contagem.most_common(5)] if n < len(matriz_af) and tn < len(matriz_af)) if matriz_af else 0
+                        ponto_afinidade = 0
+                        if matriz_af:
+                            top5 = [num for num, _ in contagem.most_common(5)]
+                            ponto_afinidade = sum(matriz_af[n][tn] for tn in top5 if n < len(matriz_af) and tn < len(matriz_af))
+                        
                         score_kadosh[n] = (freq * 0.5) + (ponto_atraso * 0.3) + (ponto_afinidade * 0.2)
 
-                    # --- A CORREÇÃO: Salva e Reinicia para o campo atualizar ---
                     melhores = sorted(score_kadosh.keys(), key=lambda x: score_kadosh[x], reverse=True)
                     st.session_state.favoritas[mod] = sorted(melhores[:n_pool_req])
-                    st.rerun() 
+                    st.rerun()
                 else:
                     st.error("Adicione resultados no Database primeiro!")
 
-        # O campo de seleção agora lerá os dados salvos pelo botão acima
         pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
         st.session_state.favoritas[mod] = pool
         
-        # Mantendo sua visualização de quadrantes
         if pool and mod == "Lotofácil":
             linhas_p = [0]*5
             for n in pool: linhas_p[(n-1)//5] += 1
-            with st.expander("📊 Distribuição Geográfica do Pool"):
+            with st.expander("📊 Distribuição Geográfica"):
                 cols_q = st.columns(5)
                 for idx, q_l in enumerate(linhas_p): cols_q[idx].metric(f"L{idx+1}", f"{q_l}")
 
@@ -558,7 +558,6 @@ with abas[0]:
         fixas_final = st.multiselect("📌 CRAVAR DEZENAS:", options=pool) if modo_fixa == "Manual" else []
         
         renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
- 
 
         
         
@@ -1013,6 +1012,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
