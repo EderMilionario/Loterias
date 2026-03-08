@@ -245,7 +245,7 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
     cq4 = len([n for n in jogo if n in q4])
     
     # Sincronia com o Pool para evitar loop infinito
-    pool_atual = st.session_state.get('pool_selecionado', [])
+    pool_atual = st.session_state.get('pool_favoritas', [])
     if len(pool_atual) >= 18:
         # Filtro de equilíbrio geográfico
         distribuicao = [cq1, cq2, cq3, cq4]
@@ -1164,6 +1164,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
