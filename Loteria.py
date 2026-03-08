@@ -841,7 +841,8 @@ with abas[1]:
             num_jogo = jogo['n']
             tam_jogo = jogo.get('tam', 15)
             fixas_do_jogo = jogo.get('fixas_utilizadas', []) # Recupera as fixas salvas
-    # Cálculo de custo (Busca na sua tabela de estados)
+
+        # Cálculo de custo (Busca na sua tabela de estados)
             custo_jogo = st.session_state.custos[mod_f].get(tam_jogo, 0)
             total_gasto += custo_jogo
             
@@ -881,6 +882,7 @@ with abas[1]:
                 """, unsafe_allow_html=True)
             else:
                 st.info(f"JOGO {i+1:02d}: Aguardando sorteio do concurso {conc_alvo}...")
+
         # 3. Painel de Resumo Financeiro
         st.markdown("---")
         c_res1, c_res2, c_res3 = st.columns(3)
@@ -1199,6 +1201,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
