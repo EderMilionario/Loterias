@@ -659,9 +659,8 @@ with abas[0]:
         renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
 
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-    
-            if len(pool) < (info_fech['n_pool'] if info_fech else n_dez):
-            st.error(f"Seu Pool precisa de pelo menos {info_fech['n_pool'] if info_fech else n_dez} dezenas!")
+       # Tenta pegar a matriz já calculada, se não existir, calcula na hora
+matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)     
         else:
             novos = []
             # --- CONEXÃO INTELIGENTE: BUSCA A MATRIZ JÁ PROCESSADA OU GERA UMA NOVA ---
@@ -1167,6 +1166,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
