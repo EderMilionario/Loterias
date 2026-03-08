@@ -1081,7 +1081,9 @@ with abas[6]:
     mod_af = st.selectbox("Loteria para Análise", list(st.session_state.custos.keys()), key="af_sel_universal")
     
     res_af = st.session_state.ultimo_res.get(mod_af, {})
-    if len(res_af) < 2:
+    # Certifica que a matriz está pronta para o motor de geração
+    if 'matriz_afinidade_global' not in st.session_state:
+        st.session_state.matriz_afinidade_global = calcular_matriz_afinidade_kadosh(mod_af)
         st.warning("⚠️ Base de dados insuficiente. Adicione resultados para análise.")
     else:
         dezenas_lista = list(res_af.values())
@@ -1157,6 +1159,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
