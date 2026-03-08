@@ -25,6 +25,41 @@ def buscar_ultimo_resultado_api():
             return None, None
     return None, None
 
+def calcular_afinidade_pool(dezenas_lista):
+    """Calcula o bônus de afinidade e vácuo baseado na Aba 6 para o Pool."""
+    if not dezenas_lista:
+        return {n: 0 for n in range(1, 26)}
+    
+    total_jogos = len(dezenas_lista)
+    score_afinidade = {n: 0 for n in range(1, 26)}
+    
+    # Mapeia a convivência de todos os pares
+    contagem_pares = {}
+    for jogo in dezenas_lista:
+        jogo_set = set(jogo)
+        dezenas_ordenadas = sorted(list(jogo_set))
+        for i in range(len(dezenas_ordenadas)):
+            for j in range(i + 1, len(dezenas_ordenadas)):
+                par = (dezenas_ordenadas[i], dezenas_ordenadas[j])
+                contagem_pares[par] = contagem_pares.get(par, 0) + 1
+
+    # Identifica Casais de Ouro (Top 15) e Vácuo (Top 15)
+    ordenados = sorted(contagem_pares.items(), key=lambda x: x[1], reverse=True)
+    casais_ouro = dict(ordenados[:15])
+    pares_vacuo = dict(ordenados[-15:])
+
+    # Atribui bônus e penalidades para o Score do Pool
+    for (d1, d2), vezes in casais_ouro.items():
+        score_afinidade[d1] += 0.8
+        score_afinidade[d2] += 0.8
+        
+    for (d1, d2), vezes in pares_vacuo.items():
+        score_afinidade[d1] -= 0.4
+        score_afinidade[d2] -= 0.4
+        
+    return score_afinidade
+
+
 
 
 import json
@@ -1014,6 +1049,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
