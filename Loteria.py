@@ -58,7 +58,23 @@ def calcular_afinidade_pool(dezenas_lista):
         score_afinidade[d2] -= 0.4
         
     return score_afinidade
-
+    
+def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
+    """
+    Calcula o bônus de probabilidade para as dezenas restantes no pool 
+    com base nas que já foram escolhidas para o bilhete.
+    """
+    pesos = {n: 1.0 for n in pool_disponivel}
+    if not dezenas_selecionadas or not matriz_afinidade:
+        return pesos
+    
+    for d_fixa in dezenas_selecionadas:
+        for d_pool in pool_disponivel:
+            if d_pool not in dezenas_selecionadas:
+                # O bônus é proporcional à frequência com que saíram juntas
+                bonus = matriz_afinidade[d_fixa][d_pool] * 0.5
+                pesos[d_pool] += bonus
+    return pesos
 
 
 
@@ -647,23 +663,34 @@ with abas[0]:
             st.error(f"Seu Pool precisa de pelo menos {info_fech['n_pool'] if info_fech else n_dez} dezenas!")
         else:
             novos = []
+            # --- NOVO MOTOR DE GERAÇÃO PONDERADO (HARMONIZADO) ---
+            matriz_af = calcular_matriz_afinidade_kadosh(mod) # Busca a inteligência da Aba 6
+
             def gerar_com_matriz(tamanho_solicitado, quantidade, filtragem=True):
                 sucessos, tentativas = 0, 0
-                pool_para_sorteio = [n for n in pool if n not in fixas_final]
-                vagas_abertas = tamanho_solicitado - len(fixas_final)
-
                 while sucessos < quantidade and tentativas < 20000:
-                    if len(pool_para_sorteio) >= vagas_abertas and vagas_abertas >= 0:
-                        complemento = random.sample(pool_para_sorteio, vagas_abertas)
-                        comb = sorted(fixas_final + complemento)
-                    else:
-                        comb = sorted(random.sample(pool, tamanho_solicitado))
+                    tentativas += 1
+                    jogo_em_construcao = list(fixas_final)
+                    pool_trabalho = [n for n in pool if n not in jogo_em_construcao]
+                    
+                    # Preenchimento inteligente baseado em Afinidade
+                    while len(jogo_em_construcao) < tamanho_solicitado:
+                        # Calcula quem tem mais afinidade com o que já foi escolhido
+                        pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
+                        opcoes = list(pesos_dict.keys())
+                        probabilidades = list(pesos_dict.values())
+                        
+                        # Sorteio Ponderado: Dezenas com mais afinidade têm mais chance
+                        escolha = random.choices(opcoes, weights=probabilidades, k=1)[0]
+                        jogo_em_construcao.append(escolha)
+                        pool_trabalho.remove(escolha)
+                    
+                    comb = sorted(jogo_em_construcao)
                
                     if any(set(comb) == set(existente['n']) for existente in novos):
-                        tentativas += 1
                         continue
                   
-                    # Se for maior que 15, o filtro kadosh não pode ser rígido
+                    # Validação Final Kadosh
                     passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado) if (filtragem and tamanho_solicitado == 15) else True
                     
                     if passou:
@@ -674,7 +701,6 @@ with abas[0]:
                             "chance": definir_label_chance(comb, mod), "est": tag_est
                         })
                         sucessos += 1
-                    tentativas += 1
 
             # --- BLOCO DE DECISÃO SEM ERROS ---
             if info_fech:
@@ -1131,6 +1157,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
