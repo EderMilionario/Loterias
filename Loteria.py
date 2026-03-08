@@ -794,9 +794,6 @@ with abas[0]:
         st.rerun()
  
 
-
-                        
-  
 with abas[1]:
     mostrar_status_backup()
     st.header("🔍 Painel de Conferência")
@@ -816,13 +813,11 @@ with abas[1]:
         
         if pool_salvo and alvo_pool in res_db:
             resultado_alvo = res_db[alvo_pool]
-            acertos_pool = 0
+            acertos_pool = sum(1 for d in pool_salvo if d in resultado_alvo)
             html_pool = '<div style="background: #f8f9fa; padding: 20px; border-radius: 15px; border: 2px solid #1e3799;">'
             
             for d in sorted(pool_salvo):
-                # Cor verde se a dezena do pool saiu no resultado
                 classe = "pool-verde" if d in resultado_alvo else "pool-vermelho"
-                if d in resultado_alvo: acertos_pool += 1
                 html_pool += f'<span class="dezena-pool {classe}">{d:02d}</span>'
             
             html_pool += f'<br><br><span style="color: #1e3799;">📊 <b>ACERTOS NO CERCO (Conc {alvo_pool}): {acertos_pool} DEZENAS</b></span></div>'
@@ -832,59 +827,52 @@ with abas[1]:
         st.markdown("---")
         st.subheader("📋 Conferência de Bilhetes Individuais")
         
-        # --- BLOCO DE CONFERÊNCIA COMPLETO (NÃO REMOVER NADA) ---
         total_gasto = 0
         total_premio = 0
 
-       for i, jogo in enumerate(jogos_salvos_atual):
+        for i, jogo in enumerate(jogos_salvos_atual):
             conc_alvo = str(jogo.get('concurso_alvo', ''))
             num_jogo = jogo['n']
             tam_jogo = jogo.get('tam', 15)
-            fixas_do_jogo = jogo.get('fixas_utilizadas', []) # Recupera as fixas salvas
+            fixas_do_jogo = jogo.get('fixas_utilizadas', [])
 
-        # Cálculo de custo (Busca na sua tabela de estados)
+            # Cálculo de custo
             custo_jogo = st.session_state.custos[mod_f].get(tam_jogo, 0)
             total_gasto += custo_jogo
             
-        if conc_alvo in res_db:
-            resultado = res_db[conc_alvo]
-            acertos = len(set(num_jogo) & set(resultado))
-            premio_jogo = st.session_state.premios[mod_f].get(str(acertos), 0.0)
-            total_premio += premio_jogo 
+            if conc_alvo in res_db:
+                resultado = res_db[conc_alvo]
+                acertos = len(set(num_jogo) & set(resultado))
                 
-            classe_premiado = "jogo-premiado" if premio_jogo > 0 else ""
+                # Cálculo de prêmio
+                if mod_f == "Lotofácil" and tam_jogo > 15:
+                    premio_jogo = calcular_premio_multiplo_lotofacil(tam_jogo, acertos)
+                else:
+                    premio_jogo = float(st.session_state.premios[mod_f].get(str(acertos), 0.0))
                 
-         # Renderização visual com destaque para FIXAS
-             html_dezenas = ""
-         for d in num_jogo:
-         # 1. Cor da dezena (Verde se acertou, Preto se errou)
-             cor_texto = "#28a745" if d in resultado else "#000000"
-                    
-         # 2. Estilo se for FIXA (Sublinhado e Negrito pesado)
-             estilo_fixa = "text-decoration: underline; font-weight: 900;" if d in fixas_do_jogo else "font-weight: bold;"
-                    
-         # 3. Marcador visual de acerto em fixa
-              marcador = "📌" if (d in fixas_do_jogo and d in resultado) else ""
-                    
-              html_dezenas += f'<span style="color:{cor_texto}; {estilo_fixa} margin-right:8px; font-size:18px;">{d:02d}{marcador}</span>'
+                total_premio += premio_jogo 
+                classe_premiado = "jogo-premiado" if premio_jogo > 0 else ""
+                
+                html_dezenas = ""
+                for d in num_jogo:
+                    cor_texto = "#28a745" if d in resultado else "#000000"
+                    estilo_fixa = "text-decoration: underline; font-weight: 900;" if d in fixas_do_jogo else "font-weight: bold;"
+                    marcador = "📌" if (d in fixas_do_jogo and d in resultado) else ""
+                    html_dezenas += f'<span style="color:{cor_texto}; {estilo_fixa} margin-right:8px; font-size:18px;">{d:02d}{marcador}</span>'
 
-              st.markdown(f"""
-               <div class="{classe_premiado}" style="border-left: 5px solid {'#d4af37' if premio_jogo > 0 else '#ccc'}; padding: 15px; background: #f9f9f9; border-radius: 12px; margin-bottom: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
-               <p style="margin:0; font-size: 12px; color: #444;">JOGO {i+1:02d} | {jogo['est']} | CONCURSO ALVO: {conc_alvo}</p>
-               <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
-                        {html_dezenas}
-               </div>
-               <p style="margin:0; font-size: 14px; color: black;">
-               🎯 ACERTOS: <b>{acertos}</b> | 💰 PRÊMIO: <span style="color:#1e3799;"><b>{formata_dinheiro(premio_jogo)}</b></span>
-               <br><small style="color:#666; font-weight: normal;">(<u>Sublinhado</u>: Dezenas Fixas | 📌: Fixa Acertada)</small>
-               </p>
-               </div>
+                st.markdown(f"""
+                <div class="{classe_premiado}" style="border-left: 5px solid {'#d4af37' if premio_jogo > 0 else '#ccc'}; padding: 15px; background: #f9f9f9; border-radius: 12px; margin-bottom: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
+                    <p style="margin:0; font-size: 12px; color: #444;">JOGO {i+1:02d} | {jogo['est']} | CONCURSO ALVO: {conc_alvo}</p>
+                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">{html_dezenas}</div>
+                    <p style="margin:0; font-size: 14px; color: black;">
+                        🎯 ACERTOS: <b>{acertos}</b> | 💰 PRÊMIO: <span style="color:#1e3799;"><b>{formata_dinheiro(premio_jogo)}</b></span>
+                        <br><small style="color:#666; font-weight: normal;">(<u>Sublinhado</u>: Dezenas Fixas | 📌: Fixa Acertada)</small>
+                    </p>
+                </div>
                 """, unsafe_allow_html=True)
             else:
                 st.info(f"JOGO {i+1:02d}: Aguardando sorteio do concurso {conc_alvo}...")
- 
 
-        
         # 3. Painel de Resumo Financeiro
         st.markdown("---")
         c_res1, c_res2, c_res3 = st.columns(3)
@@ -893,10 +881,14 @@ with abas[1]:
         c_res3.metric("Saldo Líquido", f"R$ {total_premio - total_gasto:,.2f}", 
                      delta_color="normal" if total_premio >= total_gasto else "inverse")
 
-        # Botão para limpar histórico
         if st.button("🗑️ LIMPAR TODOS OS JOGOS SALVOS"):
             st.session_state.jogos_salvos = []
             st.rerun()
+
+                        
+  
+
+        
 
 with abas[2]:
     mostrar_status_backup()
@@ -1203,6 +1195,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
