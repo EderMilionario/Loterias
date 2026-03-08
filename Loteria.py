@@ -707,91 +707,79 @@ with abas[1]:
     st.header("🔍 Painel de Conferência")
     mod_f = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="f_conf")
     
+    # Filtra apenas os jogos salvos da modalidade selecionada
     jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
-    
-    # --- NOVO BLOCO: VISUALIZAÇÃO DO POOL NA CONFERÊNCIA (MANTIDO) ---
-    if jogos_salvos_atual:
+    res_db = st.session_state.ultimo_res.get(mod_f, {})
+
+    if not jogos_salvos_atual:
+        st.warning(f"Nenhum jogo salvo para {mod_f}. Vá ao Gerador primeiro!")
+    else:
+        # 1. Visualização do Pool do último jogo salvo
         st.markdown("### 🎯 PERFORMANCE DO SEU POOL (CERCO)")
-        res_db = st.session_state.ultimo_res.get(mod_f, {})
+        pool_salvo = jogos_salvos_atual[-1].get('pool_origem', [])
+        alvo_pool = str(jogos_salvos_atual[-1].get('concurso_alvo', ''))
         
-        # Pega o pool do primeiro jogo
-        pool_salvo = jogos_salvos_atual[0].get('pool_origem', [])
-        alvo_pool = str(jogos_salvos_atual[0].get('concurso_alvo', ''))
-        
-        if pool_salvo:
-            html_pool = '<div style="background: #f8f9fa; padding: 20px; border-radius: 15px; border: 2px solid #1e3799; margin-bottom: 20px;">'
+        if pool_salvo and alvo_pool in res_db:
+            resultado_alvo = res_db[alvo_pool]
             acertos_pool = 0
-            resultado_alvo = res_db.get(alvo_pool, [])
+            html_pool = '<div style="background: #f8f9fa; padding: 20px; border-radius: 15px; border: 2px solid #1e3799;">'
             
             for d in sorted(pool_salvo):
-                classe = "pool-vermelho"
-                if d in resultado_alvo:
-                    classe = "pool-verde"
-                    acertos_pool += 1
+                # Cor verde se a dezena do pool saiu no resultado
+                classe = "pool-verde" if d in resultado_alvo else "pool-vermelho"
+                if d in resultado_alvo: acertos_pool += 1
                 html_pool += f'<span class="dezena-pool {classe}">{d:02d}</span>'
             
-            html_pool += f'<br><br><span style="font-size: 18px; color: #1e3799;">📊 <b>ACERTOS NO CERCO: {acertos_pool} DEZENAS</b></span>'
-            html_pool += '</div>'
+            html_pool += f'<br><br><span style="color: #1e3799;">📊 <b>ACERTOS NO CERCO (Conc {alvo_pool}): {acertos_pool} DEZENAS</b></span></div>'
             st.markdown(html_pool, unsafe_allow_html=True)
-        else:
-            st.info("Pool não registrado nos jogos antigos.")
 
-    # --- EXTRAÇÃO EM PDF (MANTIDO) ---
-    if jogos_salvos_atual:
-        btn_pdf = gerar_pdf_bonito(jogos_salvos_atual, mod_f)
-        st.download_button(label="📄 EXTRAIR JOGOS SALVOS EM PDF", data=btn_pdf, file_name=f"jogos_{mod_f}.pdf", mime="application/pdf")
-    else:
-        st.info("Salve jogos no Gerador para habilitar a extração em PDF.")
+        # 2. Listagem e Conferência dos Bilhetes
+        st.markdown("---")
+        st.subheader("📋 Conferência de Bilhetes Individuais")
+        
+        total_gasto = 0
+        total_premio = 0
 
-    if st.button("🔄 ATUALIZAR E CONFERIR"): 
-        st.rerun()
-        
-    res_db = st.session_state.ultimo_res.get(mod_f, {})
-    jogos_na_espera = [j for j in st.session_state.jogos_salvos if j.get('mod') == mod_f]
-    
-    if jogos_na_espera:
-        total_ganho = 0
-        # Primeiro calculamos o total de prêmios
-        for j in jogos_na_espera:
-            alvo = str(j.get('concurso_alvo', ''))
-            if alvo in res_db:
-                sorteados = set(res_db[alvo])
-                acertos = len(set(j['n']).intersection(sorteados))
-                total_ganho += st.session_state.premios[mod_f].get(str(acertos), 0.0)
-        
-        # Painel de Resumo Luxo
-        st.markdown(f'<div class="painel-luxo-black"><div class="titulo-luxo-gold">🏆 Premiação Total 🏆</div><div class="valor-luxo-white">{formata_dinheiro(total_ganho)}</div></div>', unsafe_allow_html=True)
-        
-        # Listagem dos Jogos com as Bolinhas das Fixas (ACRÉSCIMO SOLICITADO)
-        for i, j in enumerate(jogos_na_espera):
-            alvo = str(j.get('concurso_alvo', ''))
-            txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
+        for i, jogo in enumerate(jogos_salvos_atual):
+            conc_alvo = str(jogo.get('concurso_alvo', ''))
+            num_jogo = jogo['n']
             
-            if alvo in res_db:
-                sorteados = set(res_db[alvo])
-                acertos = len(set(j['n']).intersection(sorteados))
-                val = st.session_state.premios[mod_f].get(str(acertos), 0.0)
-                
-                # --- NOVO: SCANNER DE FIXAS ---
-                if "fixas_utilizadas" in j and j["fixas_utilizadas"]:
-                    fixas_u = j["fixas_utilizadas"]
-                    acertos_f = set(fixas_u).intersection(sorteados)
-                    
-                    bolinhas = ""
-                    for f in fixas_u:
-                        cor_f = "#2ecc71" if f in sorteados else "#e74c3c"
-                        bolinhas += f'<span style="background:{cor_f}; color:white; padding:2px 8px; border-radius:50%; margin-right:5px; border:1px solid black; font-size:11px; font-weight:bold;">{f:02d}</span>'
-                    
-                    st.markdown(f"📍 **FIXAS:** {bolinhas} | **Acertos: {len(acertos_f)}/{len(fixas_u)}**", unsafe_allow_html=True)
+            # Cálculo de custo (baseado na tabela de custos definida no estado)
+            custo_jogo = st.session_state.custos[mod_f].get(len(num_jogo), 0)
+            total_gasto += custo_jogo
 
-                # Mantendo sua exibição original intacta
-                st.markdown(f"<div {'class=\"jogo-premiado\"' if val>0 else ''}>**ID {i+1:02d}** | `{txt_jogo}` | **{acertos} ACERTOS** ({formata_dinheiro(val)})</div>", unsafe_allow_html=True)
-            else: 
-                st.markdown(f"**ID {i+1:02d}** | `{txt_jogo}` | ⏳ **AGUARDANDO CONCURSO {alvo}**")
+            if conc_alvo in res_db:
+                sorteio = res_db[conc_alvo]
+                acertos = len(set(num_jogo) & set(sorteio))
                 
-    if st.button("🗑️ LIMPAR HISTÓRICO"):
-        st.session_state.jogos_salvos = [j for j in st.session_state.jogos_salvos if j['mod'] != mod_f]
-        st.rerun()
+                # Cálculo de prêmio (exemplo simplificado para Lotofácil)
+                premio = st.session_state.premios[mod_f].get(str(acertos), 0.0)
+                total_premio += premio
+                
+                estilo_premiado = "jogo-premiado" if acertos >= 11 else ""
+                
+                with st.container():
+                    st.markdown(f"""
+                    <div class="{estilo_premiado}" style="padding:10px; border-radius:10px; margin-bottom:5px;">
+                        <b>JOGO {i+1:02d}</b> | Conc: {conc_alvo} | <b>{acertos} ACERTOS</b> | 
+                        Premiação: R$ {premio:,.2f}
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info(f"JOGO {i+1:02d} - Aguardando sorteio do concurso {conc_alvo}...")
+
+        # 3. Painel de Resumo Financeiro
+        st.markdown("---")
+        c_res1, c_res2, c_res3 = st.columns(3)
+        c_res1.metric("Investimento Total", f"R$ {total_gasto:,.2f}")
+        c_res2.metric("Retorno em Prêmios", f"R$ {total_premio:,.2f}")
+        c_res3.metric("Saldo Líquido", f"R$ {total_premio - total_gasto:,.2f}", 
+                     delta_color="normal" if total_premio >= total_gasto else "inverse")
+
+        # Botão para limpar histórico
+        if st.button("🗑️ LIMPAR TODOS OS JOGOS SALVOS"):
+            st.session_state.jogos_salvos = []
+            st.rerun()
 
 with abas[2]:
     mostrar_status_backup()
@@ -1091,6 +1079,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
