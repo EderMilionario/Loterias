@@ -1055,11 +1055,42 @@ with abas[6]:
         st.subheader("🚫 Pares em Vácuo (Os que menos se encontram)")
         st.warning("Evite usar estas duplas como FIXAS no mesmo bilhete.")
         
-        # Exibição em colunas para os Inimigos
+        st.subheader("🚫 Pares em Vácuo (Inimigos)")
+        st.warning("Evite usar estas duplas como FIXAS no mesmo bilhete.")
         cols_v = st.columns(3)
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
+        st.markdown("---")
+        st.subheader("🏆 Trios de Ouro (Blocos de Alta Potência)")
+        st.info("Estes trios saíram juntos com frequência máxima na história (3630 concursos).")
+
+        # LÓGICA RIGOROSA DE TRIOS
+        contagem_trios = {}
+        # Analisamos os jogos para encontrar trios que aparecem juntos
+        # Para precisão perita, focamos nos trios mais recorrentes
+        for jogo in dezenas_lista:
+            # Pegamos as combinações de 3 dentro de cada sorteio
+            for trio in combinations(sorted(list(jogo)), 3):
+                contagem_trios[trio] = contagem_trios.get(trio, 0) + 1
+        
+        # Filtramos os 10 trios mais fortes de toda a base
+        trios_ordenados = sorted(contagem_trios.items(), key=lambda x: x[1], reverse=True)[:10]
+        
+        cols_t = st.columns(2)
+        for idx, (trio, vezes) in enumerate(trios_ordenados):
+            # Cálculo de probabilidade real do trio
+            porc_trio = (vezes / total_jogos) * 100
+            with cols_t[idx % 2]:
+                st.markdown(f"""
+                <div style="background: linear-gradient(45deg, #d4af37, #f1c40f); color: black; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 2px solid #000; box-shadow: 3px 3px 0px #000;">
+                    <span style="font-size: 20px;"><b>TRIO: {trio[0]:02d} - {trio[1]:02d} - {trio[2]:02d}</b></span><br>
+                    <hr style="border: 0.5px solid black; margin: 5px 0;">
+                    <b>Frequência Histórica:</b> {vezes} vezes <br>
+                    <b>Afinidade Real:</b> {porc_trio:.2f}%
+                </div>
+                """, unsafe_allow_html=True)
 
 
 
