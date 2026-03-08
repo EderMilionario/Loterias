@@ -658,45 +658,51 @@ with abas[0]:
         
         renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
 
+    # --- BLOCO DO BOTÃO DE GERAR (CORREÇÃO DEFINITIVA) ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-       # Tenta pegar a matriz já calculada, se não existir, calcula na hora
-       matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)     
-    else:
+        # 1. Preparação da Inteligência de Afinidade
+        if 'matriz_ativa' in st.session_state and st.session_state['matriz_ativa'] is not None:
+            matriz_af = st.session_state['matriz_ativa']
+        else:
+            matriz_af = calcular_matriz_afinidade_kadosh(mod)
+            st.session_state['matriz_ativa'] = matriz_af
+
+        if not pool or len(pool) < n_dez:
+            st.error("⚠️ Erro: Seu Pool é menor que a quantidade de dezenas por bilhete.")
+        else:
             novos = []
-            # --- CONEXÃO INTELIGENTE: BUSCA A MATRIZ JÁ PROCESSADA OU GERA UMA NOVA ---
-            if 'matriz_ativa' in st.session_state:
-                matriz_af = st.session_state['matriz_ativa']
-            else:
-                matriz_af = calcular_matriz_afinidade_kadosh(mod)
-            def gerar_com_matriz(tamanho_solicitado, quantidade, filtragem=True):
+            
+            # Função interna de geração para respeitar as estratégias
+            def processar_geracao(tamanho_solicitado, quantidade_pedida, filtragem=True):
                 sucessos, tentativas = 0, 0
-                while sucessos < quantidade and tentativas < 20000:
+                while sucessos < quantidade_pedida and tentativas < 15000:
                     tentativas += 1
                     jogo_em_construcao = list(fixas_final)
                     pool_trabalho = [n for n in pool if n not in jogo_em_construcao]
                     
-                    # Preenchimento inteligente baseado em Afinidade
-                    while len(jogo_em_construcao) < tamanho_solicitado:
-                        # Calcula quem tem mais afinidade com o que já foi escolhido
+                    # Preenchimento inteligente via Matriz de Afinidade
+                    while len(jogo_em_construcao) < tamanho_solicitado and pool_trabalho:
                         pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
                         opcoes = list(pesos_dict.keys())
                         probabilidades = list(pesos_dict.values())
                         
-                        # Sorteio Ponderado: Dezenas com mais afinidade têm mais chance
                         escolha = random.choices(opcoes, weights=probabilidades, k=1)[0]
                         jogo_em_construcao.append(escolha)
                         pool_trabalho.remove(escolha)
                     
                     comb = sorted(jogo_em_construcao)
-               
+                    
+                    # Evita duplicatas no lote atual
                     if any(set(comb) == set(existente['n']) for existente in novos):
                         continue
-                  
-                    # Validação Final Kadosh
-                    passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado) if (filtragem and tamanho_solicitado == 15) else True
+                    
+                    # Filtros Kadosh (Somente para jogos de 15)
+                    passou = True
+                    if filtragem and tamanho_solicitado == 15 and mod == "Lotofácil":
+                        passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
                     
                     if passou:
-                        tag_est = f"{fe_escolhido if info_fech else est_escolhida}"
+                        tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
                         novos.append({
                             "mod": mod, "n": comb, "tam": tamanho_solicitado, 
                             "fixas_utilizadas": list(fixas_final),
@@ -704,37 +710,40 @@ with abas[0]:
                         })
                         sucessos += 1
 
-            # --- BLOCO DE DECISÃO SEM ERROS ---
-            if info_fech:
+            # --- LÓGICA DE EXECUÇÃO POR ESTRATÉGIA ---
+            if fe_escolhido != "Nenhum":
                 if "DIAMANTE" in fe_escolhido:
-                    gerar_com_matriz(16, 2)
-                    gerar_com_matriz(15, 10)
+                    processar_geracao(16, 2)
+                    processar_geracao(15, 10)
                 elif "CÉLULA" in fe_escolhido:
-                    gerar_com_matriz(16, 1)
-                    gerar_com_matriz(15, 15)
+                    processar_geracao(16, 1)
+                    processar_geracao(15, 15)
                 else:
-                    gerar_com_matriz(15, qtd)
+                    processar_geracao(15, qtd)
             elif est_escolhida == "6. A MARRETA":
-                gerar_com_matriz(18, 1)
-                gerar_com_matriz(16, 5)
+                processar_geracao(18, 1)
+                processar_geracao(16, 5)
             elif est_escolhida == "7. SIMETRIA GEOMÉTRICA":
-                gerar_com_matriz(16, 2)
-                gerar_com_matriz(15, 8)
+                processar_geracao(16, 2)
+                processar_geracao(15, 8)
             elif est_escolhida == "10. KADOSH PRESTIGE 20":
-                # Esta função já existe no seu código e fará todo o trabalho
-                gerar_com_matriz(15, 36)                    
+                processar_geracao(15, 36)
             elif est_escolhida != "Personalizado" and mod == "Lotofácil":
-                gerar_com_matriz(info_est['dez'], info_est.get('qtd', 1))
+                processar_geracao(info_est['dez'], info_est.get('qtd', 1))
                 if "qtd_15" in info_est:
-                    gerar_com_matriz(15, info_est['qtd_15'])
+                    processar_geracao(15, info_est['qtd_15'])
             else:
-                gerar_com_matriz(n_dez, qtd)
+                processar_geracao(n_dez, qtd)
             
             st.session_state.jogos_gerados = novos
             st.rerun()
-    for i, j in enumerate(st.session_state.jogos_gerados):
-        txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
-        st.code(f"JOGO {i+1:02d} | {j['est']} | {j['tam']} DEZ | {txt_jogo} / {j['chance']}")
+
+    # --- EXIBIÇÃO DOS JOGOS (FORA DO IF DO BOTÃO) ---
+    if st.session_state.jogos_gerados:
+        st.markdown("### 📝 Jogos Preparados")
+        for i, j in enumerate(st.session_state.jogos_gerados):
+            txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
+            st.code(f"JOGO {i+1:02d} | {j['est']} | {j['tam']} DEZ | {txt_jogo} / {j['chance']}")
     
     if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
         res_existentes = st.session_state.ultimo_res.get(mod, {})
@@ -1166,6 +1175,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
