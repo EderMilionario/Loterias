@@ -836,7 +836,7 @@ with abas[1]:
         total_gasto = 0
         total_premio = 0
 
-        for i, jogo in enumerate(jogos_salvos_atual):
+       for i, jogo in enumerate(jogos_salvos_atual):
             conc_alvo = str(jogo.get('concurso_alvo', ''))
             num_jogo = jogo['n']
             tam_jogo = jogo.get('tam', 15)
@@ -882,7 +882,9 @@ with abas[1]:
                 """, unsafe_allow_html=True)
             else:
                 st.info(f"JOGO {i+1:02d}: Aguardando sorteio do concurso {conc_alvo}...")
+ 
 
+        
         # 3. Painel de Resumo Financeiro
         st.markdown("---")
         c_res1, c_res2, c_res3 = st.columns(3)
@@ -1201,6 +1203,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
