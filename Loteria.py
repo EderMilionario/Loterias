@@ -304,6 +304,38 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
         
     return True
 
+def analisar_quadrantes_kadosh(jogo):
+    """
+    Analisa a distribuição geográfica das dezenas no volante 5x5.
+    Divide o volante em 4 áreas (Q1: Topo-Esquerda, Q2: Topo-Direita, etc.)
+    """
+    # Definição dos índices das dezenas por quadrante (Volante 1-25)
+    # Q1 [01,02,03,06,07,08,11,12,13] - Topo Esquerda
+    # Q2 [04,05,09,10,14,15]          - Topo Direita
+    # Q3 [16,17,18,21,22,23]          - Base Esquerda
+    # Q4 [19,20,24,25]                - Base Direita
+    
+    q1 = [1, 2, 3, 6, 7, 8, 11, 12, 13]
+    q2 = [4, 5, 9, 10, 14, 15]
+    q3 = [16, 17, 21, 22] # Base esquerda
+    q4 = [18, 19, 20, 23, 24, 25] # Base direita e centro-baixo
+    
+    contagem = {
+        "Q1": len([n for n in jogo if n in q1]),
+        "Q2": len([n for n in jogo if n in q2]),
+        "Q3": len([n for n in jogo if n in q3]),
+        "Q4": len([n for n in jogo if n in q4])
+    }
+    
+    # REGRA DE OURO KADOSH: Nenhum quadrante pode ter menos de 1 dezena (vazio)
+    # e nenhum pode ter mais de 7 (superlotado) para jogos de 15 dezenas.
+    if any(valor < 1 for valor in contagem.values()):
+        return False, contagem
+    
+    return True, contagem
+
+# Documentação: Este segmento deve ser invocado dentro de 'validar_kadosh_cirurgico'
+
 
 def renderizar_heatmap(mod, res_loto):
     if not res_loto or mod != "Lotofácil": 
@@ -1099,6 +1131,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
