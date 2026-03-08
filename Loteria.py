@@ -494,7 +494,7 @@ with abas[0]:
         n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao)
         qtd = st.number_input("Quantidade de Jogos", 1, 300, def_qtd)
         
-       with c2:
+   with c2:
         max_v = 25 if mod=="Lotofácil" else 60 if mod=="Mega-Sena" else 80
         col_btn1, col_btn2 = st.columns(2)
         
@@ -1013,6 +1013,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
