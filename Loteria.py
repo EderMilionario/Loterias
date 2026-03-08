@@ -67,6 +67,12 @@ def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, po
     pesos = {n: 1.0 for n in pool_disponivel}
     if not dezenas_selecionadas or not matriz_afinidade:
         return pesos
+def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
+    # ... código atual ...
+    return pesos
+
+# <--- COLE A NOVA FUNÇÃO 'refinar_pool_kadosh' EXATAMENTE AQUI
+        
     
     for d_fixa in dezenas_selecionadas:
         for d_pool in pool_disponivel:
@@ -1209,6 +1215,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
