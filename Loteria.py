@@ -852,7 +852,7 @@ with abas[1]:
             premio_jogo = st.session_state.premios[mod_f].get(str(acertos), 0.0)
             total_premio += premio_jogo 
                 
-                classe_premiado = "jogo-premiado" if premio_jogo > 0 else ""
+            classe_premiado = "jogo-premiado" if premio_jogo > 0 else ""
                 
                 # Renderização visual com destaque para FIXAS
                 html_dezenas = ""
@@ -1201,6 +1201,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
