@@ -1080,11 +1080,16 @@ with abas[6]:
     st.header("🔗 Afinidade e Vínculos de Dezenas")
     mod_af = st.selectbox("Loteria para Análise", list(st.session_state.custos.keys()), key="af_sel_universal")
     
+    # --- INTEGRAÇÃO CORRIGIDA ---
     res_af = st.session_state.ultimo_res.get(mod_af, {})
-    # Certifica que a matriz está pronta para o motor de geração
-    if 'matriz_afinidade_global' not in st.session_state:
-        st.session_state.matriz_afinidade_global = calcular_matriz_afinidade_kadosh(mod_af)
-        st.warning("⚠️ Base de dados insuficiente. Adicione resultados para análise.")
+    
+    # Geramos a matriz e guardamos no estado global para a Aba 0 enxergar
+    matriz_calculada = calcular_matriz_afinidade_kadosh(mod_af)
+    st.session_state['matriz_ativa'] = matriz_calculada 
+    
+    if not res_af or len(res_af) < 2:
+        st.warning("⚠️ Base de dados insuficiente na Aba 3. Adicione resultados.")
+        st.stop() # Interrompe a aba 6 aqui para não dar erro nos cálculos abaixo
     else:
         dezenas_lista = list(res_af.values())
         total_jogos = len(dezenas_lista)
@@ -1159,6 +1164,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
