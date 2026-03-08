@@ -1,127 +1,88 @@
 import streamlit as st
 import requests
-
-def buscar_ultimo_resultado_api():
-    try:
-        url = "https://loterica.api.ghgi.com.br/api/lotofacil/latest"
-        # O SEGREDO: Simulando um navegador real para evitar bloqueios
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
-        }
-        response = requests.get(url, headers=headers, timeout=15, verify=True)
-        
-        if response.status_code == 200:
-            dados = response.json()
-            return str(dados['concurso']), [int(n) for n in dados['dezenas']]
-    except Exception as e:
-        # Se falhar, ele tenta uma SEGUNDA API de backup (Open Source)
-        try:
-            url_reserva = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
-            res = requests.get(url_reserva, timeout=10)
-            if res.status_code == 200:
-                d = res.json()
-                return str(d['concurso']), [int(n) for n in d['dezenas']]
-        except:
-            return None, None
-    return None, None
-
-def calcular_afinidade_pool(dezenas_lista):
-    """Calcula o bônus de afinidade e vácuo baseado na Aba 6 para o Pool."""
-    if not dezenas_lista:
-        return {n: 0 for n in range(1, 26)}
-    
-    total_jogos = len(dezenas_lista)
-    score_afinidade = {n: 0 for n in range(1, 26)}
-    
-    # Mapeia a convivência de todos os pares
-    contagem_pares = {}
-    for jogo in dezenas_lista:
-        jogo_set = set(jogo)
-        dezenas_ordenadas = sorted(list(jogo_set))
-        for i in range(len(dezenas_ordenadas)):
-            for j in range(i + 1, len(dezenas_ordenadas)):
-                par = (dezenas_ordenadas[i], dezenas_ordenadas[j])
-                contagem_pares[par] = contagem_pares.get(par, 0) + 1
-
-    # Identifica Casais de Ouro (Top 15) e Vácuo (Top 15)
-    ordenados = sorted(contagem_pares.items(), key=lambda x: x[1], reverse=True)
-    casais_ouro = dict(ordenados[:15])
-    pares_vacuo = dict(ordenados[-15:])
-
-    # Atribui bônus e penalidades para o Score do Pool
-    for (d1, d2), vezes in casais_ouro.items():
-        score_afinidade[d1] += 0.8
-        score_afinidade[d2] += 0.8
-        
-    for (d1, d2), vezes in pares_vacuo.items():
-        score_afinidade[d1] -= 0.4
-        score_afinidade[d2] -= 0.4
-        
-    return score_afinidade
-    
-def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
-    """
-    Calcula o bônus de probabilidade para as dezenas restantes no pool 
-    com base nas que já foram escolhidas para o bilhete.
-    """
-    pesos = {n: 1.0 for n in pool_disponivel}
-    if not dezenas_selecionadas or not matriz_afinidade:
-        return pesos
-def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
-    # ... código atual ...
-    return pesos
-
-# <--- COLE A NOVA FUNÇÃO 'refinar_pool_kadosh' EXATAMENTE AQUI
-        
-    
-    for d_fixa in dezenas_selecionadas:
-        for d_pool in pool_disponivel:
-            if d_pool not in dezenas_selecionadas:
-                # O bônus é proporcional à frequência com que saíram juntas
-                bonus = matriz_afinidade[d_fixa][d_pool] * 0.5
-                pesos[d_pool] += bonus
-    return pesos
-
-def refinar_pool_kadosh(pool_atual, matriz_afinidade):
-    """
-    Remove dezenas do Pool que possuem baixíssima afinidade entre si.
-    """
-    if not matriz_afinidade or len(pool_atual) <= 15:
-        return sorted(list(pool_atual))
-
-    pool_refinado = list(pool_atual)
-    dezenas_para_remover = set()
-    vácuos = []
-
-    for i in range(len(pool_refinado)):
-        for j in range(i + 1, len(pool_refinado)):
-            d1, d2 = pool_refinado[i], pool_refinado[j]
-            freq = matriz_afinidade[d1][d2]
-            vácuos.append((d1, d2, freq))
-    
-    vácuos_ordenados = sorted(vácuos, key=lambda x: x[2])
-    piores_conflitos = vácuos_ordenados[:15]
-
-    for d1, d2, freq in piores_conflitos:
-        if len(pool_refinado) - len(dezenas_para_remover) <= 15:
-            break
-        if d1 in pool_refinado and d2 in pool_refinado:
-            forca_d1 = sum(matriz_afinidade[d1])
-            forca_d2 = sum(matriz_afinidade[d2])
-            dezenas_para_remover.add(d1 if forca_d1 < forca_d2 else d2)
-
-    resultado_final = [d for d in pool_refinado if d not in dezenas_para_remover]
-    return sorted(resultado_final)
-
-
 import json
 import random
 import re
 import pandas as pd
 from collections import Counter
 from itertools import combinations
-from fpdf import FPDF  # Acréscimo para PDF
+from fpdf import FPDF
 import io
+
+# --- [FUNÇÕES DE INTELIGÊNCIA] ---
+
+def buscar_ultimo_resultado_api():
+    try:
+        url = "https://loterica.api.ghgi.com.br/api/lotofacil/latest"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            dados = response.json()
+            return str(dados['concurso']), [int(n) for n in dados['dezenas']]
+    except:
+        return None, None
+    return None, None
+
+def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
+    """Calcula bônus para dezenas no pool baseado no que já foi escolhido."""
+    pesos = {n: 1.0 for n in pool_disponivel}
+    if not dezenas_selecionadas or not matriz_afinidade:
+        return pesos
+    
+    for d_fixa in dezenas_selecionadas:
+        for d_pool in pool_disponivel:
+            if d_pool not in dezenas_selecionadas:
+                # O índice da matriz deve ser inteiro
+                idx_f = int(d_fixa)
+                idx_p = int(d_pool)
+                bonus = matriz_afinidade[idx_f][idx_p] * 0.5
+                pesos[d_pool] += bonus
+    return pesos
+
+def refinar_pool_kadosh(pool_atual, matriz_afinidade):
+    """Remove dezenas do Pool com baixa afinidade histórica (Vácuos)."""
+    if not matriz_afinidade or len(pool_atual) <= 15:
+        return sorted(list(pool_atual))
+
+    pool_refinado = list(pool_atual)
+    dezenas_para_remover = set()
+    conflitos = []
+
+    for i in range(len(pool_refinado)):
+        for j in range(i + 1, len(pool_refinado)):
+            d1, d2 = pool_refinado[i], pool_refinado[j]
+            freq = matriz_afinidade[int(d1)][int(d2)]
+            conflitos.append((d1, d2, freq))
+    
+    # Pega os piores pares (frequência baixa)
+    conflitos_ordenados = sorted(conflitos, key=lambda x: x[2])
+    
+    for d1, d2, freq in conflitos_ordenados[:15]:
+        if len(pool_refinado) - len(dezenas_para_remover) <= 15:
+            break
+        if d1 in pool_refinado and d2 in pool_refinado:
+            # Remove a dezena mais fraca individualmente
+            forca_d1 = sum(matriz_afinidade[int(d1)])
+            forca_d2 = sum(matriz_afinidade[int(d2)])
+            dezenas_para_remover.add(d1 if forca_d1 < forca_d2 else d2)
+
+    return sorted([d for d in pool_refinado if d not in dezenas_para_remover])
+
+def calcular_matriz_afinidade_kadosh(mod):
+    res_db = st.session_state.ultimo_res.get(mod, {})
+    if len(res_db) < 3: return None
+    limite = 26 if mod == "Lotofácil" else 61
+    matriz = [[0 for _ in range(limite)] for _ in range(limite)]
+    for sorteio in res_db.values():
+        nums = sorted([int(n) for n in sorteio])
+        for i in range(len(nums)):
+            for j in range(i + 1, len(nums)):
+                d1, d2 = nums[i], nums[j]
+                if d1 < limite and d2 < limite:
+                    matriz[d1][d2] += 1
+                    matriz[d2][d1] += 1
+    return matriz
+
 
 # --- 1. CONFIGURAÇÃO E ESTÉTICA ---
 st.set_page_config(page_title="LOTERIAS - KADOSH ESTRATÉGICO", layout="wide")
@@ -1224,6 +1185,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
