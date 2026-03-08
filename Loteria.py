@@ -611,23 +611,40 @@ with abas[0]:
                 
         with col_btn2:
             if st.button("🧠 POOL INTELIGENTE KADOSH"):
-                # ... (mantenha o código que já existia aqui dentro se houver)
-                st.session_state.favoritas[mod] = sorted(pool_final)
-                st.rerun()
+                stats_mod = st.session_state.analise_stats.get(mod, {})
+                if not stats_mod:
+                    st.error("Base de dados vazia! Vá na Aba 3 e sincronize os resultados.")
+                else:
+                    # Ordena todas as dezenas pelo Score da IA (Frequência + Atraso)
+                    dezenas_ordenadas = sorted(
+                        stats_mod.keys(), 
+                        key=lambda x: stats_mod[x]['score'], 
+                        reverse=True
+                    )
+                    
+                    # Define o tamanho do Pool (18 para Lotofácil, 12 para Mega)
+                    tamanho_pool = 18 if mod == "Lotofácil" else 12
+                    pool_final = dezenas_ordenadas[:tamanho_pool]
+                    
+                    st.session_state.favoritas[mod] = sorted(pool_final)
+                    st.success(f"🔥 IA Kadosh selecionou as {tamanho_pool} melhores dezenas!")
+                    st.rerun()
 
             if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
                 if len(st.session_state.favoritas[mod]) <= 15:
                     st.error("Selecione mais de 15 dezenas para refinar.")
                 else:
-                    if 'matriz_ativa' not in st.session_state or st.session_state['matriz_ativa'] is None:
-                        st.session_state['matriz_ativa'] = calcular_matriz_afinidade_kadosh(mod)
+                    matriz_af = st.session_state.get('matriz_ativa')
+                    if matriz_af is None:
+                        matriz_af = calcular_matriz_afinidade_kadosh(mod)
+                        st.session_state['matriz_ativa'] = matriz_af
                     
                     pool_refinado = refinar_pool_kadosh(
                         st.session_state.favoritas[mod], 
-                        st.session_state['matriz_ativa']
+                        matriz_af
                     )
                     st.session_state.favoritas[mod] = pool_refinado
-                    st.success("🔥 Pool Otimizado!")
+                    st.success("🎯 Vácuos removidos! Pool otimizado.")
                     st.rerun()
 
  
@@ -1185,6 +1202,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
