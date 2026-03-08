@@ -1111,50 +1111,64 @@ with abas[6]:
     st.header("🔗 Afinidade e Vínculos de Dezenas")
     mod_af = st.selectbox("Loteria para Análise", list(st.session_state.custos.keys()), key="af_sel_universal")
     
-    # --- INTEGRAÇÃO CORRIGIDA ---
     res_af = st.session_state.ultimo_res.get(mod_af, {})
+    pool_selecionado = st.session_state.favoritas.get(mod_af, [])
     
-    # Geramos a matriz e guardamos no estado global para a Aba 0 enxergar
     matriz_calculada = calcular_matriz_afinidade_kadosh(mod_af)
     st.session_state['matriz_ativa'] = matriz_calculada 
     
     if not res_af or len(res_af) < 2:
         st.warning("⚠️ Base de dados insuficiente na Aba 3. Adicione resultados.")
-        st.stop() # Interrompe a aba 6 aqui para não dar erro nos cálculos abaixo
+        st.stop()
     else:
         dezenas_lista = list(res_af.values())
         total_jogos = len(dezenas_lista)
         
-        # 1. CRIAR MATRIZ DE ENCONTROS (Para não processar mil vezes)
         matriz = {}
         todos_pares = []
         for i in range(1, 26):
             for j in range(i + 1, 26):
-                # Conta quantas vezes saíram juntos
                 par_count = sum(1 for jogo in dezenas_lista if i in jogo and j in jogo)
                 porc = (par_count / total_jogos) * 100
-                dados_par = {"Par": f"{i:02d} & {j:02d}", "Vezes": par_count, "Porc": porc}
-                todos_pares.append(dados_par)
+                todos_pares.append({"Par": (i, j), "Vezes": par_count, "Porc": porc})
         
         df_completo = pd.DataFrame(todos_pares)
-
-        # --- LÓGICA DINÂMICA DE OURO E VÁCUO ---
-        # Casais de Ouro: Os 15 pares que MAIS saíram juntos (Independente da % fixa)
         df_ouro = df_completo.sort_values(by="Vezes", ascending=False).head(15)
-        
-        # Pares em Vácuo: Os 15 pares que MENOS saíram juntos (Os inimigos)
         df_vacuo = df_completo.sort_values(by="Vezes", ascending=True).head(15)
 
-        # --- EXIBIÇÃO ---
-        st.subheader(f"🔥 Casais de Ouro (Top 15 de {total_jogos} jogos)")
-        st.info("Estes pares têm a maior taxa de convivência da sua base atual.")
+        st.subheader(f"🔥 Radar de Potência do Pool ({total_jogos} jogos)")
         
-        # Formata a tabela para ficar bonita
-        df_ouro_show = df_ouro.copy()
-        df_ouro_show["Afinidade %"] = df_ouro_show["Porc"].map("{:.1f}%".format)
-        st.table(df_ouro_show[["Par", "Vezes", "Afinidade %"]].reset_index(drop=True))
+        # --- NOVO: ALERTA DE POTÊNCIA VISUAL ---
+        cols_pot = st.columns(2)
+        with cols_pot[0]:
+            # Verifica quais Casais de Ouro estão COMPLETOS no seu Pool
+            ouro_no_pool = []
+            for _, row in df_ouro.iterrows():
+                p1, p2 = row['Par']
+                if p1 in pool_selecionado and p2 in pool_selecionado:
+                    ouro_no_pool.append(f"{p1:02d}-{p2:02d}")
+            
+            if ouro_no_pool:
+                st.success(f"💎 **CONEXÕES DE ELITE NO POOL:** {', '.join(ouro_no_pool)}")
+            else:
+                st.info("💡 Nenhuma conexão 'Ouro' completa no Pool atual.")
+
+        with cols_pot[1]:
+            # Verifica se há pares de Vácuo (inimigos) no seu Pool
+            vacuo_no_pool = []
+            for _, row in df_vacuo.iterrows():
+                p1, p2 = row['Par']
+                if p1 in pool_selecionado and p2 in pool_selecionado:
+                    vacuo_no_pool.append(f"{p1:02d}-{p2:02d}")
+            
+            if vacuo_no_pool:
+                st.error(f"⚠️ **CONFLITOS DE VÁCUO NO POOL:** {', '.join(vacuo_no_pool)}")
+            else:
+                st.success("✅ Pool sem conflitos de vácuo!")
 
         st.markdown("---")
+        # (O restante do seu código de tabelas e trios continua igual abaixo...)
+
 
         st.subheader("🚫 Pares em Vácuo (Os que menos se encontram)")
         st.warning("Evite usar estas duplas como FIXAS no mesmo bilhete.")
@@ -1195,6 +1209,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
