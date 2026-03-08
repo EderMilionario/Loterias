@@ -562,18 +562,22 @@ with abas[0]:
         res_af = list(res_loto.values())
         bonus_afinidade = calcular_afinidade_pool(res_af) # Chama a inteligência da Aba 6
 
-                    for n in range(1, max_v + 1):
-                        contagem[n] = sum(1 for jogo in res_loto.values() if n in jogo)
-                        atraso_n = 0
-                        for c_id in sorted(res_loto.keys(), reverse=True):
-                            if n in res_loto[c_id]: break
-                            atraso_n += 1
-                        
-                        bonus_ciclo = 3.5 if n in faltantes_ciclo else 0
-                        ponto_afinidade = bonus_afinidade.get(n, 0) # Pega o bônus da Aba 6
-                        
-                        # Score Final: Frequência + Atraso(1.5) + Ciclo(3.5) + Afinidade Aba 6
-                        score_kadosh[n] = contagem[n] + (atraso_n * 1.5) + bonus_ciclo + ponto_afinidade
+                          # NOVA LÓGICA COM ABA 6 INTEGRADA
+        res_af = list(res_loto.values())
+        bonus_afinidade = calcular_afinidade_pool(res_af) # Chama a inteligência da Aba 6
+
+        for n in range(1, max_v + 1):
+            contagem[n] = sum(1 for jogo in res_loto.values() if n in jogo)
+            atraso_n = 0
+            for c_id in sorted(res_loto.keys(), reverse=True):
+                if n in res_loto[c_id]: break
+                atraso_n += 1
+            
+            bonus_ciclo = 3.5 if n in faltantes_ciclo else 0
+            ponto_afinidade = bonus_afinidade.get(n, 0) # Pega o bônus da Aba 6
+            
+            # Score Final: Frequência + Atraso(1.5) + Ciclo(3.5) + Afinidade Aba 6
+            score_kadosh[n] = contagem[n] + (atraso_n * 1.5) + bonus_ciclo + ponto_afinidade
                     melhores = sorted(score_kadosh.items(), key=lambda x: x[1], reverse=True)
                     pool_final = [n for n, s in melhores[:n_pool_req]]
                     st.session_state.favoritas[mod] = sorted(pool_final)
@@ -1055,6 +1059,7 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+
 
 
 
