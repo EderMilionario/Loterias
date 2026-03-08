@@ -854,31 +854,31 @@ with abas[1]:
                 
             classe_premiado = "jogo-premiado" if premio_jogo > 0 else ""
                 
-                # Renderização visual com destaque para FIXAS
-                html_dezenas = ""
-                for d in num_jogo:
-                    # 1. Cor da dezena (Verde se acertou, Preto se errou)
-                    cor_texto = "#28a745" if d in resultado else "#000000"
+         # Renderização visual com destaque para FIXAS
+             html_dezenas = ""
+         for d in num_jogo:
+         # 1. Cor da dezena (Verde se acertou, Preto se errou)
+             cor_texto = "#28a745" if d in resultado else "#000000"
                     
-                    # 2. Estilo se for FIXA (Sublinhado e Negrito pesado)
-                    estilo_fixa = "text-decoration: underline; font-weight: 900;" if d in fixas_do_jogo else "font-weight: bold;"
+         # 2. Estilo se for FIXA (Sublinhado e Negrito pesado)
+             estilo_fixa = "text-decoration: underline; font-weight: 900;" if d in fixas_do_jogo else "font-weight: bold;"
                     
-                    # 3. Marcador visual de acerto em fixa
-                    marcador = "📌" if (d in fixas_do_jogo and d in resultado) else ""
+         # 3. Marcador visual de acerto em fixa
+              marcador = "📌" if (d in fixas_do_jogo and d in resultado) else ""
                     
-                    html_dezenas += f'<span style="color:{cor_texto}; {estilo_fixa} margin-right:8px; font-size:18px;">{d:02d}{marcador}</span>'
+              html_dezenas += f'<span style="color:{cor_texto}; {estilo_fixa} margin-right:8px; font-size:18px;">{d:02d}{marcador}</span>'
 
-                st.markdown(f"""
-                <div class="{classe_premiado}" style="border-left: 5px solid {'#d4af37' if premio_jogo > 0 else '#ccc'}; padding: 15px; background: #f9f9f9; border-radius: 12px; margin-bottom: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
-                    <p style="margin:0; font-size: 12px; color: #444;">JOGO {i+1:02d} | {jogo['est']} | CONCURSO ALVO: {conc_alvo}</p>
-                    <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
+              st.markdown(f"""
+               <div class="{classe_premiado}" style="border-left: 5px solid {'#d4af37' if premio_jogo > 0 else '#ccc'}; padding: 15px; background: #f9f9f9; border-radius: 12px; margin-bottom: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
+               <p style="margin:0; font-size: 12px; color: #444;">JOGO {i+1:02d} | {jogo['est']} | CONCURSO ALVO: {conc_alvo}</p>
+               <div style="font-family: 'Courier New', monospace; margin: 10px 0;">
                         {html_dezenas}
-                    </div>
-                    <p style="margin:0; font-size: 14px; color: black;">
-                        🎯 ACERTOS: <b>{acertos}</b> | 💰 PRÊMIO: <span style="color:#1e3799;"><b>{formata_dinheiro(premio_jogo)}</b></span>
-                        <br><small style="color:#666; font-weight: normal;">(<u>Sublinhado</u>: Dezenas Fixas | 📌: Fixa Acertada)</small>
-                    </p>
-                </div>
+               </div>
+               <p style="margin:0; font-size: 14px; color: black;">
+               🎯 ACERTOS: <b>{acertos}</b> | 💰 PRÊMIO: <span style="color:#1e3799;"><b>{formata_dinheiro(premio_jogo)}</b></span>
+               <br><small style="color:#666; font-weight: normal;">(<u>Sublinhado</u>: Dezenas Fixas | 📌: Fixa Acertada)</small>
+               </p>
+               </div>
                 """, unsafe_allow_html=True)
             else:
                 st.info(f"JOGO {i+1:02d}: Aguardando sorteio do concurso {conc_alvo}...")
@@ -1201,6 +1201,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
