@@ -494,8 +494,7 @@ with abas[0]:
         n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao)
         qtd = st.number_input("Quantidade de Jogos", 1, 300, def_qtd)
         
-
-  with c2:
+    with c2:
         max_v = 25 if mod=="Lotofácil" else 60 if mod=="Mega-Sena" else 80
         col_btn1, col_btn2 = st.columns(2)
         
@@ -507,60 +506,63 @@ with abas[0]:
         with col_btn2:
             if st.button("🧠 POOL INTELIGENTE KADOSH"):
                 res_loto = st.session_state.ultimo_res.get(mod, {})
-                if len(res_loto) >= 3:
-                    n_pool_req = info_fech['n_pool'] if (mod == "Lotofácil" and info_fech) else 20
+                if len(res_loto) >= 5:
+                    n_pool_req = info_fech['n_pool'] if info_fech else 20
                     conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
                     
-                    matriz_af = calcular_matriz_afinidade_kadosh(mod)
+                    # 1. Identificação de Ciclo
                     sorteadas_no_ciclo = set()
                     for c in conc_ordenados:
                         sorteadas_no_ciclo.update(res_loto[c])
-                        if len(sorteadas_no_ciclo) == max_v: break
-                    faltantes_ciclo = list(set(range(1, max_v + 1)) - sorteadas_no_ciclo)
+                        if len(sorteadas_no_ciclo) == 25: break
+                    faltantes_ciclo = list(set(range(1, 26)) - sorteadas_no_ciclo)
                     
+                    # 2. Score IA Kadosh (VOLTANDO PESO ATRASO PARA 1.5)
                     score_kadosh = {}
                     contagem = Counter()
                     for c in conc_ordenados[:20]:
                         for n in res_loto[c]: contagem[n] += 1
                         
                     for n in range(1, max_v + 1):
-                        freq = (contagem[n] / 20) * 10 
                         atraso_n = 0
                         for c in conc_ordenados:
                             if n not in res_loto[c]: atraso_n += 1
                             else: break
-                        bonus_ciclo = 5.0 if n in faltantes_ciclo else 0
-                        ponto_atraso = (atraso_n * 1.2) + bonus_ciclo
-                        ponto_afinidade = 0
-                        if matriz_af:
-                            top5 = [num for num, _ in contagem.most_common(5)]
-                            ponto_afinidade = sum(matriz_af[n][tn] for tn in top5 if n < len(matriz_af) and tn < len(matriz_af))
                         
-                        score_kadosh[n] = (freq * 0.5) + (ponto_atraso * 0.3) + (ponto_afinidade * 0.2)
+                        bonus_ciclo = 3.5 if n in faltantes_ciclo else 0
+                        # PESO VOLTADO PARA O ORIGINAL (1.5)
+                        score_kadosh[n] = contagem[n] + (atraso_n * 1.5) + bonus_ciclo
 
-                    melhores = sorted(score_kadosh.keys(), key=lambda x: score_kadosh[x], reverse=True)
-                    st.session_state.favoritas[mod] = sorted(melhores[:n_pool_req])
+                    melhores = sorted(score_kadosh.items(), key=lambda x: x[1], reverse=True)
+                    pool_final = [n for n, s in melhores[:n_pool_req]]
+                    st.session_state.favoritas[mod] = sorted(pool_final)
                     st.rerun()
-                else:
-                    st.error("Adicione resultados no Database primeiro!")
-
         pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
         st.session_state.favoritas[mod] = pool
-        
+        # --- [SUGESTÃO 3: ANÁLISE DE QUADRANTES NO POOL] ---
         if pool and mod == "Lotofácil":
             linhas_p = [0]*5
             for n in pool: linhas_p[(n-1)//5] += 1
-            with st.expander("📊 Distribuição Geográfica"):
+            if any(l == 0 for l in linhas_p):
+                st.warning("⚠️ Atenção: Seu Pool possui linhas vazias! Isso pode reduzir a eficácia dos filtros Kadosh.")
+            with st.expander("📊 Distribuição Geográfica do Pool"):
                 cols_q = st.columns(5)
-                for idx, q_l in enumerate(linhas_p): cols_q[idx].metric(f"L{idx+1}", f"{q_l}")
-
-        modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual"], horizontal=True)
-        fixas_final = st.multiselect("📌 CRAVAR DEZENAS:", options=pool) if modo_fixa == "Manual" else []
+                for idx, qtd_l in enumerate(linhas_p):
+                    cols_q[idx].metric(f"Linha {idx+1}", f"{qtd_l} dez")
+        
+        modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
+        fixas_final = []
+        if modo_fixa == "Manual":
+            fixas_final = st.multiselect("📌 CRAVAR DEZENAS:", options=pool)
+        elif modo_fixa == "IA Automática (Score)":
+            qtd_auto = st.slider("Qtd de Cravadas:", 1, 10, 6)
+            if mod in st.session_state.analise_stats:
+                stats = st.session_state.analise_stats[mod]
+                melhores = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
+                fixas_final = melhores[:qtd_auto]
+                st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
         
         renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
-
-        
-        
 
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
         if len(pool) < (info_fech['n_pool'] if info_fech else n_dez):
@@ -1012,12 +1014,6 @@ with abas[6]:
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
                 st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
-
-
-
-
-
-
 
 
 
