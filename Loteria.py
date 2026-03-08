@@ -82,6 +82,55 @@ def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, po
                 pesos[d_pool] += bonus
     return pesos
 
+def refinar_pool_kadosh(pool_atual, matriz_afinidade):
+    """
+    Remove dezenas do Pool que possuem baixíssima afinidade entre si (Pares de Vácuo),
+    otimizando o cerco para combinações matematicamente mais prováveis.
+    """
+    if not matriz_afinidade or len(pool_atual) < 15:
+        return pool_atual
+
+    pool_refinado = list(pool_atual)
+    dezenas_para_remover = set()
+
+    # Identificar os 20 pares com MENOR afinidade na matriz (Vácuo absoluto)
+    # Criamos uma lista de tuplas (dezena1, dezena2, frequencia)
+    vácuos = []
+    for i in range(len(pool_refinado)):
+        for j in range(i + 1, len(pool_refinado)):
+            d1, d2 = pool_refinado[i], pool_refinado[j]
+            freq = matriz_afinidade[d1][d2]
+            vácuos.append((d1, d2, freq))
+    
+    # Ordenar pelos que menos saíram juntos
+    vácuos_ordenados = sorted(vácuos, key=lambda x: x[2])
+    
+    # Analisamos os 15 piores conflitos dentro do Pool do usuário
+    piores_conflitos = vácuos_ordenados[:15]
+
+    for d1, d2, freq in piores_conflitos:
+        # Se as duas dezenas ainda estão no processo de análise
+        if d1 in pool_refinado and d2 in pool_refinado:
+            # Critério de desempate: Removemos a que tem menor força individual (soma da linha na matriz)
+            forca_d1 = sum(matriz_afinidade[d1])
+            forca_d2 = sum(matriz_afinidade[d2])
+            
+            if forca_d1 < forca_d2:
+                dezenas_para_remover.add(d1)
+            else:
+                dezenas_para_remover.add(d2)
+
+    # Mantém no mínimo 15 dezenas (limite da Lotofácil)
+    resultado_final = [d for d in pool_refinado if d not in dezenas_para_remover]
+    
+    if len(resultado_final) < 15:
+        return sorted(list(pool_atual)) # Aborta refinação se reduzir demais
+        
+    return sorted(resultado_final)
+
+# Documentação:
+# A função utiliza a 'matriz_afinidade' que você já calcula na Aba 6.
+# O 'score' de remoção é baseado na força histórica (frequência total).
 
 
 import json
@@ -1196,6 +1245,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
