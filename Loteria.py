@@ -15,7 +15,7 @@ import io
 def treinar_e_prever_ia(mod_alvo, tamanho=18):
     import numpy as np
     res_historico = st.session_state.ultimo_res.get(mod_alvo, {})
-    if len(res_historico) < 10: 
+    if len(res_historico) < 1: 
         return None
     
     chaves_ordenadas = sorted(res_historico.keys(), key=int)
@@ -68,9 +68,15 @@ def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, po
     return pesos
 
 def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo):
-    # O tamanho_objetivo agora é OBRIGATÓRIO e vem da sua escolha na tela
     if not matriz_afinidade or len(pool_atual) <= tamanho_objetivo:
         return sorted(list(pool_atual))
+    
+    pool_refinado = list(pool_atual)
+    while len(pool_refinado) > tamanho_objetivo:
+        # Aqui removemos as dezenas com menor soma de afinidade
+        piores_dezenas = sorted(pool_refinado, key=lambda d: sum(matriz_afinidade[int(d)]), reverse=False)
+        pool_refinado.remove(piores_dezenas[0])
+    return sorted(pool_refinado)
     # ... resto da função igual
 
 
@@ -1251,6 +1257,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
