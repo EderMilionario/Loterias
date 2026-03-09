@@ -619,7 +619,7 @@ with abas[0]:
         max_v = 25 if mod=="Lotofácil" else 60 if mod=="Mega-Sena" else 80
         col_btn1, col_btn2 = st.columns(2)
         
-                with col_btn1:
+       with col_btn1:
             if st.button("✅ TODO O VOLANTE"):
                 st.session_state.favoritas[mod] = list(range(1, max_v + 1))
                 st.rerun()
@@ -1256,6 +1256,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
