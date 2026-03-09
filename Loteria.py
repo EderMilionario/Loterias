@@ -67,34 +67,18 @@ def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, po
                 pesos[d_pool] += bonus
     return pesos
 
-def refinar_pool_kadosh(pool_atual, matriz_afinidade):
-    """Remove dezenas do Pool com baixa afinidade histórica (Vácuos)."""
-    if not matriz_afinidade or len(pool_atual) <= 15:
+def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo=18):
+    """Remove dezenas do Pool mantendo a quantidade necessária para a estratégia."""
+    if not matriz_afinidade or len(pool_atual) <= tamanho_objetivo:
         return sorted(list(pool_atual))
 
     pool_refinado = list(pool_atual)
-    dezenas_para_remover = set()
-    conflitos = []
+    # Remove as dezenas com menor afinidade geral até atingir o tamanho_objetivo
+    while len(pool_refinado) > tamanho_objetivo:
+        piores_dezenas = sorted(pool_refinado, key=lambda d: sum(matriz_afinidade[int(d)]), reverse=False)
+        pool_refinado.remove(piores_dezenas[0]) # Remove a mais "solitária"
 
-    for i in range(len(pool_refinado)):
-        for j in range(i + 1, len(pool_refinado)):
-            d1, d2 = pool_refinado[i], pool_refinado[j]
-            freq = matriz_afinidade[int(d1)][int(d2)]
-            conflitos.append((d1, d2, freq))
-    
-    # Pega os piores pares (frequência baixa)
-    conflitos_ordenados = sorted(conflitos, key=lambda x: x[2])
-    
-    for d1, d2, freq in conflitos_ordenados[:15]:
-        if len(pool_refinado) - len(dezenas_para_remover) <= 15:
-            break
-        if d1 in pool_refinado and d2 in pool_refinado:
-            # Remove a dezena mais fraca individualmente
-            forca_d1 = sum(matriz_afinidade[int(d1)])
-            forca_d2 = sum(matriz_afinidade[int(d2)])
-            dezenas_para_remover.add(d1 if forca_d1 < forca_d2 else d2)
-
-    return sorted([d for d in pool_refinado if d not in dezenas_para_remover])
+    return sorted(pool_refinado)
 
 def calcular_matriz_afinidade_kadosh(mod):
     res_db = st.session_state.ultimo_res.get(mod, {})
@@ -548,22 +532,31 @@ with abas[0]:
         st.session_state.jogos_gerados = []
         st.session_state.ultima_mod_selecionada = mod
         st.rerun()
-        # --- INÍCIO DA ATIVAÇÃO DA IA ---
+            # --- [INÍCIO DA CORREÇÃO: ATIVAÇÃO DA IA] ---
     res_loto = st.session_state.ultimo_res.get(mod, {})
-    if res_loto:
+    # Mudança: Verifica se o dicionário não está vazio em vez de contar chaves específicas
+    if res_loto and len(res_loto) > 0:
         conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
         contagem = Counter()
-        for c in conc_ordenados[:20]:
+        # Pega os últimos 50 resultados ou o que tiver disponível
+        amostra = conc_ordenados[:50] 
+        for c in amostra:
             for n in res_loto[c]: contagem[n] += 1
+            
         stats_temp = {}
-        for n in range(1, 26 if mod == "Lotofácil" else 61):
+        max_dezenas = 25 if mod == "Lotofácil" else 60
+        for n in range(1, max_dezenas + 1):
             atraso_n = 0
             for c in conc_ordenados:
-                if n not in res_loto[c]: atraso_n += 1
-                else: break
-            stats_temp[n] = {'score': contagem[n] + (atraso_n * 1.5)}
+                if n not in res_loto[c]: 
+                    atraso_n += 1
+                else: 
+                    break
+            # Score balanceado: Frequência + (Atraso com peso menor para não desequilibrar)
+            stats_temp[n] = {'score': contagem[n] + (atraso_n * 0.8)}
         st.session_state.analise_stats[mod] = stats_temp
-    # --- FIM DA ATIVAÇÃO DA IA ---
+    # --- [FIM DA CORREÇÃO] ---
+
     
     col_est1, col_est2 = st.columns(2)
     with col_est1:
@@ -648,9 +641,17 @@ with abas[0]:
             else:
                 st.error("Base de dados insuficiente para a IA trabalhar.")
 
+                       # --- [BOTÃO REFINAR CORRIGIDO] ---
         if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
-            if len(st.session_state.favoritas[mod]) <= 15:
-                st.error("Selecione mais de 15 dezenas para refinar.")
+            # Identifica o tamanho que a matriz precisa
+            tamanho_necessario = 18 
+            if "DIAMANTE" in fe_escolhido or "20-15" in fe_escolhido:
+                tamanho_necessario = 20
+            elif "19-15" in fe_escolhido:
+                tamanho_necessario = 19
+
+            if len(st.session_state.favoritas[mod]) <= tamanho_necessario:
+                st.warning(f"Seu Pool já está otimizado para {tamanho_necessario} dezenas.")
             else:
                 matriz_af = st.session_state.get('matriz_ativa')
                 if matriz_af is None:
@@ -659,12 +660,15 @@ with abas[0]:
                 
                 pool_refinado = refinar_pool_kadosh(
                     st.session_state.favoritas[mod], 
-                    matriz_af
+                    matriz_af,
+                    tamanho_objetivo=tamanho_necessario # Agora ele sabe quanto deixar!
                 )
                 st.session_state.favoritas[mod] = pool_refinado
-                st.success("🎯 Vácuos removidos! Pool otimizado.")
+                st.success(f"🎯 Pool refinado para {tamanho_necessario} dezenas (Vácuos removidos).")
                 st.rerun()
 
+        
+ 
 
  
         pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
@@ -1239,6 +1243,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
