@@ -989,16 +989,10 @@ with abas[4]:
     mostrar_status_backup()
     st.header("💾 Gestão de Dados e Backup")
     
-    # Lógica para definir o nome do arquivo baseado no último concurso salvo
     res_loto = st.session_state.ultimo_res.get("Lotofácil", {})
-    if res_loto:
-        # Pega o maior ID de concurso cadastrado
-        ultimo_id = max(res_loto.keys(), key=int)
-        nome_arquivo = f"KADOSH_LOTO_{ultimo_id}_BKP.json"
-    else:
-        nome_arquivo = "KADOSH_BACKUP_VAZIO.json"
+    ultimo_id = max(res_loto.keys(), key=int) if res_loto else "VAZIO"
+    nome_arquivo = f"KADOSH_LOTO_{ultimo_id}_BKP.json"
 
-    # Prepara o pacote completo de dados para download
     dados_para_backup = {
         "salvos": st.session_state.jogos_salvos, 
         "premios": st.session_state.premios, 
@@ -1008,21 +1002,11 @@ with abas[4]:
     data_json = json.dumps(dados_para_backup, indent=4)
 
     col_back1, col_back2 = st.columns(2)
-    
     with col_back1:
-        st.subheader("📤 Exportar Sistema")
-        st.info(f"📂 O arquivo será baixado como: {nome_arquivo}")
-        st.download_button(
-            label="🚀 BAIXAR BACKUP AGORA (.JSON)",
-            data=data_json,
-            file_name=nome_arquivo, # Nome inteligente aqui
-            mime="application/json",
-            use_container_width=True
-        )
+        st.download_button(label="🚀 BAIXAR BACKUP (.JSON)", data=data_json, file_name=nome_arquivo, mime="application/json", use_container_width=True)
 
     with col_back2:
-        st.subheader("📥 Restaurar Sistema")
-        f = st.file_uploader("Suba seu arquivo .json de backup", type="json")
+        f = st.file_uploader("Restaurar sistema", type="json")
         if f is not None:
             if st.button("⚠️ CONFIRMAR RESTAURAÇÃO TOTAL", use_container_width=True):
                 try:
@@ -1031,15 +1015,18 @@ with abas[4]:
                     st.session_state.premios = d.get("premios", st.session_state.premios)
                     st.session_state.ultimo_res = d.get("res", st.session_state.ultimo_res)
                     st.session_state.favoritas = d.get("favoritas", st.session_state.favoritas)
-                    st.success("✅ Sistema Restaurado com Sucesso!")
-                    # Logo abaixo do st.success...
-for m in st.session_state.ultimo_res:
-    pool_ia = treinar_e_prever_ia(m)
-    if pool_ia: st.session_state.favoritas[m] = pool_ia
+                    
+                    # CORREÇÃO DE INDENTAÇÃO AQUI:
+                    for m in st.session_state.ultimo_res:
+                        pool_ia = treinar_e_prever_ia(m)
+                        if pool_ia: 
+                            st.session_state.favoritas[m] = pool_ia
 
+                    st.success("✅ Sistema Restaurado!")
                     st.rerun()
                 except Exception as e:
-                    st.error(f"Erro ao ler arquivo: {e}")
+                    st.error(f"Erro: {e}")
+
 
     st.markdown("---")
     st.subheader("📊 Status da Memória")
@@ -1251,6 +1238,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
