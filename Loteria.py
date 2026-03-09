@@ -269,16 +269,31 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
     # 1. Âncoras de Início e Fim
     if not (jogo[0] in [1, 2, 3] and jogo[-1] in [23, 24, 25]): 
         return False
-    # --- INÍCIO DA ATUALIZAÇÃO: QUADRANTES KADOSH ---
-    q1 = [1, 2, 3, 6, 7, 8, 11, 12, 13]
-    q2 = [4, 5, 9, 10, 14, 15]
-    q3 = [16, 17, 21, 22]
-    q4 = [18, 19, 20, 23, 24, 25]
+    # --- [INÍCIO DA CALIBRAGEM DE QUADRANTES KADOSH] ---
+    # Definição Geográfica das Áreas do Volante 5x5
+    q1 = [1, 2, 3, 6, 7, 8, 11, 12, 13]    # Topo Esquerda + Centro
+    q2 = [4, 5, 9, 10, 14, 15]             # Topo Direita
+    q3 = [16, 17, 21, 22]                  # Base Esquerda
+    q4 = [18, 19, 20, 23, 24, 25]          # Base Direita + Centro Baixo
     
+    # Conta quantos números do jogo caíram em cada área
     cq1 = len([n for n in jogo if n in q1])
     cq2 = len([n for n in jogo if n in q2])
     cq3 = len([n for n in jogo if n in q3])
     cq4 = len([n for n in jogo if n in q4])
+    
+    distribuicao = [cq1, cq2, cq3, cq4]
+
+    # REGRA DE OURO: Nenhum quadrante vazio e nenhum com mais de 7 dezenas
+    # Isso evita que o jogo fique "amontoado" num canto só do volante.
+    if any(q < 1 for q in distribuicao) or any(q > 7 for q in distribuicao):
+        return False 
+
+    # REGRA DE SIMETRIA (O Equilíbrio Kadosh)
+    # Impede que a diferença entre o quadrante mais cheio e o mais vazio seja extrema
+    if (max(distribuicao) - min(distribuicao)) > 4:
+        return False
+    # --- [FIM DA CALIBRAGEM] ---
     
     # Sincronia com o Pool para evitar loop infinito
     pool_atual = st.session_state.get('pool_favoritas', [])
@@ -1289,6 +1304,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
