@@ -619,12 +619,12 @@ with abas[0]:
         max_v = 25 if mod=="Lotofácil" else 60 if mod=="Mega-Sena" else 80
         col_btn1, col_btn2 = st.columns(2)
         
-        with col_btn1:
+                with col_btn1:
             if st.button("✅ TODO O VOLANTE"):
                 st.session_state.favoritas[mod] = list(range(1, max_v + 1))
                 st.rerun()
                 
-                with col_btn2:
+        with col_btn2:
             if st.button("🧠 POOL INTELIGENTE KADOSH"):
                 stats_mod = st.session_state.analise_stats.get(mod, {})
                 if not stats_mod:
@@ -645,34 +645,33 @@ with abas[0]:
                     st.success(f"🔥 IA Kadosh selecionou as {tamanho_pool} melhores dezenas!")
                     st.rerun()
 
-            # --- CORREÇÃO AQUI: Alinhado corretamente com o botão anterior ---
-            if st.button("💎 ATIVAR POOL IA (RANKING 1000)"):
-                pool_ia = treinar_e_prever_ia(mod)
-                if pool_ia:
-                    st.session_state.favoritas[mod] = pool_ia
-                    st.success("🎯 Sincronia Total: O Pool agora reflete a predição da IA!")
-                    st.rerun()
-                else:
-                    st.error("Base de dados insuficiente para a IA trabalhar.")
+        # Botões de IA Avançada (Ranking 1000 e Refinamento)
+        if st.button("💎 ATIVAR POOL IA (RANKING 1000)"):
+            pool_ia = treinar_e_prever_ia(mod)
+            if pool_ia:
+                st.session_state.favoritas[mod] = pool_ia
+                st.success("🎯 Sincronia Total: O Pool agora reflete a predição da IA!")
+                st.rerun()
+            else:
+                st.error("Base de dados insuficiente para a IA trabalhar.")
 
-     
+        if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
+            if len(st.session_state.favoritas[mod]) <= 15:
+                st.error("Selecione mais de 15 dezenas para refinar.")
+            else:
+                matriz_af = st.session_state.get('matriz_ativa')
+                if matriz_af is None:
+                    matriz_af = calcular_matriz_afinidade_kadosh(mod)
+                    st.session_state['matriz_ativa'] = matriz_af
+                
+                pool_refinado = refinar_pool_kadosh(
+                    st.session_state.favoritas[mod], 
+                    matriz_af
+                )
+                st.session_state.favoritas[mod] = pool_refinado
+                st.success("🎯 Vácuos removidos! Pool otimizado.")
+                st.rerun()
 
-            if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
-                if len(st.session_state.favoritas[mod]) <= 15:
-                    st.error("Selecione mais de 15 dezenas para refinar.")
-                else:
-                    matriz_af = st.session_state.get('matriz_ativa')
-                    if matriz_af is None:
-                        matriz_af = calcular_matriz_afinidade_kadosh(mod)
-                        st.session_state['matriz_ativa'] = matriz_af
-                    
-                    pool_refinado = refinar_pool_kadosh(
-                        st.session_state.favoritas[mod], 
-                        matriz_af
-                    )
-                    st.session_state.favoritas[mod] = pool_refinado
-                    st.success("🎯 Vácuos removidos! Pool otimizado.")
-                    st.rerun()
 
  
         pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v + 1), default=st.session_state.favoritas.get(mod, []))
@@ -1257,6 +1256,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
