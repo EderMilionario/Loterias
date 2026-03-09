@@ -669,10 +669,10 @@ with abas[0]:
                         st.session_state.favoritas[mod], 
                         matriz_af, 
                         tamanho_objetivo=tamanho_necessario 
-                   )
-                   st.session_state.favoritas[mod] = pool_refinado
-                   st.success(f"🎯 Pool refinado para {tamanho_necessario} dezenas!")
-                   st.rerun()
+                    )
+                    st.session_state.favoritas[mod] = pool_refinado
+                    st.success(f"🎯 Pool refinado para {tamanho_necessario} dezenas!")
+                    st.rerun()
  
 
 
@@ -1252,6 +1252,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
