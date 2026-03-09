@@ -535,7 +535,7 @@ with abas[0]:
             # --- [INÍCIO DA CORREÇÃO: ATIVAÇÃO DA IA] ---
     res_loto = st.session_state.ultimo_res.get(mod, {})
     # Mudança: Verifica se o dicionário não está vazio em vez de contar chaves específicas
-    if res_loto and len(res_loto) > 0:
+    if res_loto and len(res_loto) >= 10:
         conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
         contagem = Counter()
         # Pega os últimos 50 resultados ou o que tiver disponível
@@ -1243,6 +1243,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
