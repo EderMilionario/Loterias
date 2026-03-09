@@ -79,16 +79,7 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo):
         piores_dezenas = sorted(pool_refinado, key=lambda d: sum(matriz_afinidade[int(d)]), reverse=False)
         pool_refinado.remove(piores_dezenas[0])
     return sorted(pool_refinado)
-    # ... resto da função igual
-
-
-    pool_refinado = list(pool_atual)
-    # Remove as dezenas com menor afinidade geral até atingir o tamanho_objetivo
-    while len(pool_refinado) > tamanho_objetivo:
-        piores_dezenas = sorted(pool_refinado, key=lambda d: sum(matriz_afinidade[int(d)]), reverse=False)
-        pool_refinado.remove(piores_dezenas[0]) # Remove a mais "solitária"
-
-    return sorted(pool_refinado)
+    
 
 def calcular_matriz_afinidade_kadosh(mod):
     res_db = st.session_state.ultimo_res.get(mod, {})
@@ -655,10 +646,7 @@ with abas[0]:
                     st.rerun()
         # --- [FIM DOS BOTÕES DE IA ABA 0] ---
 
-            else:
-                st.error("Base de dados insuficiente para a IA trabalhar.")
-
-       
+                   
             if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
                 tamanho_necessario = 20
                 if fe_escolhido != "Nenhum":
@@ -1259,6 +1247,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
