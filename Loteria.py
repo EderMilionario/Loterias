@@ -651,7 +651,7 @@ with abas[0]:
                 st.error("Base de dados insuficiente para a IA trabalhar.")
 
        
-            if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
+                if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
             # 1. Identifica o tamanho automático baseado na sua escolha:
             tamanho_necessario = 18 # Padrão
             
@@ -1257,6 +1257,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
