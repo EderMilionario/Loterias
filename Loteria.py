@@ -642,7 +642,7 @@ with abas[0]:
                 pool_ia = treinar_e_prever_ia(mod, tamanho=tamanho_alvo)
                 if pool_ia:
                     st.session_state.favoritas[mod] = pool_ia
-                    st.success(f"🚀 IA projetou {tamanho_alvo} dezenas para esta estratégia!")
+                    st.success(f"🚀 IA projetou {tamanho_alvo} dezenas!")
                     st.rerun()
         # --- [FIM DOS BOTÕES DE IA ABA 0] ---
 
@@ -657,7 +657,8 @@ with abas[0]:
                 elif "PRESTIGE 20" in est_escolhida:
                     tamanho_necessario = 20
                 if len(st.session_state.favoritas[mod]) == 0: st.error("Selecione dezenas primeiro!")
-                elif len(st.session_state.favoritas[mod]) <= tamanho_necessario: st.warning(...)
+                elif len(st.session_state.favoritas[mod]) <= tamanho_necessario: st.warning(Seu Pool já está no tamanho ideal ou menor.)
+                                                                                            
                 else:
                     matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
                     pool_refinado = refinar_pool_kadosh(
@@ -1247,6 +1248,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
