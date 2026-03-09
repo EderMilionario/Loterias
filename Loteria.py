@@ -624,7 +624,7 @@ with abas[0]:
                 st.session_state.favoritas[mod] = list(range(1, max_v + 1))
                 st.rerun()
                 
-        with col_btn2:
+                with col_btn2:
             if st.button("🧠 POOL INTELIGENTE KADOSH"):
                 stats_mod = st.session_state.analise_stats.get(mod, {})
                 if not stats_mod:
@@ -644,7 +644,9 @@ with abas[0]:
                     st.session_state.favoritas[mod] = sorted(pool_final)
                     st.success(f"🔥 IA Kadosh selecionou as {tamanho_pool} melhores dezenas!")
                     st.rerun()
-                        if st.button("💎 ATIVAR POOL IA (RANKING 1000)"):
+
+            # --- CORREÇÃO AQUI: Alinhado corretamente com o botão anterior ---
+            if st.button("💎 ATIVAR POOL IA (RANKING 1000)"):
                 pool_ia = treinar_e_prever_ia(mod)
                 if pool_ia:
                     st.session_state.favoritas[mod] = pool_ia
@@ -1255,6 +1257,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
