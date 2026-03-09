@@ -1188,6 +1188,27 @@ with abas[6]:
                 </div>
                 """, unsafe_allow_html=True)
 
+                # --- [FINALIZAÇÃO DO SISTEMA] ---
+
+# Rodapé informativo
+st.markdown("---")
+st.markdown(
+    """
+    <div style="text-align: center; color: #666; font-size: 12px;">
+        <b>KADOSH ESTRATÉGICO v3.0</b><br>
+        Sistema de Análise Preditiva e Fechamentos Matemáticos.<br>
+        <i>"A sorte favorece a mente preparada."</i>
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
+
+# Instrução de implementação:
+# Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
+# estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
+
+
 
 
 
