@@ -421,21 +421,6 @@ def renderizar_heatmap(mod, res_loto):
     st.markdown("---")
 
 
-def calcular_matriz_afinidade_kadosh(mod):
-    res_db = st.session_state.ultimo_res.get(mod, {})
-    if len(res_db) < 3: return None
-    limite = 26 if mod == "Lotofácil" else 61 if mod == "Mega-Sena" else 81
-    matriz = [[0 for _ in range(limite)] for _ in range(limite)]
-    for sorteio in res_db.values():
-        nums = sorted([int(n) for n in sorteio])
-        for i in range(len(nums)):
-            for j in range(i + 1, len(nums)):
-                d1, d2 = nums[i], nums[j]
-                if d1 < limite and d2 < limite:
-                    matriz[d1][d2] += 1
-                    matriz[d2][d1] += 1
-    return matriz
-
 # --- 2. MAPA DE ESTRATÉGIAS E MATRIZES ---
 ESTRATEGIA_MAPA = {
     "Personalizado": {"dez": 15, "qtd": 10, "desc": "Configuração manual", "prob": "Variável", "peso": 0.1},
@@ -1202,6 +1187,7 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
 
 
 
