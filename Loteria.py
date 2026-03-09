@@ -628,49 +628,64 @@ with abas[0]:
         elif "19-15" in fe_escolhido:
             tamanho_alvo = 19
 
+        # --- [BLOCOS DOS BOTÕES DO POOL CORRIGIDOS] ---
+        col_btn1, col_btn2 = st.columns(2)
+        
+        # 1. LÓGICA DE TAMANHO DINÂMICO: Identifica quanto a estratégia/matriz exige
+        tamanho_exigido = 18  # Padrão básico
+        
+        # Verifica Matrizes
+        if fe_escolhido != "Nenhum":
+            if "20-15" in fe_escolhido or "DIAMANTE" in fe_escolhido:
+                tamanho_exigido = 20
+            elif "19-15" in fe_escolhido:
+                tamanho_exigido = 19
+            elif "18-15" in fe_escolhido or "CÉLULA" in fe_escolhido:
+                tamanho_exigido = 18
+        # Verifica Estratégias Específicas
+        elif "PRESTIGE 20" in est_escolhida:
+            tamanho_exigido = 20
+        elif "A MARRETA" in est_escolhida:
+            tamanho_exigido = 22 # Pool maior para garantir desdobramento da marreta
+
         with col_btn1:
             if st.button("🧠 POOL INTELIGENTE"):
                 stats_mod = st.session_state.analise_stats.get(mod, {})
                 if stats_mod:
+                    # Ordena pelo score da análise de tendência
                     dezenas_ordenadas = sorted(stats_mod.keys(), key=lambda x: stats_mod[x]['score'], reverse=True)
-                    st.session_state.favoritas[mod] = sorted(dezenas_ordenadas[:tamanho_alvo])
-                    st.success(f"🎯 Pool de {tamanho_alvo} dezenas gerado!")
+                    st.session_state.favoritas[mod] = sorted(dezenas_ordenadas[:tamanho_exigido])
+                    st.success(f"🎯 Pool de {tamanho_exigido} dezenas gerado via SCORE!")
                     st.rerun()
+                else:
+                    st.error("Sem dados no banco para calcular o score!")
                 
         with col_btn2:
             if st.button("💎 ATIVAR IA (RANKING 1000)"):
-                pool_ia = treinar_e_prever_ia(mod, tamanho=tamanho_alvo)
+                # Chama a função IA passando o tamanho EXATO que a estratégia pede
+                pool_ia = treinar_e_prever_ia(mod, tamanho=tamanho_exigido)
                 if pool_ia:
                     st.session_state.favoritas[mod] = pool_ia
-                    st.success(f"🚀 IA projetou {tamanho_alvo} dezenas!")
+                    st.success(f"🚀 IA projetou {tamanho_exigido} dezenas de ELITE!")
                     st.rerun()
 
-        # BOTÃO REFINAR CORRIGIDO (PARA NÃO DAR A MENSAGEM CHATA)
+        # Botão de Refino logo abaixo
         if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
-            # 1. Define o tamanho que precisamos
-            tamanho_necessario = 20
-            if fe_escolhido != "Nenhum":
-                if "20-15" in fe_escolhido or "DIAMANTE" in fe_escolhido:
-                    tamanho_necessario = 20
-                elif "19-15" in fe_escolhido:
-                    tamanho_necessario = 19
-            elif "PRESTIGE 20" in est_escolhida:
-                tamanho_necessario = 20
-            
-            # 2. Se o pool estiver vazio ou menor que o necessário, a IA completa AUTOMATICAMENTE
-            if len(st.session_state.favoritas[mod]) < tamanho_necessario:
-                pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_necessario + 5) # Pega um pouco mais para refinar
+            if not st.session_state.favoritas[mod]:
+                # Se clicar em refinar com o pool vazio, ele gera um automático primeiro
+                pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_exigido + 4)
                 st.session_state.favoritas[mod] = pool_base
             
-            # 3. Agora executa o refino de qualquer jeito
             matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
+            
+            # Força o refino para o tamanho que a estratégia atual pede
             pool_refinado = refinar_pool_kadosh(
                 st.session_state.favoritas[mod], 
                 matriz_af, 
-                tamanho_objetivo=tamanho_necessario 
+                tamanho_objetivo=tamanho_exigido 
             )
             st.session_state.favoritas[mod] = pool_refinado
-            st.success(f"🎯 Pool refinado para {tamanho_necessario} dezenas!")
+            st.success(f"🎯 Refinado para {tamanho_exigido} dezenas (Sincronizado com Estratégia)!")
             st.rerun()
  
 
@@ -1251,6 +1266,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
