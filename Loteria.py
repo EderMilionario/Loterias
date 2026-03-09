@@ -67,10 +67,12 @@ def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, po
                 pesos[d_pool] += bonus
     return pesos
 
-def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo=18):
-    """Remove dezenas do Pool mantendo a quantidade necessária para a estratégia."""
+def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo):
+    # O tamanho_objetivo agora é OBRIGATÓRIO e vem da sua escolha na tela
     if not matriz_afinidade or len(pool_atual) <= tamanho_objetivo:
         return sorted(list(pool_atual))
+    # ... resto da função igual
+
 
     pool_refinado = list(pool_atual)
     # Remove as dezenas com menor afinidade geral até atingir o tamanho_objetivo
@@ -533,15 +535,18 @@ with abas[0]:
         st.session_state.ultima_mod_selecionada = mod
         st.rerun()
             # --- [INÍCIO DA CORREÇÃO: ATIVAÇÃO DA IA] ---
+        # 1. Pega os dados do banco
     res_loto = st.session_state.ultimo_res.get(mod, {})
-    # Mudança: Verifica se o dicionário não está vazio em vez de contar chaves específicas
-    if res_loto and len(res_loto) >= 10:
+    
+    # 2. TRAVA DE SEGURANÇA: Só faz conta se o banco tiver pelo menos 1 resultado
+    if res_loto and len(res_loto) >= 1:
         conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
         contagem = Counter()
-        # Pega os últimos 50 resultados ou o que tiver disponível
         amostra = conc_ordenados[:50] 
+        
         for c in amostra:
-            for n in res_loto[c]: contagem[n] += 1
+            for n in res_loto[c]: 
+                contagem[n] += 1
             
         stats_temp = {}
         max_dezenas = 25 if mod == "Lotofácil" else 60
@@ -552,9 +557,13 @@ with abas[0]:
                     atraso_n += 1
                 else: 
                     break
-            # Score balanceado: Frequência + (Atraso com peso menor para não desequilibrar)
             stats_temp[n] = {'score': contagem[n] + (atraso_n * 0.8)}
+        
         st.session_state.analise_stats[mod] = stats_temp
+    else:
+        # Se estiver vazio (como na hora do login), ele só avisa e não trava
+        st.info("💡 Sistema aguardando carregamento de dados (Backup ou Manual).")
+
     # --- [FIM DA CORREÇÃO] ---
 
     
@@ -641,31 +650,32 @@ with abas[0]:
             else:
                 st.error("Base de dados insuficiente para a IA trabalhar.")
 
-                       # --- [BOTÃO REFINAR CORRIGIDO] ---
-        if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
-            # Identifica o tamanho que a matriz precisa
-            tamanho_necessario = 18 
-            if "DIAMANTE" in fe_escolhido or "20-15" in fe_escolhido:
-                tamanho_necessario = 20
-            elif "19-15" in fe_escolhido:
-                tamanho_necessario = 19
+       
+             if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
+    # 1. Identifica o tamanho automático baseado na sua escolha:
+    tamanho_necessario = 18 # Padrão
+    
+    if fe_escolhido != "Nenhum":
+        if "20-15" in fe_escolhido or "DIAMANTE" in fe_escolhido:
+            tamanho_necessario = 20
+        elif "19-15" in fe_escolhido:
+            tamanho_necessario = 19
+    elif "PRESTIGE 20" in est_escolhida:
+        tamanho_necessario = 20
 
-            if len(st.session_state.favoritas[mod]) <= tamanho_necessario:
-                st.warning(f"Seu Pool já está otimizado para {tamanho_necessario} dezenas.")
-            else:
-                matriz_af = st.session_state.get('matriz_ativa')
-                if matriz_af is None:
-                    matriz_af = calcular_matriz_afinidade_kadosh(mod)
-                    st.session_state['matriz_ativa'] = matriz_af
-                
-                pool_refinado = refinar_pool_kadosh(
-                    st.session_state.favoritas[mod], 
-                    matriz_af,
-                    tamanho_objetivo=tamanho_necessario # Agora ele sabe quanto deixar!
-                )
-                st.session_state.favoritas[mod] = pool_refinado
-                st.success(f"🎯 Pool refinado para {tamanho_necessario} dezenas (Vácuos removidos).")
-                st.rerun()
+    # 2. Só refina se o pool for maior que o que a estratégia pede
+    if len(st.session_state.favoritas[mod]) <= tamanho_necessario:
+        st.warning(f"Seu Pool já está no tamanho ideal ({tamanho_necessario} dezenas).")
+    else:
+        # Chama a função passando o TAMANHO EXATO que a estratégia precisa
+        pool_refinado = refinar_pool_kadosh(
+            st.session_state.favoritas[mod], 
+            matriz_af, 
+            tamanho_objetivo=tamanho_necessario 
+        )
+        st.session_state.favoritas[mod] = pool_refinado
+        st.success(f"🎯 Pool refinado para {tamanho_necessario} dezenas!")
+        st.rerun()
 
         
  
@@ -1243,6 +1253,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
