@@ -919,45 +919,38 @@ with abas[2]:
     if st.button("💾 SALVAR VALORES"): 
         st.session_state.premios[mod_v] = novos_v
         st.success("✅ Valores atualizados!")
-
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database - Gerenciar Resultados")
     
-    # Seletor de qual loteria estamos mexendo
     m_db = st.selectbox("Selecione a Loteria", list(st.session_state.custos.keys()), key="m_db_final_novo")
 
-    # --- PARTE 1: SINCRO AUTOMÁTICO (API) ---
+    # --- PARTE 1: SINCRO AUTOMÁTICO ---
     st.markdown("### 🌐 Sincronização Online")
     if st.button("🔄 BUSCAR ÚLTIMO RESULTADO (API)", use_container_width=True):
-        with st.spinner("Consultando servidores da Caixa..."):
+        with st.spinner("Consultando servidores..."):
             c_api, d_api = buscar_ultimo_resultado_api()
             if c_api:
                 st.session_state.ultimo_res[m_db][str(c_api)] = d_api
-                
-                # MENSAGEM DE SUCESSO COM TRAVA DE TEMPO
                 st.success(f"🚀 SUCESSO! Concurso {c_api} gravado na base.")
                 st.toast(f"✅ Concurso {c_api} adicionado!", icon="💰")
-                
                 import time
-                time.sleep(3) # Aguarda 3 segundos para você conseguir ler
+                time.sleep(1)
                 st.rerun()
             else:
-                st.error("❌ Falha na API. O servidor pode estar instável. Use o modo manual abaixo.")
+                st.error("❌ Falha na API.")
 
     st.markdown("---")
 
-    # --- PARTE 2: ENTRADA MANUAL (O SEU MODO COPIA E COLA) ---
-    st.markdown("### ✍️ Cadastro Manual / Cópia de Site")
+    # --- PARTE 2: ENTRADA MANUAL ---
+    st.markdown("### ✍️ Cadastro Manual")
     col_man1, col_man2 = st.columns(2)
-    
     with col_man1:
         id_c_manual = st.number_input("Número do Concurso", 1, 9999, key="id_manual_input_novo")
     
-    txt_site = st.text_area("Cole aqui o resultado do site:", placeholder="Ex: 01 02 03...", height=100).strip()
+    txt_site = st.text_area("Cole aqui o resultado:", placeholder="Ex: 01 02 03...", height=100).strip()
 
     if txt_site:
-        # Extrai apenas números do texto colado (filtro inteligente)
         numeros_extraidos = [int(n) for n in re.findall(r'\d+', txt_site)]
         max_v = 25 if m_db == "Lotofácil" else 60
         dezenas_limpas = sorted(list(set([n for n in numeros_extraidos if 1 <= n <= max_v])))
@@ -966,19 +959,21 @@ with abas[3]:
             st.warning(f"🔎 Detectamos {len(dezenas_limpas)} dezenas: {dezenas_limpas}")
             
             if st.button(f"💾 GRAVAR CONCURSO {id_c_manual} NO BANCO", use_container_width=True):
+                # 1. Salva o resultado
                 st.session_state.ultimo_res[m_db][str(id_c_manual)] = dezenas_limpas
                 
-                # MENSAGEM DE SUCESSO COM TRAVA DE TEMPO
-                st.success(f"✅ Concurso {id_c_manual} gravado com sucesso!")
-                # Logo abaixo do st.success...
-pool_ia = treinar_e_prever_ia(m_db)
-if pool_ia: st.session_state.favoritas[m_db] = pool_ia
+                # 2. Atualiza a IA imediatamente após salvar
+                pool_ia = treinar_e_prever_ia(m_db)
+                if pool_ia: 
+                    st.session_state.favoritas[m_db] = pool_ia
 
+                st.success(f"✅ Concurso {id_c_manual} gravado com sucesso!")
                 st.toast("Dados salvos no Banco!", icon="💾")
                 
                 import time
-                time.sleep(3) # Aguarda 3 segundos para conferência visual
+                time.sleep(1)
                 st.rerun()
+
         else:
             st.info("Aguardando dezenas válidas no campo de texto...")
 
@@ -1256,6 +1251,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
