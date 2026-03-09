@@ -672,51 +672,77 @@ with abas[0]:
 
         col_btn1, col_btn2 = st.columns(2)
 
+# --- [MOTOR DE DECISÃO UNIFICADO: ESTRATÉGIA + MATRIZ] ---
+        
+        # 1. Mapeamento dinâmico de todas as exigências de tamanho 
+        tamanhos_detectados = [18] # Valor base padrão
+        
+        # Checagem de Estratégias (Lê todos os nomes das estratégias Lotofácil) 
+        if mod == "Lotofácil":
+            if "A MARRETA" in est_escolhida: tamanhos_detectados.append(22)
+            elif "PRESTIGE 20" in est_escolhida: tamanhos_detectados.append(20)
+            elif "ELITE KADOSH" in est_escolhida: tamanhos_detectados.append(19)
+            elif any(x in est_escolhida for x in ["ESCUDO", "EQUILÍBRIO", "SIMETRIA", "RASTREAMENTO"]): tamanhos_detectados.append(18)
+            
+            # Checagem de Matrizes (Se houver matriz, ela também impõe seu tamanho) 
+            if fe_escolhido != "Nenhum":
+                info_fe = MATRIZES_FECHAMENTO.get(fe_escolhido, {})
+                tamanhos_detectados.append(info_fe.get("n_pool", 18))
+
+        # O tamanho alvo do Pool será SEMPRE o maior valor exigido (Estratégia ou Matriz) 
+        tamanho_alvo_pool = max(tamanhos_detectados)
+
+        st.markdown(f"🛠️ **CONFIGURAÇÃO ATIVA:** Pool travado em **{tamanho_alvo_pool}** dezenas para a estratégia/matriz selecionada.")
+
+        col_btn1, col_btn2 = st.columns(2)
+
         with col_btn1:
-            # BOTÃO 1: IA (OBEDECE TUDO)
+            # BOTÃO 1: ATIVAR IA (OBEDECE O TAMANHO CALCULADO) 
             if st.button("💎 ATIVAR IA (RANKING 1000)"):
                 pool_ia = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool)
                 if pool_ia:
                     st.session_state.favoritas[mod] = pool_ia
-                    st.success(f"🚀 IA configurada para {tamanho_alvo_pool} dezenas!")
+                    st.success(f"🚀 IA Kadosh: {tamanho_alvo_pool} dezenas geradas!")
                     st.rerun()
 
-            # BOTÃO 2: SELECIONAR TUDO
+            # BOTÃO 2: SELECIONAR TODO O VOLANTE (Única exceção manual) 
             if st.button("✅ SELECIONAR TODO VOLANTE"):
                 max_v_bt = 25 if mod == "Lotofácil" else 60
                 st.session_state.favoritas[mod] = list(range(1, max_v_bt + 1))
+                st.success(f"🔥 Todo o volante carregado para o Pool!")
                 st.rerun()
                 
         with col_btn2:
-            # BOTÃO 3: INTELIGENTE (OBEDECE TUDO)
+            # BOTÃO 3: POOL INTELIGENTE (OBEDECE O TAMANHO CALCULADO) 
             if st.button("🧠 POOL INTELIGENTE"):
                 stats_mod = st.session_state.analise_stats.get(mod, {})
                 if stats_mod:
+                    # Ordena pelo score e corta no tamanho exato da regra ativa
                     dezenas_ordenadas = sorted(stats_mod.keys(), key=lambda x: stats_mod[x]['score'], reverse=True)
                     st.session_state.favoritas[mod] = sorted(dezenas_ordenadas[:tamanho_alvo_pool])
-                    st.success(f"🎯 Pool Inteligente: {tamanho_alvo_pool} dezenas!")
+                    st.success(f"🎯 Pool Inteligente: {tamanho_alvo_pool} dezenas via Score!")
                     st.rerun()
 
-            # BOTÃO 4: REFINAR (OBEDECE TUDO)
+            # BOTÃO 4: REFINAR POOL (OBEDECE O TAMANHO CALCULADO) 
             if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
-                pool_base = st.session_state.favoritas.get(mod, [])
-                # Se estiver vazio ou muito pequeno, a IA dá o suporte antes de refinar
-                if len(pool_base) < tamanho_alvo_pool:
-                    pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 2)
+                pool_atual = st.session_state.favoritas.get(mod, [])
+                # Se o pool estiver vazio ou menor que o alvo, gera um base via IA antes de refinar
+                if len(pool_atual) < tamanho_alvo_pool:
+                    pool_atual = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 3)
                 
                 matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
-                pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_objetivo=tamanho_alvo_pool)
+                pool_refinado = refinar_pool_kadosh(pool_atual, matriz_af, tamanho_objetivo=tamanho_alvo_pool)
                 st.session_state.favoritas[mod] = pool_refinado
                 st.success(f"🎯 Refinado para {tamanho_alvo_pool} dezenas!")
                 st.rerun()
 
-        # Sincronização obrigatória do seletor visual
-        pool = st.multiselect(
+        # O multiselect visual deve ler sempre do session_state para manter a sincronia 
+        pool_visual = st.multiselect(
             "SELECIONE SEU POOL", 
             range(1, (26 if mod == "Lotofácil" else 61)), 
             default=st.session_state.favoritas.get(mod, [])
         )
-        st.session_state.favoritas[mod] = pool
+        st.session_state.favoritas[mod] = pool_visual
  
 
         # --- [SUGESTÃO 3: ANÁLISE DE QUADRANTES NO POOL] ---
@@ -1288,6 +1314,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
