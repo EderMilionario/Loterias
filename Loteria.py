@@ -744,12 +744,11 @@ with abas[0]:
         
         renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
 
-    # --- BLOCO DO BOTÃO DE GERAR (CORREÇÃO DEFINITIVA) ---
+    # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-        # 1. Preparação da Inteligência de Afinidade
-        if 'matriz_ativa' in st.session_state and st.session_state['matriz_ativa'] is not None:
-            matriz_af = st.session_state['matriz_ativa']
-        else:
+        # 1. Garante que a Matriz de Afinidade da Aba 6 está carregada
+        matriz_af = st.session_state.get('matriz_ativa')
+        if matriz_af is None:
             matriz_af = calcular_matriz_afinidade_kadosh(mod)
             st.session_state['matriz_ativa'] = matriz_af
 
@@ -758,15 +757,15 @@ with abas[0]:
         else:
             novos = []
             
-            # Função interna de geração para respeitar as estratégias
-            def processar_geracao(tamanho_solicitado, quantidade_pedida, filtragem=True):
+            # 2. Função interna que aplica Afinidade + Filtros Kadosh
+            def processar_geracao(tamanho_solicitado, quantidade_pedida):
                 sucessos, tentativas = 0, 0
-                while sucessos < quantidade_pedida and tentativas < 15000:
+                while sucessos < quantidade_pedida and tentativas < 20000: # Limite alto para não desistir fácil
                     tentativas += 1
                     jogo_em_construcao = list(fixas_final)
                     pool_trabalho = [n for n in pool if n not in jogo_em_construcao]
                     
-                    # Preenchimento inteligente via Matriz de Afinidade
+                    # PREENCHIMENTO INTELIGENTE: Usa a Matriz de Afinidade (Aba 6)
                     while len(jogo_em_construcao) < tamanho_solicitado and pool_trabalho:
                         pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
                         opcoes = list(pesos_dict.keys())
@@ -778,13 +777,14 @@ with abas[0]:
                     
                     comb = sorted(jogo_em_construcao)
                     
-                    # Evita duplicatas no lote atual
+                    # Evita duplicatas
                     if any(set(comb) == set(existente['n']) for existente in novos):
                         continue
                     
-                    # Filtros Kadosh (Somente para jogos de 15)
+                    # FILTROS KADOSH (Simetria, Soma, Moldura, Quadrantes)
                     passou = True
-                    if filtragem and tamanho_solicitado == 15 and mod == "Lotofácil":
+                    if tamanho_solicitado == 15 and mod == "Lotofácil":
+                        # Aqui ele chama a função 'validar_kadosh_cirurgico' que já tens no topo do código
                         passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
                     
                     if passou:
@@ -796,7 +796,7 @@ with abas[0]:
                         })
                         sucessos += 1
 
-            # --- LÓGICA DE EXECUÇÃO POR ESTRATÉGIA ---
+            # 3. LÓGICA DE EXECUÇÃO (Mantendo todas as tuas estratégias originais)
             if fe_escolhido != "Nenhum":
                 if "DIAMANTE" in fe_escolhido:
                     processar_geracao(16, 2)
@@ -822,7 +822,9 @@ with abas[0]:
                 processar_geracao(n_dez, qtd)
             
             st.session_state.jogos_gerados = novos
+            st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com sucesso!")
             st.rerun()
+    # --- [FIM DO NOVO MOTOR SINCRONIZADO] ---
 
     # --- EXIBIÇÃO DOS JOGOS (FORA DO IF DO BOTÃO) ---
     if st.session_state.jogos_gerados:
@@ -1287,6 +1289,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
