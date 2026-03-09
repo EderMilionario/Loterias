@@ -754,7 +754,6 @@ with abas[0]:
             if mod in st.session_state.analise_stats:
                # --- [INÍCIO DA COLAGEM: LÓGICA DE IA E GERAÇÃO] ---
                 stats = st.session_state.analise_stats[mod]
-                # Esta linha abaixo corrige o erro de sintaxe do seu arquivo
                 fixas_final = sorted(pool, key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)[:qtd_auto]
                 st.info(f"📌 IA selecionou como fixas: {fixas_final}")
             else:
@@ -762,8 +761,7 @@ with abas[0]:
         else:
             fixas_final = []
 
-    # --- [MOTOR DE GERAÇÃO KADOSH] ---
-    st.markdown("---")
+    # --- [BOTÃO DE GERAÇÃO FINAL] ---
     if st.button("🔥 GERAR JOGOS KADOSH"):
         if not pool or len(pool) < n_dez:
             st.error(f"Seu Pool precisa de pelo menos {n_dez} dezenas!")
@@ -772,41 +770,28 @@ with abas[0]:
             tentativas = 0
             pool_disponivel = [n for n in pool if n not in fixas_final]
             
-            with st.spinner("O Motor Kadosh está validando as combinações..."):
-                # Limite de 10.000 para segurança do processador
-                while len(novos_jogos) < qtd and tentativas < 10000:
-                    tentativas += 1
-                    restante = random.sample(pool_disponivel, n_dez - len(fixas_final))
-                    jogo_candidato = sorted(fixas_final + restante)
-                    
-                    # Validação usando a sua função da linha 195
-                    if validar_kadosh_cirurgico(jogo_candidato, mod, n_dez):
-                        chance = definir_label_chance(jogo_candidato, mod)
-                        novos_jogos.append({"n": jogo_candidato, "est": est_escolhida, "chance": chance})
+            while len(novos_jogos) < qtd and tentativas < 10000:
+                tentativas += 1
+                restante = random.sample(pool_disponivel, n_dez - len(fixas_final))
+                jogo_candidato = sorted(fixas_final + restante)
+                
+                if validar_kadosh_cirurgico(jogo_candidato, mod, n_dez):
+                    chance = definir_label_chance(jogo_candidato, mod)
+                    novos_jogos.append({"n": jogo_candidato, "est": est_escolhida, "chance": chance})
             
             st.session_state.jogos_gerados = novos_jogos
             if len(novos_jogos) < qtd:
-                st.warning(f"Filtros Rigorosos: Gerados {len(novos_jogos)} de {qtd} solicitados.")
-            else:
-                st.success(f"✅ {len(novos_jogos)} Jogos Gerados com Sucesso!")
+                st.warning(f"Gerados {len(novos_jogos)} jogos. Filtros muito restritos!")
 
-    # --- [EXIBIÇÃO E EXPORTAÇÃO (FINAL DA ABA 0)] ---
+    # --- [MOSTRAR RESULTADOS] ---
     if st.session_state.jogos_gerados:
         for i, jogo in enumerate(st.session_state.jogos_gerados):
-            with st.expander(f"JOGO {i+1:02d} | CHANCE {jogo['chance']}"):
-                st.code(" ".join(f"{n:02d}" for n in jogo['n']))
+            st.code(f"JOGO {i+1:02d}: " + " ".join(f"{n:02d}" for n in jogo['n']))
         
-        # Botões de Ação Final da Aba
-        col_f1, col_f2 = st.columns(2)
-        with col_f1:
-            pdf_bytes = gerar_pdf_bonito(st.session_state.jogos_gerados, mod)
-            st.download_button("📥 Baixar PDF", data=pdf_bytes, file_name="kadosh_jogos.pdf")
-        with col_f2:
-            if st.button("💾 Salvar no Backup"):
-                st.session_state.jogos_salvos.extend(st.session_state.jogos_gerados)
-                st.toast("Jogos enviados para a aba Backup!")
+        pdf_export = gerar_pdf_bonito(st.session_state.jogos_gerados, mod)
+        st.download_button("📥 Baixar PDF Kadosh", data=pdf_export, file_name="kadosh_oficial.pdf")
 
-# --- [FIM DA ABA 0 / PRONTO PARA A PRÓXIMA ABA] --- 
+# O seu código termina com o rodapé que já está no arquivo.
 
 with abas[1]:
     mostrar_status_backup()
@@ -1241,6 +1226,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
