@@ -652,12 +652,12 @@ with abas[0]:
 
        
             if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
-                tamanho_necessario = 18 
-                if fe_escolhido != "Nenhum":
-                    if "20-15" in fe_escolhido or "DIAMANTE" in fe_escolhido:
-                        tamanho_necessario = 20
-                    elif "19-15" in fe_escolhido:
-                        tamanho_necessario = 19
+            tamanho_necessario = 18
+            if fe_escolhido != "Nenhum":
+                if "20-15" in fe_escolhido or "DIAMANTE" in fe_escolhido:
+                    tamanho_necessario = 20
+                elif "19-15" in fe_escolhido:
+                    tamanho_necessario = 19
             elif "PRESTIGE 20" in est_escolhida:
                 tamanho_necessario = 20
 
@@ -666,11 +666,11 @@ with abas[0]:
             else:
                 matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
                 pool_refinado = refinar_pool_kadosh(
-st.session_state.favoritas[mod], 
+                    st.session_state.favoritas[mod], 
                     matriz_af, 
-tamanho_objetivo=tamanho_necessario 
+                    tamanho_objetivo=tamanho_necessario 
                 )
-st.session_state.favoritas[mod] = pool_refinado
+                st.session_state.favoritas[mod] = pool_refinado
                 st.success(f"🎯 Pool refinado para {tamanho_necessario} dezenas!")
                 st.rerun()
  
@@ -1252,6 +1252,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
