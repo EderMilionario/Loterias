@@ -653,7 +653,7 @@ with abas[0]:
        
             if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
     # 1. Identifica o tamanho automático baseado na sua escolha:
-            tamanho_necessario = 18 # Padrão
+          tamanho_necessario = 18 # Padrão
     
     if fe_escolhido != "Nenhum":
         if "20-15" in fe_escolhido or "DIAMANTE" in fe_escolhido:
@@ -1253,6 +1253,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
