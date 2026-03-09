@@ -520,135 +520,139 @@ abas = st.tabs(["🎯 GERADOR PRO", "🔍 CONFERIR", "⚙️ VALORES", "📥 DAT
 
 with abas[0]:
     mostrar_status_backup()
-    mod = st.selectbox("Modalidade", list(st.session_state.custos.keys()), key="mod_main_operacional")
     
-    # --- [CÁLCULO DINÂMICO DO TAMANHO DO POOL] ---
+    # 1. Escolha da Modalidade e Sincronização
+    mod = st.selectbox("Modalidade", list(st.session_state.custos.keys()), key="mod_principal_v4")
+    
+    # --- [LÓGICA DE TAMANHO DO POOL] ---
     col_e1, col_e2 = st.columns(2)
     with col_e1:
-        est_escolhida = st.selectbox("💎 ESTRATÉGIA KADOSH", list(ESTRATEGIA_MAPA.keys()), key="est_v3_op")
+        est_escolhida = st.selectbox("💎 ESTRATÉGIA KADOSH", list(ESTRATEGIA_MAPA.keys()), key="est_v4")
     with col_e2:
-        fe_escolhido = st.selectbox("📐 MODO FECHAMENTO", list(MATRIZES_FECHAMENTO.keys()), key="fe_v3_op")
+        fe_escolhido = st.selectbox("📐 MODO FECHAMENTO", list(MATRIZES_FECHAMENTO.keys()), key="fe_v4")
 
-    # Define quantas dezenas a IA deve selecionar
-    tamanhos_possiveis = [15]
-    if "A MARRETA" in est_escolhida: tamanhos_possiveis.append(22)
-    elif "PRESTIGE 20" in est_escolhida: tamanhos_possiveis.append(20)
+    # Define o alvo para os botões de IA (18, 19, 20 ou 22)
+    t_alvos = [15]
+    if "A MARRETA" in est_escolhida: t_alvos.append(22)
+    elif "PRESTIGE 20" in est_escolhida: t_alvos.append(20)
     if fe_escolhido != "Nenhum":
-        tamanhos_possiveis.append(MATRIZES_FECHAMENTO[fe_escolhido].get("n_pool", 18))
+        t_alvos.append(MATRIZES_FECHAMENTO[fe_escolhido].get("n_pool", 18))
     
-    tamanho_alvo = max(tamanhos_possiveis)
-    st.caption(f"Configuração atual: Pool de {tamanho_alvo} dezenas.")
+    tamanho_alvo = max(t_alvos)
+    st.caption(f"⚙️ Sistema configurado para Pool de {tamanho_alvo} dezenas.")
 
-    # --- [BOTÕES DE INTELIGÊNCIA] ---
+    # --- [BOTÕES DE COMANDO - VOLTANDO À VIDA] ---
     c1, c2, c3, c4 = st.columns(4)
     
     with c1:
-        if st.button("✅ TODO VOLANTE", key="btn_all_v3"):
-            max_n = 25 if mod == "Lotofácil" else 60
-            st.session_state.favoritas[mod] = list(range(1, max_n + 1))
+        if st.button("✅ TODO VOLANTE", key="btn_all_v4"):
+            max_v = 25 if mod == "Lotofácil" else 60
+            st.session_state.favoritas[mod] = list(range(1, max_v + 1))
             st.rerun()
 
     with c2:
-        if st.button("💎 IA REFINADA", key="btn_ref_v3"):
-            # IA + Afinidade da Aba 6
+        if st.button("💎 IA REFINADA", key="btn_ref_v4"):
             matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
             pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo + 2)
             st.session_state.favoritas[mod] = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo)
             st.rerun()
 
     with c3:
-        if st.button("🧠 POOL SMART", key="btn_smart_v3"):
-            # Score de Frequência + Atraso
-            stats = st.session_state.get('analise_stats', {}).get(mod, {})
-            if stats:
-                dezenas_ord = sorted(stats.keys(), key=lambda x: stats[x]['score'], reverse=True)
+        if st.button("🧠 POOL SMART", key="btn_smart_v4"):
+            stats_mod = st.session_state.get('analise_stats', {}).get(mod, {})
+            if stats_mod:
+                dezenas_ord = sorted(stats_mod.keys(), key=lambda x: stats_mod[x]['score'], reverse=True)
                 st.session_state.favoritas[mod] = sorted(dezenas_ord[:tamanho_alvo])
                 st.rerun()
 
     with c4:
-        if st.button("🔥 IA RANKING 1000", key="btn_rank_v3"):
-            # IA Preditiva pura
+        if st.button("🔥 IA RANKING 1000", key="btn_rank_v4"):
             st.session_state.favoritas[mod] = treinar_e_prever_ia(mod, tamanho=tamanho_alvo)
             st.rerun()
 
-    # Pool de Trabalho (Multiselect)
-    pool_selecionado = st.multiselect("POOL DE TRABALHO:", range(1, (26 if mod=="Lotofácil" else 61)), 
-                                      default=st.session_state.favoritas.get(mod, []), key=f"ms_pool_{mod}")
-    st.session_state.favoritas[mod] = pool_selecionado
+    # Seletor do Pool (Multiselect)
+    pool_atual = st.multiselect("POOL ATUAL:", range(1, (26 if mod=="Lotofácil" else 61)), 
+                                default=st.session_state.favoritas.get(mod, []), key=f"ms_final_v4_{mod}")
+    st.session_state.favoritas[mod] = pool_atual
 
-    if st.button("🗑️ LIMPAR POOL", key="btn_clear_v3"):
+    if st.button("🗑️ LIMPAR POOL", key="btn_clear_v4"):
         st.session_state.favoritas[mod] = []
         st.rerun()
 
     st.markdown("---")
 
-    # --- [FIXAÇÃO MANUAL E HEATMAP] ---
+    # --- [SELEÇÃO DE FIXAS - COMO VOCÊ QUERIA] ---
     col_f, col_h = st.columns([1, 2])
     with col_f:
-        st.subheader("📌 Fixação")
-        # Campo manual como estava no teu código original
-        fixas_escolhidas = st.multiselect("CRAVAR FIXAS:", options=pool_selecionado, key="fixas_man_v3")
+        st.subheader("📌 Fixação Manual")
+        # Multiselect simples que puxa apenas o que está no Pool
+        fixas_final = st.multiselect("CRAVAR DEZENAS FIXAS:", options=pool_atual, key="fixas_manual_v4")
     
     with col_h:
         renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
 
     st.markdown("---")
 
-    # --- [GERAÇÃO DE JOGOS] ---
+    # --- [GERADOR] ---
     cg1, cg2 = st.columns(2)
     with cg1:
-        n_dez_j = st.selectbox("Dezenas/Bilhete", list(st.session_state.custos[mod].keys()), key="nd_v3_gen")
+        n_dez_j = st.selectbox("Dezenas/Bilhete", list(st.session_state.custos[mod].keys()), key="nd_v4_gen")
     with cg2:
-        qtd_j = st.number_input("Qtd Jogos", 1, 500, 10, key="qtd_v3_gen")
+        qtd_j = st.number_input("Qtd Jogos", 1, 500, 10, key="qtd_v4_gen")
 
-    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)", use_container_width=True, key="btn_gerar_v3"):
-        if len(pool_selecionado) < n_dez_j:
+    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)", use_container_width=True, key="btn_run_v4"):
+        if len(pool_atual) < n_dez_j:
             st.error("⚠️ Pool insuficiente!")
         else:
             matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
             novos = []
             
-            def motor(tam, qtd):
-                count = 0
-                for _ in range(qtd * 50):
-                    if count >= qtd: break
-                    jogo = list(fixas_escolhidas)
-                    sobra = [n for n in pool_selecionado if n not in jogo]
-                    while len(jogo) < tam and sobra:
-                        pesos = calcular_pesos_afinidade_dinamica(jogo, matriz_af, sobra)
-                        esc = random.choices(list(pesos.keys()), weights=list(pesos.values()), k=1)[0]
-                        jogo.append(esc)
-                        sobra.remove(esc)
+            def motor_exec(tam, qtd):
+                sucessos = 0
+                for _ in range(qtd * 100):
+                    if sucessos >= qtd: break
+                    jogo = list(fixas_final)
+                    disponivel = [n for n in pool_atual if n not in jogo]
+                    while len(jogo) < tam and disponivel:
+                        p = calcular_pesos_afinidade_dinamica(jogo, matriz_af, disponivel)
+                        escolha = random.choices(list(p.keys()), weights=list(p.values()), k=1)[0]
+                        jogo.append(escolha)
+                        disponivel.remove(escolha)
                     
-                    f = sorted(jogo)
+                    final_jogo = sorted(jogo)
                     if mod == "Lotofácil" and tam == 15:
-                        if not validar_kadosh_cirurgico(f, mod, 15): continue
-                    if f not in [x['n'] for x in novos]:
-                        novos.append({"mod": mod, "n": f, "tam": tam, "est": fe_escolhido if fe_escolhido != "Nenhum" else est_escolhida, "chance": definir_label_chance(f, mod)})
-                        count += 1
+                        if not validar_kadosh_cirurgico(final_jogo, mod, 15): continue
+                    
+                    if final_jogo not in [jg['n'] for jg in novos]:
+                        novos.append({
+                            "mod": mod, "n": final_jogo, "tam": tam, 
+                            "est": fe_escolhido if fe_escolhido != "Nenhum" else est_escolhida,
+                            "chance": definir_label_chance(final_jogo, mod)
+                        })
+                        sucessos += 1
 
             if est_escolhida == "6. A MARRETA":
-                motor(18, 1); motor(16, 5)
+                motor_exec(18, 1); motor_exec(16, 5)
             else:
-                motor(n_dez_j, qtd_j)
+                motor_exec(n_dez_j, qtd_j)
 
             st.session_state.jogos_gerados = novos
             st.rerun()
 
-    # Exibição e Salvamento
+    # Exibição
     if st.session_state.jogos_gerados:
         for i, j in enumerate(st.session_state.jogos_gerados):
             st.code(f"JOGO {i+1:02d} | {' '.join([f'{x:02d}' for x in j['n']])}")
         
-        if st.button("💾 CONFIRMAR E SALVAR", key="btn_save_v3"):
+        if st.button("💾 CONFIRMAR E SALVAR TUDO", key="btn_save_v4"):
             res_m = st.session_state.ultimo_res.get(mod, {})
             u_c = int(max(res_m.keys(), key=int)) if res_m else 0
             for jg in st.session_state.jogos_gerados:
                 jg['concurso_alvo'] = u_c + 1
-                jg['pool_origem'] = list(pool_selecionado)
+                jg['pool_origem'] = list(pool_atual)
                 st.session_state.jogos_salvos.append(jg)
             st.session_state.jogos_gerados = []
-            st.success("✅ Jogos salvos!")
+            st.success("✅ Salvo com Sucesso!")
             st.rerun()
  
 
@@ -1085,6 +1089,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
