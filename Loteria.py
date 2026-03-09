@@ -657,7 +657,7 @@ with abas[0]:
                 elif "PRESTIGE 20" in est_escolhida:
                     tamanho_necessario = 20
                 if len(st.session_state.favoritas[mod]) == 0: st.error("Selecione dezenas primeiro!")
-                elif len(st.session_state.favoritas[mod]) <= tamanho_necessario: st.warning(Seu Pool já está no tamanho ideal ou menor.)
+                elif len(st.session_state.favoritas[mod]) <= tamanho_necessario: st.warning("Seu Pool já está no tamanho ideal ou menor.")
                                                                                             
                 else:
                     matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
@@ -1248,6 +1248,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
