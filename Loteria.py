@@ -11,6 +11,36 @@ import io
 
 # --- [FUNÇÕES DE INTELIGÊNCIA] ---
 
+# --- [NÚCLEO DE INTELIGÊNCIA IA - RANKING 1000] ---
+def treinar_e_prever_ia(mod_alvo):
+    import numpy as np
+    # Busca os resultados reais que já estão no teu sistema
+    res_historico = st.session_state.ultimo_res.get(mod_alvo, {})
+    if len(res_historico) < 15: return None
+    
+    # Organiza os concursos por ordem cronológica
+    chaves_ordenadas = sorted(res_historico.keys(), key=int)
+    matriz_binaria = np.zeros((len(chaves_ordenadas), 25))
+    for i, conc in enumerate(chaves_ordenadas):
+        for num in res_historico[conc]:
+            matriz_binaria[i, num-1] = 1
+            
+    # IA analisa os últimos 10 sorteios para projetar o próximo
+    janela = 10
+    if len(matriz_binaria) <= janela: return None
+    
+    # Cálculo de tendência simplificado (Simetria Neural)
+    # Aqui a IA identifica a "vibe" recente dos números
+    pesos_recentes = np.mean(matriz_binaria[-janela:], axis=0)
+    tendencia_longa = np.mean(matriz_binaria, axis=0)
+    
+    # Mix de probabilidade (Frequência + Tendência Recente)
+    predicao_final = (pesos_recentes * 0.7) + (tendencia_longa * 0.3)
+    
+    # Retorna as 18 melhores dezenas para o Pool
+    indices_vencedores = predicao_final.argsort()[-18:][::-1]
+    return sorted([int(i + 1) for i in indices_vencedores])
+
 def buscar_ultimo_resultado_api():
     try:
         url = "https://loterica.api.ghgi.com.br/api/lotofacil/latest"
@@ -614,6 +644,15 @@ with abas[0]:
                     st.session_state.favoritas[mod] = sorted(pool_final)
                     st.success(f"🔥 IA Kadosh selecionou as {tamanho_pool} melhores dezenas!")
                     st.rerun()
+               if st.button("💎 ATIVAR POOL IA (RANKING 1000)"):
+    pool_ia = treinar_e_prever_ia(mod)
+    if pool_ia:
+        st.session_state.favoritas[mod] = pool_ia
+        st.success("🎯 Sincronia Total: O Pool agora reflete a predição da IA!")
+        st.rerun()
+    else:
+        st.error("Base de dados insuficiente para a IA trabalhar.")
+     
 
             if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
                 if len(st.session_state.favoritas[mod]) <= 15:
@@ -929,6 +968,10 @@ with abas[3]:
                 
                 # MENSAGEM DE SUCESSO COM TRAVA DE TEMPO
                 st.success(f"✅ Concurso {id_c_manual} gravado com sucesso!")
+                # Logo abaixo do st.success...
+pool_ia = treinar_e_prever_ia(m_db)
+if pool_ia: st.session_state.favoritas[m_db] = pool_ia
+
                 st.toast("Dados salvos no Banco!", icon="💾")
                 
                 import time
@@ -992,6 +1035,11 @@ with abas[4]:
                     st.session_state.ultimo_res = d.get("res", st.session_state.ultimo_res)
                     st.session_state.favoritas = d.get("favoritas", st.session_state.favoritas)
                     st.success("✅ Sistema Restaurado com Sucesso!")
+                    # Logo abaixo do st.success...
+for m in st.session_state.ultimo_res:
+    pool_ia = treinar_e_prever_ia(m)
+    if pool_ia: st.session_state.favoritas[m] = pool_ia
+
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro ao ler arquivo: {e}")
@@ -1206,6 +1254,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
