@@ -12,9 +12,11 @@ import io
 # --- [FUNÇÕES DE INTELIGÊNCIA] ---
 
 # --- [INÍCIO DA FUNÇÃO IA CORRIGIDA] ---
-def treinar_e_prever_ia(mod_alvo, tamanho=18):
+def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui também
     import numpy as np
     res_historico = st.session_state.ultimo_res.get(mod_alvo, {})
+    
+    # Se tiver pelo menos 1 resultado, ele já tenta trabalhar
     if len(res_historico) < 1: 
         return None
     
@@ -1257,6 +1259,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
