@@ -11,35 +11,33 @@ import io
 
 # --- [FUNÇÕES DE INTELIGÊNCIA] ---
 
-# --- [NÚCLEO DE INTELIGÊNCIA IA - RANKING 1000] ---
-def treinar_e_prever_ia(mod_alvo):
+# --- [INÍCIO DA FUNÇÃO IA CORRIGIDA] ---
+def treinar_e_prever_ia(mod_alvo, tamanho=18):
     import numpy as np
-    # Busca os resultados reais que já estão no teu sistema
     res_historico = st.session_state.ultimo_res.get(mod_alvo, {})
-    if len(res_historico) < 15: return None
+    if len(res_historico) < 10: 
+        return None
     
-    # Organiza os concursos por ordem cronológica
     chaves_ordenadas = sorted(res_historico.keys(), key=int)
-    matriz_binaria = np.zeros((len(chaves_ordenadas), 25))
+    max_num = 25 if mod_alvo == "Lotofácil" else 60
+    matriz_binaria = np.zeros((len(chaves_ordenadas), max_num))
+    
     for i, conc in enumerate(chaves_ordenadas):
         for num in res_historico[conc]:
-            matriz_binaria[i, num-1] = 1
+            if num <= max_num:
+                matriz_binaria[i, num-1] = 1
             
-    # IA analisa os últimos 10 sorteios para projetar o próximo
-    janela = 10
-    if len(matriz_binaria) <= janela: return None
-    
-    # Cálculo de tendência simplificado (Simetria Neural)
-    # Aqui a IA identifica a "vibe" recente dos números
+    janela = min(15, len(matriz_binaria) - 1)
     pesos_recentes = np.mean(matriz_binaria[-janela:], axis=0)
     tendencia_longa = np.mean(matriz_binaria, axis=0)
     
-    # Mix de probabilidade (Frequência + Tendência Recente)
     predicao_final = (pesos_recentes * 0.7) + (tendencia_longa * 0.3)
     
-    # Retorna as 18 melhores dezenas para o Pool
-    indices_vencedores = predicao_final.argsort()[-18:][::-1]
+    # O segredo: a IA agora corta no tamanho exato que a estratégia pede
+    indices_vencedores = predicao_final.argsort()[-tamanho:][::-1]
     return sorted([int(i + 1) for i in indices_vencedores])
+# --- [FIM DA FUNÇÃO IA CORRIGIDA] ---
+
 
 def buscar_ultimo_resultado_api():
     try:
@@ -619,39 +617,34 @@ with abas[0]:
         max_v = 25 if mod=="Lotofácil" else 60 if mod=="Mega-Sena" else 80
         col_btn1, col_btn2 = st.columns(2)
         
+                # --- [INÍCIO DOS BOTÕES DE IA ABA 0] ---
+        col_btn1, col_btn2 = st.columns(2)
+        
+        # Define o tamanho ideal do Pool baseado na Matriz selecionada
+        tamanho_alvo = 18 # Padrão
+        if "DIAMANTE" in fe_escolhido or "20-15" in fe_escolhido:
+            tamanho_alvo = 20
+        elif "19-15" in fe_escolhido:
+            tamanho_alvo = 19
+
         with col_btn1:
-            if st.button("✅ TODO O VOLANTE"):
-                st.session_state.favoritas[mod] = list(range(1, max_v + 1))
-                st.rerun()
+            if st.button("🧠 POOL INTELIGENTE"):
+                stats_mod = st.session_state.analise_stats.get(mod, {})
+                if stats_mod:
+                    dezenas_ordenadas = sorted(stats_mod.keys(), key=lambda x: stats_mod[x]['score'], reverse=True)
+                    st.session_state.favoritas[mod] = sorted(dezenas_ordenadas[:tamanho_alvo])
+                    st.success(f"🎯 Pool de {tamanho_alvo} dezenas gerado!")
+                    st.rerun()
                 
         with col_btn2:
-            if st.button("🧠 POOL INTELIGENTE KADOSH"):
-                stats_mod = st.session_state.analise_stats.get(mod, {})
-                if not stats_mod:
-                    st.error("Base de dados vazia! Vá na Aba 3 e sincronize os resultados.")
-                else:
-                    # Ordena todas as dezenas pelo Score da IA (Frequência + Atraso)
-                    dezenas_ordenadas = sorted(
-                        stats_mod.keys(), 
-                        key=lambda x: stats_mod[x]['score'], 
-                        reverse=True
-                    )
-                    
-                    # Define o tamanho do Pool (18 para Lotofácil, 12 para Mega)
-                    tamanho_pool = 18 if mod == "Lotofácil" else 12
-                    pool_final = dezenas_ordenadas[:tamanho_pool]
-                    
-                    st.session_state.favoritas[mod] = sorted(pool_final)
-                    st.success(f"🔥 IA Kadosh selecionou as {tamanho_pool} melhores dezenas!")
+            if st.button("💎 ATIVAR IA (RANKING 1000)"):
+                pool_ia = treinar_e_prever_ia(mod, tamanho=tamanho_alvo)
+                if pool_ia:
+                    st.session_state.favoritas[mod] = pool_ia
+                    st.success(f"🚀 IA projetou {tamanho_alvo} dezenas para esta estratégia!")
                     st.rerun()
+        # --- [FIM DOS BOTÕES DE IA ABA 0] ---
 
-        # Botões de IA Avançada (Ranking 1000 e Refinamento)
-        if st.button("💎 ATIVAR POOL IA (RANKING 1000)"):
-            pool_ia = treinar_e_prever_ia(mod)
-            if pool_ia:
-                st.session_state.favoritas[mod] = pool_ia
-                st.success("🎯 Sincronia Total: O Pool agora reflete a predição da IA!")
-                st.rerun()
             else:
                 st.error("Base de dados insuficiente para a IA trabalhar.")
 
@@ -925,20 +918,28 @@ with abas[3]:
     
     m_db = st.selectbox("Selecione a Loteria", list(st.session_state.custos.keys()), key="m_db_final_novo")
 
-    # --- PARTE 1: SINCRO AUTOMÁTICO ---
+        # --- [INÍCIO DO BLOCO API ABA 3] ---
     st.markdown("### 🌐 Sincronização Online")
     if st.button("🔄 BUSCAR ÚLTIMO RESULTADO (API)", use_container_width=True):
-        with st.spinner("Consultando servidores..."):
+        with st.spinner("Consultando servidores da Caixa..."):
             c_api, d_api = buscar_ultimo_resultado_api()
-            if c_api:
+            if c_api and d_api:
+                # Grava no dicionário global
                 st.session_state.ultimo_res[m_db][str(c_api)] = d_api
-                st.success(f"🚀 SUCESSO! Concurso {c_api} gravado na base.")
-                st.toast(f"✅ Concurso {c_api} adicionado!", icon="💰")
-                import time
-                time.sleep(1)
+                
+                # Sincroniza a IA imediatamente com o novo dado
+                tamanho_necessario = 20 if "DIAMANTE" in str(st.session_state.get('fe_escolhido', '')) else 18
+                pool_ia = treinar_e_prever_ia(m_db, tamanho=tamanho_necessario)
+                if pool_ia:
+                    st.session_state.favoritas[m_db] = pool_ia
+                
+                st.success(f"🚀 SUCESSO! Concurso {c_api} gravado e IA sincronizada.")
+                st.toast(f"Concurso {c_api} adicionado!", icon="✅")
                 st.rerun()
             else:
-                st.error("❌ Falha na API.")
+                st.error("❌ A API não retornou dados. Verifique sua conexão ou tente manual.")
+    # --- [FIM DO BLOCO API ABA 3] ---
+
 
     st.markdown("---")
 
@@ -1238,6 +1239,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
