@@ -286,14 +286,32 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
 
     # REGRA DE OURO: Nenhum quadrante vazio e nenhum com mais de 7 dezenas
     # Isso evita que o jogo fique "amontoado" num canto só do volante.
-    if any(q < 1 for q in distribuicao) or any(q > 7 for q in distribuicao):
+    # --- [SINCRONIZAÇÃO TOTAL IA + ESTRATÉGIA] ---
+    # Pegamos o tamanho exato do Pool que está sendo usado no momento
+    # Se não houver nada definido, o padrão vira o n_dez (quantidade de dezenas do jogo)
+    tamanho_pool_real = st.session_state.get('tamanho_pool_ativo', n_dez)
+    
+    # DINÂMICA DE LIMITE: 
+    # Se o pool for pequeno (até 18), limite 7. 
+    # Se for médio (19 a 21), limite 8.
+    # Se for grande (22+ como 'A Marreta'), limite 9.
+    if tamanho_pool_real <= 18:
+        limite_kadosh = 7
+        folga_simetria = 4
+    elif tamanho_pool_real <= 21:
+        limite_kadosh = 8
+        folga_simetria = 5
+    else:
+        limite_kadosh = 9
+        folga_simetria = 6
+
+    # APLICAÇÃO DOS FILTROS COM OS LIMITES CALIBRADOS
+    if any(q < 1 for q in distribuicao) or any(q > limite_kadosh for q in distribuicao):
         return False 
 
-    # REGRA DE SIMETRIA (O Equilíbrio Kadosh)
-    # Impede que a diferença entre o quadrante mais cheio e o mais vazio seja extrema
-    if (max(distribuicao) - min(distribuicao)) > 4:
+    if (max(distribuicao) - min(distribuicao)) > folga_simetria:
         return False
-    # --- [FIM DA CALIBRAGEM] ---
+    # --- [FIM DA SINCRONIZAÇÃO] ---
     
     # Sincronia com o Pool para evitar loop infinito
     pool_atual = st.session_state.get('pool_favoritas', [])
@@ -429,25 +447,25 @@ def renderizar_heatmap(mod, res_loto):
     frias = [n for n in range(1, 26) if frequencia[n] < 8]
     atrasadas = [n for n in range(1, 26) if atraso[n] >= 3]
 
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown('<p style="color:#eb4d4b; font-size:18px;">🔥 DEZENAS QUENTES</p>', unsafe_allow_html=True)
-        for n in quentes:
-            st.markdown(f'<div style="background:#eb4d4b; color:white; padding:5px; border-radius:5px; margin-bottom:2px; text-align:center;">{n:02d} (Freq: {frequencia[n]})</div>', unsafe_allow_html=True)
-            
-    with col2:
-        st.markdown('<p style="color:#0984e3; font-size:18px;">❄️ DEZENAS FRIAS</p>', unsafe_allow_html=True)
-        for n in frias:
-            st.markdown(f'<div style="background:#0984e3; color:white; padding:5px; border-radius:5px; margin-bottom:2px; text-align:center;">{n:02d} (Freq: {frequencia[n]})</div>', unsafe_allow_html=True)
-            
-    with col3:
-        st.markdown('<p style="color:#f1c40f; font-size:18px;">⏳ ALERTA ATRASO</p>', unsafe_allow_html=True)
-        for n in atrasadas:
-            st.markdown(f'<div style="background:#f1c40f; color:black; padding:5px; border-radius:5px; margin-bottom:2px; text-align:center;">{n:02d} (Atraso: {atraso[n]})</div>', unsafe_allow_html=True)
-            
-    st.markdown("---")
+    # --- [NOVO VISUAL HORIZONTAL KADOSH] ---
+    def render_horizontal(lista, info_dict, cor_fundo, cor_texto, label_info):
+        # Gera as dezenas lado a lado em badges
+        badges_html = "".join([
+            f'<span style="background:{cor_fundo}; color:{cor_texto}; padding:4px 10px; border-radius:15px; margin:3px; font-weight:bold; display:inline-block; border:1px solid rgba(0,0,0,0.1); font-size:14px;" title="{label_info}: {info_dict[n]}">{n:02d}</span>' 
+            for n in sorted(lista)
+        ])
+        return f'<div style="display:flex; flex-wrap:wrap; margin-bottom:15px;">{badges_html}</div>'
 
+    st.markdown('<p style="color:#eb4d4b; font-size:18px; font-weight:bold; margin-bottom:5px;">🔥 DEZENAS QUENTES</p>', unsafe_allow_html=True)
+    st.markdown(render_horizontal(quentes, frequencia, "#eb4d4b", "white", "Freq"), unsafe_allow_html=True)
+
+    st.markdown('<p style="color:#0984e3; font-size:18px; font-weight:bold; margin-bottom:5px;">❄️ DEZENAS FRIAS</p>', unsafe_allow_html=True)
+    st.markdown(render_horizontal(frias, frequencia, "#0984e3", "white", "Freq"), unsafe_allow_html=True)
+
+    st.markdown('<p style="color:#f1c40f; font-size:18px; font-weight:bold; margin-bottom:5px;">⏳ ALERTA ATRASO</p>', unsafe_allow_html=True)
+    st.markdown(render_horizontal(atrasadas, atraso, "#f1c40f", "black", "Atraso"), unsafe_allow_html=True)
+    
+    st.markdown("---")
 
 # --- 2. MAPA DE ESTRATÉGIAS E MATRIZES ---
 ESTRATEGIA_MAPA = {
@@ -1304,6 +1322,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
