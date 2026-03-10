@@ -84,62 +84,30 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo):
 def calcular_matriz_afinidade_kadosh(mod_alvo):
     import numpy as np
     from itertools import combinations
-    
-    # Respeitando exatamente a sua chamada de dados original
     res_historico = st.session_state.ultimo_res.get(mod_alvo, {})
-    
     max_num = 25 if mod_alvo == "Lotofácil" else 60
     matriz = np.zeros((max_num, max_num))
     
-    # Proteção: se o histórico estiver vazio, ele não tenta calcular e não dá erro
-    if not res_historico:
-        return matriz
-
-    try:
-        chaves_ordenadas = sorted(res_historico.keys(), key=int)
-        total_sorteios = len(chaves_ordenadas)
+    # --- [INÍCIO DA SINCRONIA DE RECÊNCIA] ---
+    chaves_ordenadas = sorted(res_historico.keys(), key=int)
+    total_sorteios = len(chaves_ordenadas)
+    
+    # Definimos 30 como a janela ideal de tendência
+    # O max(0, ...) garante que o código não quebre se você tiver poucos concursos
+    ponto_corte_recente = max(0, total_sorteios - 30)
+    
+    for i, conc_id in enumerate(chaves_ordenadas):
+        sorteio = res_historico[conc_id]
         
-        # Implementando o peso de 30 concursos que você pediu
-        ponto_corte = max(0, total_sorteios - 30)
+        # Peso 2 para o que aconteceu nos últimos 30 concursos (Tendência)
+        # Peso 1 para o resto do histórico (Base)
+        peso = 2 if i >= ponto_corte_recente else 1
         
-        for i, conc_id in enumerate(chaves_ordenadas):
-            sorteio = res_historico[conc_id]
-            # Peso 2 para os 30 mais recentes, Peso 1 para o resto
-            peso = 2 if i >= ponto_corte else 1
-            
-            # Garante que os números sejam tratados como índices inteiros para o numpy
-            nums = [int(n) for n in sorteio if 1 <= int(n) <= max_num]
-            
-            for d1, d2 in combinations(sorted(nums), 2):
+        for d1, d2 in combinations(sorted(sorteio), 2):
+            if d1 <= max_num and d2 <= max_num:
                 matriz[d1-1, d2-1] += peso
-    except Exception:
-        # Se houver qualquer erro de dado, ele ignora e retorna a matriz atual, evitando o crash
-        return matriz
-                
-    return matriz
-    try:
-        # Organiza os concursos por número
-        chaves_ordenadas = sorted(res_historico.keys(), key=lambda x: int(x))
-        total_sorteios = len(chaves_ordenadas)
-        
-        # Define a janela de 30 para o peso dobrado
-        ponto_corte = max(0, total_sorteios - 30)
-        
-        for i, conc_id in enumerate(chaves_ordenadas):
-            sorteio = res_historico[conc_id]
-            # Peso 2 para os últimos 30, Peso 1 para o resto
-            peso = 2 if i >= ponto_corte else 1
-            
-            # Filtra apenas números válidos para evitar erro de índice
-            nums = [int(n) for n in sorteio if 1 <= int(n) <= max_num]
-            
-            for d1, d2 in combinations(sorted(nums), 2):
-                matriz[d1-1, d2-1] += peso
-                
-    except Exception as e:
-        # Se algo der errado no cálculo, ele retorna a matriz como está para não travar o app
-        pass
-        
+    # --- [FIM DA SINCRONIA DE RECÊNCIA] ---
+    
     return matriz
 
 
@@ -499,25 +467,25 @@ def renderizar_heatmap(mod, res_loto):
     frias = [n for n in range(1, 26) if frequencia[n] < 8]
     atrasadas = [n for n in range(1, 26) if atraso[n] >= 3]
 
-   # --- [NOVO VISUAL HORIZONTAL KADOSH] ---
-    def render_horizontal(lista, info_dict, cor_fundo, cor_texto, label_info):
-        # Gera as dezenas lado a lado em badges
-        badges_html = "".join([
-            f'<span style="background:{cor_fundo}; color:{cor_texto}; padding:4px 10px; border-radius:15px; margin:3px; font-weight:bold; display:inline-block; border:1px solid rgba(0,0,0,0.1); font-size:14px;" title="{label_info}: {info_dict[n]}">{n:02d}</span>' 
-            for n in sorted(lista)
-        ])
-        return f'<div style="display:flex; flex-wrap:wrap; margin-bottom:15px;">{badges_html}</div>'
-
-    st.markdown('<p style="color:#eb4d4b; font-size:18px; font-weight:bold; margin-bottom:5px;">🔥 DEZENAS QUENTES</p>', unsafe_allow_html=True)
-    st.markdown(render_horizontal(quentes, frequencia, "#eb4d4b", "white", "Freq"), unsafe_allow_html=True)
-
-    st.markdown('<p style="color:#0984e3; font-size:18px; font-weight:bold; margin-bottom:5px;">❄️ DEZENAS FRIAS</p>', unsafe_allow_html=True)
-    st.markdown(render_horizontal(frias, frequencia, "#0984e3", "white", "Freq"), unsafe_allow_html=True)
-
-    st.markdown('<p style="color:#f1c40f; font-size:18px; font-weight:bold; margin-bottom:5px;">⏳ ALERTA ATRASO</p>', unsafe_allow_html=True)
-    st.markdown(render_horizontal(atrasadas, atraso, "#f1c40f", "black", "Atraso"), unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
     
+    with col1:
+        st.markdown('<p style="color:#eb4d4b; font-size:18px;">🔥 DEZENAS QUENTES</p>', unsafe_allow_html=True)
+        for n in quentes:
+            st.markdown(f'<div style="background:#eb4d4b; color:white; padding:5px; border-radius:5px; margin-bottom:2px; text-align:center;">{n:02d} (Freq: {frequencia[n]})</div>', unsafe_allow_html=True)
+            
+    with col2:
+        st.markdown('<p style="color:#0984e3; font-size:18px;">❄️ DEZENAS FRIAS</p>', unsafe_allow_html=True)
+        for n in frias:
+            st.markdown(f'<div style="background:#0984e3; color:white; padding:5px; border-radius:5px; margin-bottom:2px; text-align:center;">{n:02d} (Freq: {frequencia[n]})</div>', unsafe_allow_html=True)
+            
+    with col3:
+        st.markdown('<p style="color:#f1c40f; font-size:18px;">⏳ ALERTA ATRASO</p>', unsafe_allow_html=True)
+        for n in atrasadas:
+            st.markdown(f'<div style="background:#f1c40f; color:black; padding:5px; border-radius:5px; margin-bottom:2px; text-align:center;">{n:02d} (Atraso: {atraso[n]})</div>', unsafe_allow_html=True)
+            
     st.markdown("---")
+
 
 # --- 2. MAPA DE ESTRATÉGIAS E MATRIZES ---
 ESTRATEGIA_MAPA = {
@@ -789,14 +757,7 @@ with abas[0]:
                     # Se o pool estiver vazio, ele gera um via IA para depois refinar
                     pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
                 
-                matriz_af = st.session_state.get('matriz_ativa')
-            if matriz_af is None:
-                # --- CORREÇÃO DIRETA NA LINHA 793 ---
-            if 'matriz_ativa' in st.session_state and st.session_state['matriz_ativa'] is not None:
-                matriz_af = st.session_state['matriz_ativa']
-            else:
-                matriz_af = calcular_matriz_afinidade_kadosh(mod_alvo)
-            # ------------------------------------
+                matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
                 pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_objetivo=tamanho_alvo_pool)
                 st.session_state.favoritas[mod] = pool_refinado
                 st.success(f"🎯 Refinado para {tamanho_alvo_pool} dezenas!")
@@ -1382,14 +1343,6 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
-
-
-
-
-
-
-
-
 
 
 
