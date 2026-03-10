@@ -70,8 +70,7 @@ def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, po
     return pesos
 
 def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo):
-    # Mudança: 'is None' em vez de 'not' para não dar erro no NumPy
-    if matriz_afinidade is None or len(pool_atual) <= tamanho_objetivo:
+    if not matriz_afinidade or len(pool_atual) <= tamanho_objetivo:
         return sorted(list(pool_atual))
     
     pool_refinado = list(pool_atual)
@@ -83,32 +82,18 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo):
     
 
 def calcular_matriz_afinidade_kadosh(mod):
-    import numpy as np
-    from itertools import combinations
-    
     res_db = st.session_state.ultimo_res.get(mod, {})
     if len(res_db) < 3: return None
-    
     limite = 26 if mod == "Lotofácil" else 61
-    matriz = np.zeros((limite, limite)) # Usando NumPy para performance
-    
-    try:
-        chaves_ordenadas = sorted(res_db.keys(), key=int)
-        total_sorteios = len(chaves_ordenadas)
-        ponto_corte = max(0, total_sorteios - 30)
-        
-        for i, conc_id in enumerate(chaves_ordenadas):
-            sorteio = res_db[conc_id]
-            # REGRA KADOSH: Peso dobrado para os últimos 30 concursos
-            peso = 2 if i >= ponto_corte else 1
-            
-            nums = sorted([int(n) for n in sorteio if int(n) < limite])
-            for d1, d2 in combinations(nums, 2):
-                matriz[d1, d2] += peso
-                matriz[d2, d1] += peso
-    except:
-        pass
-                
+    matriz = [[0 for _ in range(limite)] for _ in range(limite)]
+    for sorteio in res_db.values():
+        nums = sorted([int(n) for n in sorteio])
+        for i in range(len(nums)):
+            for j in range(i + 1, len(nums)):
+                d1, d2 = nums[i], nums[j]
+                if d1 < limite and d2 < limite:
+                    matriz[d1][d2] += 1
+                    matriz[d2][d1] += 1
     return matriz
 
 
@@ -301,35 +286,8 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
 
     # REGRA DE OURO: Nenhum quadrante vazio e nenhum com mais de 7 dezenas
     # Isso evita que o jogo fique "amontoado" num canto só do volante.
-    # --- [INÍCIO DA SINCRONIZAÇÃO IA + KADOSH] ---
-    # O limite se ajusta: se o Pool for maior que 18 (IA ativa), o teto sobe para 9.
-    # --- [SINCRONIZAÇÃO TOTAL IA + ESTRATÉGIA] ---
-    # Pegamos o tamanho exato do Pool que está sendo usado no momento
-    # Se não houver nada definido, o padrão vira o n_dez (quantidade de dezenas do jogo)
-    tamanho_pool_real = st.session_state.get('tamanho_pool_ativo', n_dez)
-    
-    # DINÂMICA DE LIMITE: 
-    # Se o pool for pequeno (até 18), limite 7. 
-    # Se for médio (19 a 21), limite 8.
-    # Se for grande (22+ como 'A Marreta'), limite 9.
-    if tamanho_pool_real <= 18:
-        limite_kadosh = 7
-        folga_simetria = 4
-    elif tamanho_pool_real <= 21:
-        limite_kadosh = 8
-        folga_simetria = 5
-    else:
-        limite_kadosh = 9
-        folga_simetria = 6
-
-    # APLICAÇÃO DOS FILTROS COM OS LIMITES CALIBRADOS
-    if any(q < 1 for q in distribuicao) or any(q > limite_kadosh for q in distribuicao):
+    if any(q < 1 for q in distribuicao) or any(q > 7 for q in distribuicao):
         return False 
-
-    if (max(distribuicao) - min(distribuicao)) > folga_simetria:
-        return False
-
-    # --- [FIM DA SINCRONIZAÇÃO] ---
 
     # REGRA DE SIMETRIA (O Equilíbrio Kadosh)
     # Impede que a diferença entre o quadrante mais cheio e o mais vazio seja extrema
@@ -471,24 +429,23 @@ def renderizar_heatmap(mod, res_loto):
     frias = [n for n in range(1, 26) if frequencia[n] < 8]
     atrasadas = [n for n in range(1, 26) if atraso[n] >= 3]
 
-    # --- [NOVO VISUAL HORIZONTAL KADOSH] ---
-    def render_horizontal(lista, info_dict, cor_fundo, cor_texto, label_info):
-        # Gera as dezenas lado a lado em badges
-        badges_html = "".join([
-            f'<span style="background:{cor_fundo}; color:{cor_texto}; padding:4px 10px; border-radius:15px; margin:3px; font-weight:bold; display:inline-block; border:1px solid rgba(0,0,0,0.1); font-size:14px;" title="{label_info}: {info_dict[n]}">{n:02d}</span>' 
-            for n in sorted(lista)
-        ])
-        return f'<div style="display:flex; flex-wrap:wrap; margin-bottom:15px;">{badges_html}</div>'
-
-    st.markdown('<p style="color:#eb4d4b; font-size:18px; font-weight:bold; margin-bottom:5px;">🔥 DEZENAS QUENTES</p>', unsafe_allow_html=True)
-    st.markdown(render_horizontal(quentes, frequencia, "#eb4d4b", "white", "Freq"), unsafe_allow_html=True)
-
-    st.markdown('<p style="color:#0984e3; font-size:18px; font-weight:bold; margin-bottom:5px;">❄️ DEZENAS FRIAS</p>', unsafe_allow_html=True)
-    st.markdown(render_horizontal(frias, frequencia, "#0984e3", "white", "Freq"), unsafe_allow_html=True)
-
-    st.markdown('<p style="color:#f1c40f; font-size:18px; font-weight:bold; margin-bottom:5px;">⏳ ALERTA ATRASO</p>', unsafe_allow_html=True)
-    st.markdown(render_horizontal(atrasadas, atraso, "#f1c40f", "black", "Atraso"), unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
     
+    with col1:
+        st.markdown('<p style="color:#eb4d4b; font-size:18px;">🔥 DEZENAS QUENTES</p>', unsafe_allow_html=True)
+        for n in quentes:
+            st.markdown(f'<div style="background:#eb4d4b; color:white; padding:5px; border-radius:5px; margin-bottom:2px; text-align:center;">{n:02d} (Freq: {frequencia[n]})</div>', unsafe_allow_html=True)
+            
+    with col2:
+        st.markdown('<p style="color:#0984e3; font-size:18px;">❄️ DEZENAS FRIAS</p>', unsafe_allow_html=True)
+        for n in frias:
+            st.markdown(f'<div style="background:#0984e3; color:white; padding:5px; border-radius:5px; margin-bottom:2px; text-align:center;">{n:02d} (Freq: {frequencia[n]})</div>', unsafe_allow_html=True)
+            
+    with col3:
+        st.markdown('<p style="color:#f1c40f; font-size:18px;">⏳ ALERTA ATRASO</p>', unsafe_allow_html=True)
+        for n in atrasadas:
+            st.markdown(f'<div style="background:#f1c40f; color:black; padding:5px; border-radius:5px; margin-bottom:2px; text-align:center;">{n:02d} (Atraso: {atraso[n]})</div>', unsafe_allow_html=True)
+            
     st.markdown("---")
 
 
@@ -761,10 +718,7 @@ with abas[0]:
                     # Se o pool estiver vazio, ele gera um via IA para depois refinar
                     pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
                 
-                # Substitui o 'or' por esta verificação segura:
-                matriz_af = st.session_state.get('matriz_ativa')
-                if matriz_af is None:
-                    matriz_af = calcular_matriz_afinidade_kadosh(mod)
+                matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
                 pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_objetivo=tamanho_alvo_pool)
                 st.session_state.favoritas[mod] = pool_refinado
                 st.success(f"🎯 Refinado para {tamanho_alvo_pool} dezenas!")
@@ -1350,7 +1304,6 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
-
 
 
 
