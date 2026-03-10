@@ -85,37 +85,33 @@ def calcular_matriz_afinidade_kadosh(mod_alvo):
     import numpy as np
     from itertools import combinations
     
-    # Pega o histórico do estado da sessão
-    res_historico = st.session_state.ultimo_res.get(mod_alvo, {})
+    # Busca o histórico. Proteção para não vir vazio
+    res_historico = st.session_state.get('ultimo_res', {}).get(mod_alvo, {})
     
-    # Define o limite por modalidade
     max_num = 25 if mod_alvo == "Lotofácil" else 60
     matriz = np.zeros((max_num, max_num))
     
     if not res_historico:
         return matriz
 
-    # Ordena os concursos
-    chaves_ordenadas = sorted(res_historico.keys(), key=int)
-    total_sorteios = len(chaves_ordenadas)
-    
-    # Define a janela de 30 para o peso 2 (Recência)
-    ponto_corte = max(0, total_sorteios - 30)
-    
-    for i, conc_id in enumerate(chaves_ordenadas):
-        sorteio = res_historico[conc_id]
+    try:
+        chaves_ordenadas = sorted(res_historico.keys(), key=int)
+        total_sorteios = len(chaves_ordenadas)
+        ponto_corte = max(0, total_sorteios - 30)
         
-        # Peso 2 para os últimos 30, Peso 1 para o resto
-        peso = 2 if i >= ponto_corte else 1
+        for i, conc_id in enumerate(chaves_ordenadas):
+            sorteio = res_historico[conc_id]
+            peso = 2 if i >= ponto_corte else 1
+            
+            # Garante que os números são inteiros e válidos
+            nums = [int(n) for n in sorteio if 1 <= int(n) <= max_num]
+            
+            for d1, d2 in combinations(sorted(nums), 2):
+                matriz[d1-1, d2-1] += peso
+    except:
+        pass
         
-        # Filtra apenas dezenas válidas
-        nums = [int(n) for n in sorteio if 1 <= int(n) <= max_num]
-        
-        for d1, d2 in combinations(sorted(nums), 2):
-            matriz[d1-1, d2-1] += peso
-                
     return matriz
-
     try:
         # Organiza os concursos por número
         chaves_ordenadas = sorted(res_historico.keys(), key=lambda x: int(x))
@@ -788,7 +784,7 @@ with abas[0]:
                     # Se o pool estiver vazio, ele gera um via IA para depois refinar
                     pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
                 
-                matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
+                matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod_alvo)
                 pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_objetivo=tamanho_alvo_pool)
                 st.session_state.favoritas[mod] = pool_refinado
                 st.success(f"🎯 Refinado para {tamanho_alvo_pool} dezenas!")
@@ -1374,6 +1370,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
