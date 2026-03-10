@@ -764,16 +764,20 @@ with abas[0]:
     # --- [BOTÃO DE GERAÇÃO FINAL] ---
     if st.button("🔥 GERAR JOGOS KADOSH"):
         # --- INÍCIO DA CORREÇÃO DE HIERARQUIA ---
-        # Definindo a quantidade real baseada na tua seleção
-        quantidade_efetiva = n_jogos  # Começa com o valor da tela (Aba 0)
+        # 1. Verificamos qual é o valor manual da tela primeiro.
+        # Se a sua variável do st.number_input for diferente de 'n_jogos',
+        # substitua o nome abaixo pelo nome que está no seu widget.
+        quantidade_efetiva = n_jogos if 'n_jogos' in locals() else 1 
 
-        # Se selecionaste Estratégia, ela sobrepõe o valor manual
+        # 2. Se houver Estratégia selecionada, ela assume o comando
         if est_escolhida != "Nenhuma":
-            quantidade_efetiva = ESTRATEGIA_MAPA[est_escolhida]["jogos"]
+            # Aqui ele busca o valor 'jogos' dentro do seu dicionário de estratégias
+            quantidade_efetiva = ESTRATEGIA_MAPA[est_escolhida].get("jogos", quantidade_efetiva)
 
-        # Se selecionaste Matriz, ela tem a palavra final (Prioridade Máxima)
+        # 3. Se houver Matriz selecionada, ela tem a palavra final
         if fe_escolhido != "Nenhuma":
-            quantidade_efetiva = FECHAMENTOS_MAPA[fe_escolhido]["jogos"]
+            # Aqui ele busca o valor 'jogos' dentro do seu dicionário de fechamentos
+            quantidade_efetiva = FECHAMENTOS_MAPA[fe_escolhido].get("jogos", quantidade_efetiva)
         # --- FIM DA CORREÇÃO ---
         if not pool or len(pool) < n_dez:
             st.error(f"Seu Pool precisa de pelo menos {n_dez} dezenas!")
@@ -1238,6 +1242,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
