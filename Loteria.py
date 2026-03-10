@@ -85,34 +85,36 @@ def calcular_matriz_afinidade_kadosh(mod_alvo):
     import numpy as np
     from itertools import combinations
     
-    # Busca o histórico exatamente como estava no seu código
+    # Respeitando exatamente a sua chamada de dados original
     res_historico = st.session_state.ultimo_res.get(mod_alvo, {})
     
     max_num = 25 if mod_alvo == "Lotofácil" else 60
     matriz = np.zeros((max_num, max_num))
     
-    # Se não houver histórico, retorna a matriz zerada em vez de dar erro
+    # Proteção: se o histórico estiver vazio, ele não tenta calcular e não dá erro
     if not res_historico:
         return matriz
 
-    # Ordenação original sua
-    chaves_ordenadas = sorted(res_historico.keys(), key=int)
-    total_sorteios = len(chaves_ordenadas)
-    
-    # Define o ponto de corte para os últimos 30 concursos
-    ponto_corte = max(0, total_sorteios - 30)
-    
-    for i, conc_id in enumerate(chaves_ordenadas):
-        sorteio = res_historico[conc_id]
+    try:
+        chaves_ordenadas = sorted(res_historico.keys(), key=int)
+        total_sorteios = len(chaves_ordenadas)
         
-        # A ÚNICA MUDANÇA: Peso 2 para os 30 recentes, 1 para o resto
-        peso = 2 if i >= ponto_corte else 1
+        # Implementando o peso de 30 concursos que você pediu
+        ponto_corte = max(0, total_sorteios - 30)
         
-        # Converte para int para garantir que o numpy aceite o índice
-        nums = [int(n) for n in sorteio if 1 <= int(n) <= max_num]
-        
-        for d1, d2 in combinations(sorted(nums), 2):
-            matriz[d1-1, d2-1] += peso
+        for i, conc_id in enumerate(chaves_ordenadas):
+            sorteio = res_historico[conc_id]
+            # Peso 2 para os 30 mais recentes, Peso 1 para o resto
+            peso = 2 if i >= ponto_corte else 1
+            
+            # Garante que os números sejam tratados como índices inteiros para o numpy
+            nums = [int(n) for n in sorteio if 1 <= int(n) <= max_num]
+            
+            for d1, d2 in combinations(sorted(nums), 2):
+                matriz[d1-1, d2-1] += peso
+    except Exception:
+        # Se houver qualquer erro de dado, ele ignora e retorna a matriz atual, evitando o crash
+        return matriz
                 
     return matriz
     try:
@@ -1375,6 +1377,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
