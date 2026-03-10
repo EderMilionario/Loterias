@@ -762,12 +762,15 @@ with abas[0]:
                     pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
                 
                 # Substitui o 'or' por esta verificação segura:
-                matriz_af = st.session_state.get('matriz_ativa')
-                if matriz_af is None:
-                    matriz_af = calcular_matriz_afinidade_kadosh(mod)
+                # --- CORREÇÃO NA LINHA 813 ---
+            matriz_af = st.session_state.get('matriz_ativa')
+            if matriz_af is None:
+                matriz_af = calcular_matriz_afinidade_kadosh(mod)
+            
+            if matriz_af is not None:
                 pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_objetivo=tamanho_alvo_pool)
                 st.session_state.favoritas[mod] = pool_refinado
-                st.success(f"🎯 Refinado para {tamanho_alvo_pool} dezenas!")
+                st.success(f"💎 Pool Refinado com Sucesso para {tamanho_alvo_pool} dezenas!")
                 st.rerun()
 
         # Sincronização do multiselect (O default agora puxa do session_state atualizado pelos botões)
@@ -1350,6 +1353,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
