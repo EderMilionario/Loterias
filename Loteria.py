@@ -628,6 +628,24 @@ with abas[0]:
         idx_padrao = opcoes_dez.index(def_dez) if def_dez in opcoes_dez else 0
         n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao)
         qtd = st.number_input("Quantidade de Jogos", 1, 300, def_qtd)
+        # --- [INÍCIO DA CORREÇÃO DE HIERARQUIA KADOSH] ---
+        # 1. Começamos com a quantidade que está na tela (variável 'qtd')
+        quantidade_efetiva = qtd 
+
+        # 2. Se houver Estratégia, ela assume o valor (Teu dicionário: ESTRATEGIA_MAPA)
+        if est_escolhida != "Personalizado":
+            # Somamos a quantidade base + extras (qtd_15/qtd_16) que tens no dicionário
+            info_est = ESTRATEGIA_MAPA[est_escolhida]
+            quantidade_efetiva = info_est.get("qtd", 0) + info_est.get("qtd_15", 0) + info_est.get("qtd_16", 0)
+
+        # 3. Se houver Matriz, ela tem a palavra FINAL (Teu dicionário: MATRIZES_FECHAMENTO)
+        if fe_escolhido != "Nenhum":
+            # Aqui a matriz define quantos jogos o motor vai gerar no loop
+            if "18-15-14" in fe_escolhido: quantidade_efetiva = 24
+            elif "20-15-13" in fe_escolhido: quantidade_efetiva = 45
+            elif "DIAMANTE" in fe_escolhido: quantidade_efetiva = 12 # 2 de 16 + 10 de 15
+            elif "CÉLULA" in fe_escolhido: quantidade_efetiva = 16   # 1 de 16 + 15 de 15
+        # --- [FIM DA CORREÇÃO] ---
         
     with c2:
         max_v = 25 if mod=="Lotofácil" else 60 if mod=="Mega-Sena" else 80
@@ -1240,6 +1258,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
