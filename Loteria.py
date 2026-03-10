@@ -738,6 +738,9 @@ with abas[0]:
                 
                 matriz_af = st.session_state.get('matriz_ativa')
             if matriz_af is None:
+                # --- CORREÇÃO CIRÚRGICA ---
+            matriz_af = st.session_state.get('matriz_ativa')
+            if matriz_af is None:
                 matriz_af = calcular_matriz_afinidade_kadosh(mod)
                 pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_objetivo=tamanho_alvo_pool)
                 st.session_state.favoritas[mod] = pool_refinado
@@ -1324,6 +1327,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
