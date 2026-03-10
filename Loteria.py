@@ -791,7 +791,12 @@ with abas[0]:
                 
                 matriz_af = st.session_state.get('matriz_ativa')
             if matriz_af is None:
+                # --- CORREÇÃO DIRETA NA LINHA 793 ---
+            if 'matriz_ativa' in st.session_state and st.session_state['matriz_ativa'] is not None:
+                matriz_af = st.session_state['matriz_ativa']
+            else:
                 matriz_af = calcular_matriz_afinidade_kadosh(mod_alvo)
+            # ------------------------------------
                 pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_objetivo=tamanho_alvo_pool)
                 st.session_state.favoritas[mod] = pool_refinado
                 st.success(f"🎯 Refinado para {tamanho_alvo_pool} dezenas!")
@@ -1377,6 +1382,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
