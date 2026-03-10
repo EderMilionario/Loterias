@@ -737,11 +737,12 @@ with abas[0]:
                     pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
                 
                 # Esta linha abaixo é a 740
-        if 'matriz_ativa' not in st.session_state:
+           # Esta linha abaixo é a 740
+            if 'matriz_ativa' not in st.session_state:
             # Esta linha abaixo (741) PRECISA de 4 espaços a mais que o 'if'
-            matriz_af = calcular_matriz_afinidade_kadosh(mod)
-        else:
-            matriz_af = st.session_state.get('matriz_ativa')
+                matriz_af = calcular_matriz_afinidade_kadosh(mod)
+            else:
+                matriz_af = st.session_state.get('matriz_ativa')
                 pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_objetivo=tamanho_alvo_pool)
                 st.session_state.favoritas[mod] = pool_refinado
                 st.success(f"🎯 Refinado para {tamanho_alvo_pool} dezenas!")
@@ -1327,6 +1328,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
