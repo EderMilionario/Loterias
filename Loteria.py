@@ -70,7 +70,8 @@ def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, po
     return pesos
 
 def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo):
-    if not matriz_afinidade or len(pool_atual) <= tamanho_objetivo:
+    # Mudança: 'is None' em vez de 'not' para não dar erro no NumPy
+    if matriz_afinidade is None or len(pool_atual) <= tamanho_objetivo:
         return sorted(list(pool_atual))
     
     pool_refinado = list(pool_atual)
@@ -82,18 +83,32 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo):
     
 
 def calcular_matriz_afinidade_kadosh(mod):
+    import numpy as np
+    from itertools import combinations
+    
     res_db = st.session_state.ultimo_res.get(mod, {})
     if len(res_db) < 3: return None
+    
     limite = 26 if mod == "Lotofácil" else 61
-    matriz = [[0 for _ in range(limite)] for _ in range(limite)]
-    for sorteio in res_db.values():
-        nums = sorted([int(n) for n in sorteio])
-        for i in range(len(nums)):
-            for j in range(i + 1, len(nums)):
-                d1, d2 = nums[i], nums[j]
-                if d1 < limite and d2 < limite:
-                    matriz[d1][d2] += 1
-                    matriz[d2][d1] += 1
+    matriz = np.zeros((limite, limite)) # Usando NumPy para performance
+    
+    try:
+        chaves_ordenadas = sorted(res_db.keys(), key=int)
+        total_sorteios = len(chaves_ordenadas)
+        ponto_corte = max(0, total_sorteios - 30)
+        
+        for i, conc_id in enumerate(chaves_ordenadas):
+            sorteio = res_db[conc_id]
+            # REGRA KADOSH: Peso dobrado para os últimos 30 concursos
+            peso = 2 if i >= ponto_corte else 1
+            
+            nums = sorted([int(n) for n in sorteio if int(n) < limite])
+            for d1, d2 in combinations(nums, 2):
+                matriz[d1, d2] += peso
+                matriz[d2, d1] += peso
+    except:
+        pass
+                
     return matriz
 
 
@@ -746,7 +761,10 @@ with abas[0]:
                     # Se o pool estiver vazio, ele gera um via IA para depois refinar
                     pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
                 
-                matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
+                # Substitui o 'or' por esta verificação segura:
+                matriz_af = st.session_state.get('matriz_ativa')
+                if matriz_af is None:
+                    matriz_af = calcular_matriz_afinidade_kadosh(mod)
                 pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_objetivo=tamanho_alvo_pool)
                 st.session_state.favoritas[mod] = pool_refinado
                 st.success(f"🎯 Refinado para {tamanho_alvo_pool} dezenas!")
@@ -1332,6 +1350,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
