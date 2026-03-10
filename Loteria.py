@@ -763,6 +763,18 @@ with abas[0]:
 
     # --- [BOTÃO DE GERAÇÃO FINAL] ---
     if st.button("🔥 GERAR JOGOS KADOSH"):
+        # --- INÍCIO DA CORREÇÃO DE HIERARQUIA ---
+        # Definindo a quantidade real baseada na tua seleção
+        quantidade_efetiva = n_jogos  # Começa com o valor da tela (Aba 0)
+
+        # Se selecionaste Estratégia, ela sobrepõe o valor manual
+        if est_escolhida != "Nenhuma":
+            quantidade_efetiva = ESTRATEGIA_MAPA[est_escolhida]["jogos"]
+
+        # Se selecionaste Matriz, ela tem a palavra final (Prioridade Máxima)
+        if fe_escolhido != "Nenhuma":
+            quantidade_efetiva = FECHAMENTOS_MAPA[fe_escolhido]["jogos"]
+        # --- FIM DA CORREÇÃO ---
         if not pool or len(pool) < n_dez:
             st.error(f"Seu Pool precisa de pelo menos {n_dez} dezenas!")
         else:
@@ -1226,6 +1238,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
