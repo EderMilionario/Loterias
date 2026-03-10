@@ -286,8 +286,20 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
 
     # REGRA DE OURO: Nenhum quadrante vazio e nenhum com mais de 7 dezenas
     # Isso evita que o jogo fique "amontoado" num canto só do volante.
-    if any(q < 1 for q in distribuicao) or any(q > 7 for q in distribuicao):
+    # --- [INÍCIO DA SINCRONIZAÇÃO IA + KADOSH] ---
+    # O limite se ajusta: se o Pool for maior que 18 (IA ativa), o teto sobe para 9.
+    tamanho_pool = st.session_state.get('tamanho_pool_ativo', 18)
+    limite_kadosh = 7 if tamanho_pool <= 18 else 9 
+    
+    if any(q < 1 for q in distribuicao) or any(q > limite_kadosh for q in distribuicao):
         return False 
+
+    # REGRA DE SIMETRIA (O Equilíbrio Kadosh)
+    # A folga de simetria também se ajusta ao tamanho do Pool
+    folga_simetria = 4 if tamanho_pool <= 18 else 6
+    if (max(distribuicao) - min(distribuicao)) > folga_simetria:
+        return False
+    # --- [FIM DA SINCRONIZAÇÃO] ---
 
     # REGRA DE SIMETRIA (O Equilíbrio Kadosh)
     # Impede que a diferença entre o quadrante mais cheio e o mais vazio seja extrema
@@ -680,6 +692,7 @@ with abas[0]:
 
         # O tamanho alvo será SEMPRE o maior solicitado
         tamanho_alvo_pool = max(tamanhos_detectados)
+        st.session_state['tamanho_pool_ativo'] = tamanho_alvo_pool # Sincroniza o tamanho com o filtro
 
         st.markdown(f"🛠️ **CONFIGURAÇÃO ATIVA:** Pool travado em **{tamanho_alvo_pool}** dezenas.")
 
@@ -1304,6 +1317,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
