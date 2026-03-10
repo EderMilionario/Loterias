@@ -752,124 +752,46 @@ with abas[0]:
         elif modo_fixa == "IA Automática (Score)":
             qtd_auto = st.slider("Qtd de Cravadas:", 1, 10, 6)
             if mod in st.session_state.analise_stats:
+               # --- [INÍCIO DA COLAGEM: LÓGICA DE IA E GERAÇÃO] ---
                 stats = st.session_state.analise_stats[mod]
-                melhores_ia = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
-                fixas_final = melhores_ia[:qtd_auto]
-                st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
-        
-        renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
-
-    # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
-    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-        # 1. Garante que a Matriz de Afinidade da Aba 6 está carregada
-        matriz_af = st.session_state.get('matriz_ativa')
-        if matriz_af is None:
-            matriz_af = calcular_matriz_afinidade_kadosh(mod)
-            st.session_state['matriz_ativa'] = matriz_af
-
-        if not pool or len(pool) < n_dez:
-            st.error("⚠️ Erro: Seu Pool é menor que a quantidade de dezenas por bilhete.")
-        else:
-            novos = []
-            
-            # 2. Função interna que aplica Afinidade + Filtros Kadosh
-            def processar_geracao(tamanho_solicitado, quantidade_pedida):
-                sucessos, tentativas = 0, 0
-                while sucessos < quantidade_pedida and tentativas < 20000: # Limite alto para não desistir fácil
-                    tentativas += 1
-                    jogo_em_construcao = list(fixas_final)
-                    pool_trabalho = [n for n in pool if n not in jogo_em_construcao]
-                    
-                    # PREENCHIMENTO INTELIGENTE: Usa a Matriz de Afinidade (Aba 6)
-                    while len(jogo_em_construcao) < tamanho_solicitado and pool_trabalho:
-                        pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
-                        opcoes = list(pesos_dict.keys())
-                        probabilidades = list(pesos_dict.values())
-                        
-                        escolha = random.choices(opcoes, weights=probabilidades, k=1)[0]
-                        jogo_em_construcao.append(escolha)
-                        pool_trabalho.remove(escolha)
-                    
-                    comb = sorted(jogo_em_construcao)
-                    
-                    # Evita duplicatas
-                    if any(set(comb) == set(existente['n']) for existente in novos):
-                        continue
-                    
-                    # FILTROS KADOSH (Simetria, Soma, Moldura, Quadrantes)
-                    passou = True
-                    if tamanho_solicitado == 15 and mod == "Lotofácil":
-                        # Aqui ele chama a função 'validar_kadosh_cirurgico' que já tens no topo do código
-                        passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
-                    
-                    if passou:
-                        tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
-                        novos.append({
-                            "mod": mod, "n": comb, "tam": tamanho_solicitado, 
-                            "fixas_utilizadas": list(fixas_final),
-                            "chance": definir_label_chance(comb, mod), "est": tag_est
-                        })
-                        sucessos += 1
-
-            # 3. LÓGICA DE EXECUÇÃO (Mantendo todas as tuas estratégias originais)
-            if fe_escolhido != "Nenhum":
-                if "DIAMANTE" in fe_escolhido:
-                    processar_geracao(16, 2)
-                    processar_geracao(15, 10)
-                elif "CÉLULA" in fe_escolhido:
-                    processar_geracao(16, 1)
-                    processar_geracao(15, 15)
-                else:
-                    processar_geracao(15, qtd)
-            elif est_escolhida == "6. A MARRETA":
-                processar_geracao(18, 1)
-                processar_geracao(16, 5)
-            elif est_escolhida == "7. SIMETRIA GEOMÉTRICA":
-                processar_geracao(16, 2)
-                processar_geracao(15, 8)
-            elif est_escolhida == "10. KADOSH PRESTIGE 20":
-                processar_geracao(15, 36)
-            elif est_escolhida != "Personalizado" and mod == "Lotofácil":
-                processar_geracao(info_est['dez'], info_est.get('qtd', 1))
-                if "qtd_15" in info_est:
-                    processar_geracao(15, info_est['qtd_15'])
+                fixas_final = sorted(pool, key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)[:qtd_auto]
+                st.info(f"📌 IA selecionou como fixas: {fixas_final}")
             else:
-                processar_geracao(n_dez, qtd)
-            
-            st.session_state.jogos_gerados = novos
-            st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com sucesso!")
-            st.rerun()
-    # --- [FIM DO NOVO MOTOR SINCRONIZADO] ---
-
-    # --- EXIBIÇÃO DOS JOGOS (FORA DO IF DO BOTÃO) ---
-    if st.session_state.jogos_gerados:
-        st.markdown("### 📝 Jogos Preparados")
-        for i, j in enumerate(st.session_state.jogos_gerados):
-            txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
-            st.code(f"JOGO {i+1:02d} | {j['est']} | {j['tam']} DEZ | {txt_jogo} / {j['chance']}")
-    
-    if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
-        res_existentes = st.session_state.ultimo_res.get(mod, {})
-        if res_existentes:
-            ultimo_c = int(max(res_existentes.keys(), key=int))
+                fixas_final = []
         else:
-            ultimo_c = 0
+            fixas_final = []
+
+    # --- [BOTÃO DE GERAÇÃO FINAL] ---
+    if st.button("🔥 GERAR JOGOS KADOSH"):
+        if not pool or len(pool) < n_dez:
+            st.error(f"Seu Pool precisa de pelo menos {n_dez} dezenas!")
+        else:
+            novos_jogos = []
+            tentativas = 0
+            pool_disponivel = [n for n in pool if n not in fixas_final]
             
-        pool_atual = list(st.session_state.favoritas.get(mod, [])) 
+            while len(novos_jogos) < qtd and tentativas < 10000:
+                tentativas += 1
+                restante = random.sample(pool_disponivel, n_dez - len(fixas_final))
+                jogo_candidato = sorted(fixas_final + restante)
+                
+                if validar_kadosh_cirurgico(jogo_candidato, mod, n_dez):
+                    chance = definir_label_chance(jogo_candidato, mod)
+                    novos_jogos.append({"n": jogo_candidato, "est": est_escolhida, "chance": chance})
+            
+            st.session_state.jogos_gerados = novos_jogos
+            if len(novos_jogos) < qtd:
+                st.warning(f"Gerados {len(novos_jogos)} jogos. Filtros muito restritos!")
+
+    # --- [MOSTRAR RESULTADOS] ---
+    if st.session_state.jogos_gerados:
+        for i, jogo in enumerate(st.session_state.jogos_gerados):
+            st.code(f"JOGO {i+1:02d}: " + " ".join(f"{n:02d}" for n in jogo['n']))
         
-        for jogo in st.session_state.jogos_gerados:
-            jogo['concurso_alvo'] = ultimo_c + 1
-            jogo['pool_origem'] = pool_atual 
-            
-            if 'fixas_utilizadas' not in jogo:
-                jogo['fixas_utilizadas'] = [] 
-            
-            st.session_state.jogos_salvos.append(jogo)
-        
-        st.session_state.jogos_gerados = []
-        st.success(f"✅ Jogos salvos com sucesso para o Concurso {ultimo_c + 1}!")
-        st.rerun()
- 
+        pdf_export = gerar_pdf_bonito(st.session_state.jogos_gerados, mod)
+        st.download_button("📥 Baixar PDF Kadosh", data=pdf_export, file_name="kadosh_oficial.pdf")
+
+# O seu código termina com o rodapé que já está no arquivo.
 
 with abas[1]:
     mostrar_status_backup()
@@ -1304,6 +1226,8 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
+
 
 
 
