@@ -534,6 +534,34 @@ st.info(f"📡 **RADAR KADOSH:** Base sincronizada até o Concurso **{ultimo_c_t
 abas = st.tabs(["🎯 GERADOR PRO", "🔍 CONFERIR", "⚙️ VALORES", "📥 DATABASE", "💾 BACKUP", "🧠 INTELIGÊNCIA", "🔗 AFINIDADE"])
 
 with abas[0]:
+    # --- INÍCIO DO BLOCO DE DASHBOARD ESTATÍSTICO (TOPO ABA 0) ---
+    st.subheader("📊 Radar de Tendências (Últimos Sorteios)")
+
+    # Criando as 3 colunas horizontais para economizar espaço
+    col_q, col_f, col_a = st.columns(3)
+
+    with col_q:
+        st.markdown("##### 🔥 Quentes")
+        # Busca as dezenas mais frequentes do teu session_state
+        quentes = [str(d).zfill(2) for d in st.session_state.get('dezenas_quentes', [])[:10]]
+        st.info(f"**{' '.join(quentes) if quentes else 'Aguardando...'}**")
+
+    with col_f:
+        st.markdown("##### ❄️ Frias")
+        # Busca as dezenas menos frequentes do teu session_state
+        frias = [str(d).zfill(2) for d in st.session_state.get('dezenas_frias', [])[:10]]
+        st.warning(f"**{' '.join(frias) if frias else 'Aguardando...'}**")
+
+    with col_a:
+        st.markdown("##### ⏳ Atrasos")
+        # Busca o dicionário de atrasos e formata como: Dezena(Sorteios)
+        atrasos_dict = st.session_state.get('dict_atrasos', {})
+        top_atrasos = sorted(atrasos_dict.items(), key=lambda x: x[1], reverse=True)[:7]
+        texto_atrasos = " ".join([f"{str(k).zfill(2)}({v})" for k, v in top_atrasos])
+        st.error(f"**{texto_atrasos if texto_atrasos else 'Aguardando...'}**")
+
+    st.divider() 
+    # --- FIM DO BLOCO DE DASHBOARD ESTATÍSTICO ---
     # --- CORREÇÃO DE SEGURANÇA (INICIALIZAÇÃO) ---
     if 'analise_stats' not in st.session_state:
         st.session_state.analise_stats = {}
@@ -1226,6 +1254,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
