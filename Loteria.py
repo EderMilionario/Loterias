@@ -84,30 +84,39 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo):
 def calcular_matriz_afinidade_kadosh(mod_alvo):
     import numpy as np
     from itertools import combinations
-    res_historico = st.session_state.ultimo_res.get(mod_alvo, {})
+    
+    # Busca o histórico. Se não existir, retorna uma matriz zerada para não dar erro
+    res_historico = st.session_state.get('ultimo_res', {}).get(mod_alvo, {})
+    
     max_num = 25 if mod_alvo == "Lotofácil" else 60
     matriz = np.zeros((max_num, max_num))
     
-    # --- [INÍCIO DA SINCRONIA DE RECÊNCIA] ---
-    chaves_ordenadas = sorted(res_historico.keys(), key=int)
-    total_sorteios = len(chaves_ordenadas)
-    
-    # Definimos 30 como a janela ideal de tendência
-    # O max(0, ...) garante que o código não quebre se você tiver poucos concursos
-    ponto_corte_recente = max(0, total_sorteios - 30)
-    
-    for i, conc_id in enumerate(chaves_ordenadas):
-        sorteio = res_historico[conc_id]
+    if not res_historico:
+        return matriz
+
+    try:
+        # Organiza os concursos por número
+        chaves_ordenadas = sorted(res_historico.keys(), key=lambda x: int(x))
+        total_sorteios = len(chaves_ordenadas)
         
-        # Peso 2 para o que aconteceu nos últimos 30 concursos (Tendência)
-        # Peso 1 para o resto do histórico (Base)
-        peso = 2 if i >= ponto_corte_recente else 1
+        # Define a janela de 30 para o peso dobrado
+        ponto_corte = max(0, total_sorteios - 30)
         
-        for d1, d2 in combinations(sorted(sorteio), 2):
-            if d1 <= max_num and d2 <= max_num:
+        for i, conc_id in enumerate(chaves_ordenadas):
+            sorteio = res_historico[conc_id]
+            # Peso 2 para os últimos 30, Peso 1 para o resto
+            peso = 2 if i >= ponto_corte else 1
+            
+            # Filtra apenas números válidos para evitar erro de índice
+            nums = [int(n) for n in sorteio if 1 <= int(n) <= max_num]
+            
+            for d1, d2 in combinations(sorted(nums), 2):
                 matriz[d1-1, d2-1] += peso
-    # --- [FIM DA SINCRONIA DE RECÊNCIA] ---
-    
+                
+    except Exception as e:
+        # Se algo der errado no cálculo, ele retorna a matriz como está para não travar o app
+        pass
+        
     return matriz
 
 
@@ -1343,6 +1352,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
