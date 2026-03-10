@@ -81,19 +81,33 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo):
     return sorted(pool_refinado)
     
 
-def calcular_matriz_afinidade_kadosh(mod):
-    res_db = st.session_state.ultimo_res.get(mod, {})
-    if len(res_db) < 3: return None
-    limite = 26 if mod == "Lotofácil" else 61
-    matriz = [[0 for _ in range(limite)] for _ in range(limite)]
-    for sorteio in res_db.values():
-        nums = sorted([int(n) for n in sorteio])
-        for i in range(len(nums)):
-            for j in range(i + 1, len(nums)):
-                d1, d2 = nums[i], nums[j]
-                if d1 < limite and d2 < limite:
-                    matriz[d1][d2] += 1
-                    matriz[d2][d1] += 1
+def calcular_matriz_afinidade_kadosh(mod_alvo):
+    import numpy as np
+    from itertools import combinations
+    res_historico = st.session_state.ultimo_res.get(mod_alvo, {})
+    max_num = 25 if mod_alvo == "Lotofácil" else 60
+    matriz = np.zeros((max_num, max_num))
+    
+    # --- [INÍCIO DA SINCRONIA DE RECÊNCIA] ---
+    chaves_ordenadas = sorted(res_historico.keys(), key=int)
+    total_sorteios = len(chaves_ordenadas)
+    
+    # Definimos 30 como a janela ideal de tendência
+    # O max(0, ...) garante que o código não quebre se você tiver poucos concursos
+    ponto_corte_recente = max(0, total_sorteios - 30)
+    
+    for i, conc_id in enumerate(chaves_ordenadas):
+        sorteio = res_historico[conc_id]
+        
+        # Peso 2 para o que aconteceu nos últimos 30 concursos (Tendência)
+        # Peso 1 para o resto do histórico (Base)
+        peso = 2 if i >= ponto_corte_recente else 1
+        
+        for d1, d2 in combinations(sorted(sorteio), 2):
+            if d1 <= max_num and d2 <= max_num:
+                matriz[d1-1, d2-1] += peso
+    # --- [FIM DA SINCRONIA DE RECÊNCIA] ---
+    
     return matriz
 
 
@@ -1329,6 +1343,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
