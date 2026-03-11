@@ -1019,7 +1019,7 @@ with abas[1]:
                         
   
 
- with abas[2]:
+with abas[2]:
     mostrar_status_backup()
     st.header("⚙️ Configuração de Valores")
     mod_v = st.selectbox("Loteria", list(st.session_state.premios.keys()), key="v_sel")
@@ -1381,6 +1381,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
