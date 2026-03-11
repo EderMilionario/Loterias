@@ -1016,36 +1016,35 @@ with abas[1]:
             st.rerun()
 
                         
-with abas[2]:
-    mostrar_status_backup()
-    st.header("⚙️ Configuração de Valores")
-    mod_v = st.selectbox("Loteria", list(st.session_state.premios.keys()), key="v_sel_edit")
-    
-    st.write("### 💰 Valores Atuais na Memória")
-    # Mostra apenas uma vez cada faixa (11 a 15)
-    for f in [15, 14, 13, 12, 11]:
-        v = st.session_state.premios[mod_v].get(f) or st.session_state.premios[mod_v].get(str(f), 0)
-        v_br = f"R$ {float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        st.write(f"**{f} Pontos:** {v_br}")
-    
-    st.divider()
+# --- [ABA 2: CONFIGURAR VALORES E RATEIO] ---
+with tab2:
+    st.header("💰 Tabela de Premiações (Valores Reais)")
+    st.info("Os valores abaixo são atualizados automaticamente via API da Caixa.")
 
-    novos_v = {}
-    # O SEGREDO: Usar set() para ignorar duplicatas de '15' e 15
-    chaves_unicas = sorted(list(set(int(k) for k in st.session_state.premios[mod_v].keys())), reverse=True)
+    # Busca os prêmios do session_state (carregados no início ou pelo botão de atualizar)
+    premios_loto = st.session_state.premios.get("Lotofácil", {})
     
-    for faixa in chaves_unicas:
-        valor = st.session_state.premios[mod_v].get(faixa) or st.session_state.premios[mod_v].get(str(faixa), 0)
-        # O key= agora é único e evita o erro DuplicateElementKey
-        novos_v[faixa] = st.number_input(f"Editar Prêmio {faixa}", value=float(valor), format="%.2f", key=f"input_v_{mod_v}_{faixa}")
-    
-    if st.button("💾 SALVAR VALORES"): 
-        # Salva nos dois formatos para garantir que o resto do seu código ache
-        for f, val in novos_v.items():
-            st.session_state.premios[mod_v][f] = val
-            st.session_state.premios[mod_v][str(f)] = val
-        st.success("✅ Valores salvos!")
-        st.rerun()
+    col_fixos, col_rateio = st.columns(2)
+
+    with col_fixos:
+        st.subheader("📌 Prêmios Fixos")
+        st.markdown(f"""
+        **11 Pontos:** {formatar_real(premios_loto.get(11, 7.0))}  
+        **12 Pontos:** {formatar_real(premios_loto.get(12, 14.0))}  
+        **13 Pontos:** {formatar_real(premios_loto.get(13, 35.0))}
+        """)
+
+    with col_rateio:
+        st.subheader("📊 Rateio do Concurso")
+        # Mostra o valor de 14 e 15 pontos que veio da API
+        v14 = premios_loto.get(14, 1500.0)
+        v15 = premios_loto.get(15, 1700000.0)
+        
+        st.metric("Estimativa 15 Pontos", formatar_real(v15))
+        st.metric("Rateio 14 Pontos", formatar_real(v14))
+
+    st.divider()
+    st.caption("Nota: Se os valores acima estiverem desatualizados, use o botão 'Atualizar Sorteios' na Aba Principal.")
        
 
 
@@ -1405,6 +1404,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
