@@ -1017,41 +1017,32 @@ with abas[1]:
             st.rerun()
 
                         
-  
-
 with abas[2]:
     mostrar_status_backup()
     st.header("⚙️ Configuração de Valores")
     mod_v = st.selectbox("Loteria", list(st.session_state.premios.keys()), key="v_sel")
     
-    # --- INÍCIO DOS CARDS ---
-    st.markdown("### 💰 Valores Atuais (Rateio/Estimado)")
-    c1, c2 = st.columns(2)
+    # --- CARDS DE RESUMO ---
+    st.write("### 💰 Valores Atuais")
+    # Criando 5 colunas para os 5 prêmios
+    cols = st.columns(5)
+    for i, faixa in enumerate([15, 14, 13, 12, 11]):
+        val = st.session_state.premios[mod_v].get(faixa, 0)
+        txt = f"R$ {val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        cols[i].metric(f"{faixa} Pts", txt)
     
-    # Formatação para os Cards
-    v15 = f"R$ {st.session_state.premios[mod_v][15]:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    v14 = f"R$ {st.session_state.premios[mod_v][14]:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    
-    with c1:
-        st.markdown(f"""<div style="background: #1e3799; padding: 15px; border-radius: 10px; text-align: center; color: white;">
-            <small>PRÊMIO 15 PTS</small><br><span style="font-size: 20px; font-weight: bold;">{v15}</span>
-            </div>""", unsafe_allow_html=True)
-    with c2:
-        st.markdown(f"""<div style="background: #0984e3; padding: 15px; border-radius: 10px; text-align: center; color: white;">
-            <small>RATEIO 14 PTS</small><br><span style="font-size: 20px; font-weight: bold;">{v14}</span>
-            </div>""", unsafe_allow_html=True)
-    st.markdown("---")
-    # --- FIM DOS CARDS ---
+    st.divider()
 
+    # --- SEUS INPUTS ORIGINAIS ---
     novos_v = {}
     for faixa, valor in st.session_state.premios[mod_v].items():
-        # Mantém seu input original exatamente como estava
         novos_v[faixa] = st.number_input(f"Prêmio {faixa} acertos", value=float(valor), format="%.2f", key=f"v_{mod_v}_{faixa}")
     
     if st.button("💾 SALVAR VALORES"): 
         st.session_state.premios[mod_v] = novos_v
-        st.success("✅ Valores atualizados!")
-        st.rerun()       
+        st.success("✅ Valores salvos com sucesso!")  
+
+       
 
 
 with abas[3]:
@@ -1062,22 +1053,29 @@ with abas[3]:
 
         # --- [INÍCIO DO BLOCO API ABA 3] ---
     st.markdown("### 🌐 Sincronização Online")
-    if st.button("🔄 BUSCAR ÚLTIMO RESULTADO (API)", use_container_width=True):
-        with st.spinner("Consultando servidores da Caixa..."):
-            c_api, d_api = buscar_ultimo_resultado_api()
-            if c_api and d_api:
-                # Grava no dicionário global
-                st.session_state.ultimo_res[m_db][str(c_api)] = d_api
+    if st.button("🔄 ATUALIZAR SORTEIOS"):
+        conc, dez = buscar_ultimo_resultado_api() # Sua função original
+        if conc and dez:
+            st.session_state.concurso_input = conc
+            st.session_state.dezenas_input = ", ".join(map(str, dez))
+            
+            try:
+                import requests
+                r = requests.get("https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest", timeout=10).json()
                 
-                # Sincroniza a IA imediatamente com o novo dado
-                tamanho_necessario = 20 if "DIAMANTE" in str(st.session_state.get('fe_escolhido', '')) else 18
-                pool_ia = treinar_e_prever_ia(m_db, tamanho=tamanho_necessario)
-                if pool_ia:
-                    st.session_state.favoritas[m_db] = pool_ia
+                # Atualiza 15 e 14 (Variáveis)
+                st.session_state.premios["Lotofácil"][15] = float(r.get('valorEstimadoProximoConcurso', 0))
+                for item in r.get('listaRateio', []):
+                    if item['faixa'] == 2: st.session_state.premios["Lotofácil"][14] = float(item['valorRateio'])
+                    # Atualiza 13, 12 e 11 (Fixos da API)
+                    if item['faixa'] == 3: st.session_state.premios["Lotofácil"][13] = float(item['valorRateio'])
+                    if item['faixa'] == 4: st.session_state.premios["Lotofácil"][12] = float(item['valorRateio'])
+                    if item['faixa'] == 5: st.session_state.premios["Lotofácil"][11] = float(item['valorRateio'])
                 
-                st.success(f"🚀 SUCESSO! Concurso {c_api} gravado e IA sincronizada.")
-                st.toast(f"Concurso {c_api} adicionado!", icon="✅")
-                st.rerun()
+                st.success(f"✅ Concurso {conc} e TODOS os prêmios (11 a 15) atualizados!")
+            except:
+                st.warning("✅ Dezenas atualizadas, mas houve erro nos valores.")
+            st.rerun()
             else:
                 st.error("❌ A API não retornou dados. Verifique sua conexão ou tente manual.")
     # --- [FIM DO BLOCO API ABA 3] ---
@@ -1381,6 +1379,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
