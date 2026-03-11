@@ -62,7 +62,7 @@ def buscar_ultimo_resultado_api():
         url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
         response = requests.get(url, timeout=15)
         
-        # 1. Valores de Segurança (Default) para evitar zeros nas faixas fixas
+        # Valores de Segurança para faixas fixas (11, 12, 13)
         premios_api = {15: 0.0, 14: 0.0, 13: 35.0, 12: 14.0, 11: 7.0, "estimativa": 0.0}
         ganhadores_api = {15: 0, 14: 0, 13: 0, 12: 0, 11: 0}
 
@@ -71,34 +71,33 @@ def buscar_ultimo_resultado_api():
             concurso = str(dados.get('concurso', '0'))
             dezenas = [int(n) for n in dados.get('dezenas', [])]
             
-            # 2. Captura a estimativa (Próximo Sorteio)
-            est = dados.get('valorEstimadoProximoConcurso', dados.get('valorEstimado', 0))
-            premios_api["estimativa"] = float(est) if est else 0.0
+            # Captura a estimativa do próximo
+            est = dados.get('valorEstimadoProximoConcurso', 0)
+            premios_api["estimativa"] = float(est)
 
-            # 3. Lógica de Extração de Ganhadores e Valores Reais
             if 'premiacoes' in dados:
                 for p in dados['premiacoes']:
-                    # Limpa o texto (ex: "15 acertos" -> 15)
+                    # Extrai apenas os números da descrição (ex: "15 acertos" vira 15)
                     busca = re.findall(r'\d+', p['descricao'])
                     if busca:
                         faixa = int(busca[0])
                         valor = float(p.get('valorOficial', 0))
                         qtd = int(p.get('quantidadeGanhadores', 0))
                         
-                        # SÓ substitui se a API trouxe um valor real > 0
-                        if valor > 0: premios_api[faixa] = valor
-                        if qtd > 0: ganhadores_api[faixa] = qtd
+                        # Atualiza se a API trouxer dados válidos
+                        if faixa in premios_api:
+                            premios_api[faixa] = valor
+                            ganhadores_api[faixa] = qtd
             
-            # 4. SALVAMENTO CRÍTICO (Garante que o app enxergue a mudança)
+            # SALVAMENTO NAS VARIÁVEIS DE ESTADO
             st.session_state.premios["Lotofácil"] = premios_api
             st.session_state["ganhadores_loto"] = ganhadores_api
             
             return concurso, dezenas
             
     except Exception as e:
-        st.error(f"Erro na conexão com a Caixa: {e}")
+        st.error(f"Erro na conexão: {e}")
         return None, None
-    return None, None
 
 def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
     """Calcula bônus para dezenas no pool baseado no que já foi escolhido."""
@@ -1420,6 +1419,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
