@@ -57,41 +57,51 @@ def  treinado_e_prever_ia ( mod_alvo, tamanho= 20 ) : # Forcei o tamanho 20 aqui
     return sorted([int(i + 1) for i in indices_vencedores])
 # --- [FIM DA FUNÇÃO IA CORRIGIDA] ---
 
-# --- [INÍCIO DA ATUALIZAÇÃO DA API CORRIGIDA] ---
 def buscar_ultimo_resultado_api():
     try:
         url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
         response = requests.get(url, timeout=15)
         
+        # Valores padrão de segurança (caso a API falhe ou venha zerada)
+        premios_default = {15: 0.0, 14: 1500.0, 13: 35.0, 12: 14.0, 11: 7.0, "estimativa": 1700000.0}
+        ganhadores_default = {15: 0, 14: 0, 13: 0, 12: 0, 11: 0}
+
         if response.status_code == 200:
             dados = response.json()
             concurso = str(dados.get('concurso', dados.get('numero', '0')))
             dezenas = [int(n) for n in dados.get('dezenas', dados.get('listaDezenas', []))]
             
-            premios_api = {}
-            ganhadores_api = {}
+            premios_api = premios_default.copy()
+            ganhadores_api = ganhadores_default.copy()
             
             if 'premiacoes' in dados:
                 for p in dados['premiacoes']:
+                    # Extrai o número da faixa (ex: "15 acertos")
                     busca_num = re.findall(r'\d+', p['descricao'])
                     if busca_num:
                         faixa = int(busca_num[0])
-                        valor = float(p.get('valorOficial', 0))
-                        qtd = int(p.get('quantidadeGanhadores', 0))
+                        v_oficial = float(p.get('valorOficial', 0))
+                        qtd_ganhadores = int(p.get('quantidadeGanhadores', 0))
                         
-                        premios_api[faixa] = valor
-                        ganhadores_api[faixa] = qtd
+                        # SÓ ATUALIZA SE O VALOR FOR MAIOR QUE ZERO
+                        # Isso impede que o sistema zere as faixas fixas (11, 12, 13)
+                        if v_oficial > 0:
+                            premios_api[faixa] = v_oficial
+                        if qtd_ganhadores > 0:
+                            ganhadores_api[faixa] = qtd_ganhadores
             
-            # Captura estimativa
-            estimativa = dados.get('valorEstimadoProximoConcurso', 0)
-            premios_api["estimativa"] = float(estimativa)
+            # Captura a estimativa do próximo prêmio
+            est = dados.get('valorEstimadoProximoConcurso', dados.get('valorEstimado', 0))
+            if float(est) > 0:
+                premios_api["estimativa"] = float(est)
             
-            # Salva tudo no session_state
+            # Salva no estado da sessão
             st.session_state.premios["Lotofácil"] = premios_api
             st.session_state["ganhadores_loto"] = ganhadores_api
             
             return concurso, dezenas
-    except:
+    except Exception as e:
+        print(f"Erro na sincronização: {e}")
         return None, None
     return None, None
 
@@ -1413,6 +1423,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
