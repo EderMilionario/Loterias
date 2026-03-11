@@ -53,11 +53,9 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui també
 
 def buscar_ultimo_resultado_api():
     try:
-        url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
-        }
+        # 1. Tenta API Guidi (Principal)
         url_alternativa = "https://api.guidi.com.br/loteria/lotofacil/ultimo"
+        headers = {"User-Agent": "Mozilla/5.0"}
         
         try:
             response = requests.get(url_alternativa, headers=headers, timeout=15)
@@ -66,38 +64,34 @@ def buscar_ultimo_resultado_api():
                 concurso = str(dados['numero'])
                 dezenas = [int(n) for n in dados['listaDezenas']]
                 
-                # --- INÍCIO DA MINHA SUGESTÃO (COLE AQUI) ---
-                try:
-                    if 'valorEstimado' in dados:
-                        st.session_state.premios["Lotofácil"][0] = float(dados['valorEstimado'])
-                    if 'listaRateio' in dados and len(dados['listaRateio']) > 1:
-                        st.session_state.premios["Lotofácil"][1] = float(dados['listaRateio'][1]['valorRateio'])
-                except: pass
-                # --- FIM DA SUGESTÃO ---
-
+                # --- ATUALIZA VALORES NO SEU SISTEMA ---
+                if 'valorEstimado' in dados:
+                    st.session_state.premios["Lotofácil"][15] = float(dados['valorEstimado'])
+                if 'listaRateio' in dados and len(dados['listaRateio']) > 1:
+                    st.session_state.premios["Lotofácil"][14] = float(dados['listaRateio'][1]['valorRateio'])
+                
                 return concurso, dezenas
         except:
-            url_reserva = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
-            response = requests.get(url_reserva, timeout=15)
-            if response.status_code == 200:
-                dados = response.json()
-                
-                # --- INÍCIO DA MINHA SUGESTÃO (COLE AQUI TAMBÉM) ---
-                try:
-                    if 'valorEstimadoProximoConcurso' in dados:
-                        st.session_state.premios["Lotofácil"][0] = float(dados['valorEstimadoProximoConcurso'])
-                    if 'listaRateio' in dados:
-                        for rateio in dados['listaRateio']:
-                            if rateio['faixa'] == 2:
-                                st.session_state.premios["Lotofácil"][1] = float(rateio['valorRateio'])
-                except: pass
-                # --- FIM DA SUGESTÃO ---
+            pass
 
-                return str(dados['concurso']), [int(n) for n in dados['dezenas']]
+        # 2. Tenta API Reserva (Heroku) se a primeira falhar
+        url_reserva = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
+        response = requests.get(url_reserva, timeout=15)
+        if response.status_code == 200:
+            dados = response.json()
+            
+            # --- ATUALIZA VALORES NA RESERVA ---
+            if 'valorEstimadoProximoConcurso' in dados:
+                st.session_state.premios["Lotofácil"][15] = float(dados['valorEstimadoProximoConcurso'])
+            if 'listaRateio' in dados:
+                for rateio in dados['listaRateio']:
+                    if rateio['faixa'] == 2:
+                        st.session_state.premios["Lotofácil"][14] = float(rateio['valorRateio'])
 
-    except Exception as e:
+            return str(dados['concurso']), [int(n) for n in dados['dezenas']]
+
+    except Exception:
         return None, None
-        
     return None, None
 
 
@@ -1405,6 +1399,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
