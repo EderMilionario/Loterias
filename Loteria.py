@@ -23,16 +23,16 @@ if "premios" not in st.session_state:
     }
 
 # Forma correta de acessar (usando .get para não travar o app)
-premios_loto = st.session_state.premios.get("Lotofácil", {})
-p15_valor = premios_loto.get(15, 0) # Busca a chave 15, se não achar usa 0
-p15 = formatar_real(p15_valor)
+prêmios_loto = st. estado_sessão . prêmios . get ( "Lotofacil" , { } )
+p15_valor = prêmios_loto. get ( 15 , 0 )  # Busca a chave 15, se não achar usa 0
+p15 = formatar_real ( p15_valor )
 
 # --- [FUNÇÕES DE INTELIGÊNCIA] ---
 
 # --- [INÍCIO DA FUNÇÃO IA CORRIGIDA] ---
-def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui também
+def  treinado_e_prever_ia ( mod_alvo, tamanho= 20 ) : # Forcei o tamanho 20 aqui também
     import numpy as np
-    res_historico = st.session_state.ultimo_res.get(mod_alvo, {})
+    res_histórico = st. estado_sessão . último_res . obter ( mod_alvo, { } )
     
     # Se tiver pelo menos 1 resultado, ele já tenta trabalhar
     if len(res_historico) < 1: 
@@ -1058,40 +1058,35 @@ with abas[3]:
 
         # --- [INÍCIO DO BLOCO API ABA 3] ---
     if st.button("🔄 ATUALIZAR SORTEIOS"):
-        # 1. Volta para a API que você disse que FUNCIONAVA (Heroku)
-        try:
-            url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
-            r = requests.get(url, timeout=10).json()
+    try:
+        url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
+        r = requests.get(url, timeout=10).json()
+        if r:
+            # 1. Atualiza Concurso e Dezenas
+            st.session_state.concurso_input = str(r.get('concurso', ''))
+            st.session_state.dezenas_input = ", ".join(map(str, r.get('dezenas', [])))
             
-            if r:
-                # Atualiza concurso e dezenas (o que já funcionava antes)
-                conc = str(r.get('concurso', ''))
-                dez = r.get('dezenas', [])
-                st.session_state.concurso_input = conc
-                st.session_state.dezenas_input = ", ".join(map(str, dez))
-                
-                # 2. Atualiza os prêmios GARANTINDO os dois formatos (número e texto)
-                # Valores Fixos da Lotofácil
-                for k in [11, "11"]: st.session_state.premios["Lotofácil"][k] = 7.0
-                for k in [12, "12"]: st.session_state.premios["Lotofácil"][k] = 14.0
-                for k in [13, "13"]: st.session_state.premios["Lotofácil"][k] = 35.0
-                
-                # Valores Variáveis (15 e 14)
-                v15 = float(r.get('valorEstimadoProximoConcurso', 0))
-                for k in [15, "15"]: st.session_state.premios["Lotofácil"][k] = v15
-                
-                for item in r.get('listaRateio', []):
-                    if item.get('faixa') == 2: # 14 Pontos
-                        v14 = float(item.get('valorRateio', 0))
-                        for k in [14, "14"]: st.session_state.premios["Lotofácil"][k] = v14
-                
-                st.success(f"✅ Concurso {conc} e Valores Sincronizados!")
-                st.rerun()
-            else:
-                st.error("API retornou vazio.")
-        except Exception as e:
-            st.error(f"Erro ao atualizar: {e}") 
-    
+            # 2. Limpa e Atualiza os Prêmios (Evita erro de chave duplicada)
+            st.session_state.premios["Lotofácil"] = {}
+            
+            # 15 Pontos (Estimativa)
+            v15 = float(r.get('valorEstimadoProximoConcurso', 0))
+            st.session_state.premios["Lotofácil"][15] = v15
+            st.session_state.premios["Lotofácil"]["15"] = v15
+            
+            # Rateio (14 a 11)
+            mapa = {2: 14, 3: 13, 4: 12, 5: 11}
+            for item in r.get('listaRateio', []):
+                f = item.get('faixa')
+                if f in mapa:
+                    v = float(item.get('valorRateio', 0))
+                    st.session_state.premios["Lotofácil"][mapa[f]] = v
+                    st.session_state.premios["Lotofácil"][str(mapa[f])] = v
+            
+            st.success("✅ Atualizado com sucesso!")
+            st.rerun()
+    except Exception as e:
+        st.error(f"Erro ao conectar: {e}")
     
     # --- [FIM DO BLOCO API ABA 3] ---
 
@@ -1394,6 +1389,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
