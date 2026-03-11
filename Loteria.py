@@ -1058,49 +1058,52 @@ with abas[3]:
         # --- [INÍCIO DO BLOCO API ABA 3] ---
     if st.button("🔄 ATUALIZAR SORTEIOS"):
         try:
-            # A URL da GHGI caiu. Vamos usar a única que está respondendo hoje (Proxy Caixa)
-            url = "https://servicebus2.caixa.gov.br/portalloterias/api/lotofacil"
+            # Usando um espelho mais estável que não costuma dar 404
+            url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
         
-            # O seu disfarce (Headers) é essencial aqui para não ser bloqueado
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
-            }
-        
-            # verify=False evita o erro de SSL do governo que trava o Python
-            response = requests.get(url, headers=headers, timeout=15, verify=False)
+            response = requests.get(url, timeout=15)
         
             if response.status_code == 200:
                 r = response.json()
             
                 # 1. ATUALIZA CONCURSO E DEZENAS
-                st.session_state.concurso_input = str(r.get('numero', ''))
-                dez = r.get('listaDezenas', [])
+                # Nessa API as chaves são 'concurso' e 'dezenas'
+                num_concurso = str(r.get('concurso', ''))
+                dez = r.get('dezenas', [])
+            
+                if num_concurso:
+                    st.session_state.concurso_input = num_concurso
                 if dez:
                     st.session_state.dezenas_input = ", ".join(map(str, dez))
             
                 # 2. ATUALIZA OS VALORES (RATEIO)
-                # 15 Pontos (Valor acumulado/estimado)
+                # Pegando o prêmio principal
                 v15 = float(r.get('valorEstimadoProximoConcurso', 0))
+                if v15 == 0:
+                    v15 = float(r.get('acumuladoProxConcurso', 0))
+                
                 st.session_state.premios["Lotofácil"][15] = v15
                 st.session_state.premios["Lotofácil"]["15"] = v15
             
-                # Outras faixas (14, 13, 12, 11)
-                for item in r.get('listaRateio', []):
-                    f = item.get('faixa')
-                    v = float(item.get('valorRateio', 0))
-                    mapa = {2: 14, 3: 13, 4: 12, 5: 11}
-                    if f in mapa:
-                        faixa_real = mapa[f]
-                        st.session_state.premios["Lotofácil"][faixa_real] = v
-                        st.session_state.premios["Lotofácil"][str(faixa_real)] = v
+                # Mapeia as faixas de premiação
+                rateio = r.get('listaRateio', [])
+                mapa = {2: 14, 3: 13, 4: 12, 5: 11}
             
-                st.success(f"✅ SUCESSO! Concurso {r.get('numero')} carregado direto da Caixa.")
+                for item in rateio:
+                    f_api = item.get('faixa')
+                    if f_api in mapa:
+                        v_pago = float(item.get('valorRateio', 0))
+                        f_real = mapa[f_api]
+                        st.session_state.premios["Lotofácil"][f_real] = v_pago
+                        st.session_state.premios["Lotofácil"][str(f_real)] = v_pago
+            
+                st.success(f"✅ SUCESSO! Concurso {num_concurso} carregado.")
                 st.rerun()
             else:
-                st.error(f"O servidor da Caixa recusou a conexão (Erro {response.status_code})")
+                st.error(f"Erro no servidor de contingência: {response.status_code}")
 
         except Exception as e:
-            st.error(f"❌ Erro Crítico: {e}. Verifique sua conexão de internet.")
+            st.error(f"❌ Falha geral: {e}")
     # --- [FIM DO BLOCO API ABA 3] ---
 
 
@@ -1402,6 +1405,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
