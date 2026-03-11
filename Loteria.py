@@ -9,16 +9,23 @@ from itertools import combinations
 from fpdf import FPDF
 import io
 
-# Crie a função de formatação no topo do código (depois dos imports)
+# Função de formatação segura
 def formatar_real(valor):
-    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    try:
+        return f"R$ {float(valor):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except:
+        return "R$ 0,00"
 
-# Na Aba Valores, use assim:
-p15 = formatar_real(st.session_state.premios["Lotofácil"][0])
-p14 = formatar_real(st.session_state.premios["Lotofácil"][1])
+# Inicialização segura dos prêmios (se não existir, ele cria)
+if "premios" not in st.session_state:
+    st.session_state.premios = {
+        "Lotofácil": {15: 1700000.0, 14: 1500.0, 13: 30.0, 12: 12.0, 11: 6.0}
+    }
 
-st.markdown(f"### Prêmio Estimado 15 pts: {p15}")
-st.markdown(f"### Último Rateio 14 pts: {p14}")
+# Forma correta de acessar (usando .get para não travar o app)
+premios_loto = st.session_state.premios.get("Lotofácil", {})
+p15_valor = premios_loto.get(15, 0) # Busca a chave 15, se não achar usa 0
+p15 = formatar_real(p15_valor)
 
 # --- [FUNÇÕES DE INTELIGÊNCIA] ---
 
@@ -53,47 +60,20 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui també
 
 def buscar_ultimo_resultado_api():
     try:
-        # 1. Tenta API Guidi (Principal)
         url_alternativa = "https://api.guidi.com.br/loteria/lotofacil/ultimo"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        
-        try:
-            response = requests.get(url_alternativa, headers=headers, timeout=15)
-            if response.status_code == 200:
-                dados = response.json()
-                concurso = str(dados['numero'])
-                dezenas = [int(n) for n in dados['listaDezenas']]
-                
-                # --- ATUALIZA VALORES NO SEU SISTEMA ---
-                if 'valorEstimado' in dados:
-                    st.session_state.premios["Lotofácil"][15] = float(dados['valorEstimado'])
-                if 'listaRateio' in dados and len(dados['listaRateio']) > 1:
-                    st.session_state.premios["Lotofácil"][14] = float(dados['listaRateio'][1]['valorRateio'])
-                
-                return concurso, dezenas
-        except:
-            pass
-
-        # 2. Tenta API Reserva (Heroku) se a primeira falhar
-        url_reserva = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
-        response = requests.get(url_reserva, timeout=15)
+        response = requests.get(url_alternativa, timeout=15)
         if response.status_code == 200:
             dados = response.json()
+            # Salva os valores nas chaves 15 e 14
+            if 'valorEstimado' in dados:
+                st.session_state.premios["Lotofácil"][15] = float(dados['valorEstimado'])
+            if 'listaRateio' in dados and len(dados['listaRateio']) > 1:
+                st.session_state.premios["Lotofácil"][14] = float(dados['listaRateio'][1]['valorRateio'])
             
-            # --- ATUALIZA VALORES NA RESERVA ---
-            if 'valorEstimadoProximoConcurso' in dados:
-                st.session_state.premios["Lotofácil"][15] = float(dados['valorEstimadoProximoConcurso'])
-            if 'listaRateio' in dados:
-                for rateio in dados['listaRateio']:
-                    if rateio['faixa'] == 2:
-                        st.session_state.premios["Lotofácil"][14] = float(rateio['valorRateio'])
-
-            return str(dados['concurso']), [int(n) for n in dados['dezenas']]
-
-    except Exception:
-        return None, None
+            return str(dados['numero']), [int(n) for n in dados['listaDezenas']]
+    except:
+        pass
     return None, None
-
 
 
 def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
@@ -1399,6 +1379,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
