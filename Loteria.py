@@ -60,54 +60,40 @@ def  treinado_e_prever_ia ( mod_alvo, tamanho= 20 ) : # Forcei o tamanho 20 aqui
 # --- [INÍCIO DA ATUALIZAÇÃO DA API CORRIGIDA] ---
 def buscar_ultimo_resultado_api():
     try:
-        # API Principal (Heroku/Caixa)
         url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
         response = requests.get(url, timeout=15)
         
         if response.status_code == 200:
             dados = response.json()
-            
-            # 1. Extrai Concurso e Dezenas
             concurso = str(dados.get('concurso', dados.get('numero', '0')))
             dezenas = [int(n) for n in dados.get('dezenas', dados.get('listaDezenas', []))]
             
-            # 2. Mapeamento Inteligente de Prêmios
             premios_api = {}
+            ganhadores_api = {}
             
-            # Captura premiações do concurso que JÁ PASSOU
             if 'premiacoes' in dados:
                 for p in dados['premiacoes']:
-                    # Extrai apenas o número da descrição (ex: "15 acertos" -> 15)
                     busca_num = re.findall(r'\d+', p['descricao'])
                     if busca_num:
                         faixa = int(busca_num[0])
                         valor = float(p.get('valorOficial', 0))
-                        if valor > 0:
-                            premios_api[faixa] = valor
-
-            # 3. Captura ESTIMATIVA do próximo prêmio (O prêmio de 15 pontos futuro)
-            # Tenta vários campos possíveis da API
-            estimativa = dados.get('valorEstimadoProximoConcurso', 
-                         dados.get('valorEstimado', 
-                         dados.get('proximoEstimativa', 0)))
+                        qtd = int(p.get('quantidadeGanhadores', 0))
+                        
+                        premios_api[faixa] = valor
+                        ganhadores_api[faixa] = qtd
             
-            if float(estimativa) > 0:
-                premios_api["estimativa"] = float(estimativa)
+            # Captura estimativa
+            estimativa = dados.get('valorEstimadoProximoConcurso', 0)
+            premios_api["estimativa"] = float(estimativa)
             
-            # Injeta no estado da sessão
-            if premios_api:
-                # Mantém os valores padrão caso a API falhe em alguma faixa
-                base = {15: 1700000.0, 14: 1500.0, 13: 35.0, 12: 14.0, 11: 7.0, "estimativa": 1700000.0}
-                base.update(premios_api)
-                st.session_state.premios["Lotofácil"] = base
+            # Salva tudo no session_state
+            st.session_state.premios["Lotofácil"] = premios_api
+            st.session_state["ganhadores_loto"] = ganhadores_api
             
             return concurso, dezenas
-            
-    except Exception as e:
-        print(f"Erro API: {e}")
+    except:
         return None, None
     return None, None
-# --- [FIM DA ATUALIZAÇÃO DA API] ---
 
 def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
     """Calcula bônus para dezenas no pool baseado no que já foi escolhido."""
@@ -1037,65 +1023,67 @@ with abas[1]:
             st.rerun()
 
                         
-# --- [ABA 2: CONFIGURAR VALORES E RATEIO - VISUAL DASHBOARD] ---
 with abas[2]:
-    st.markdown("### 💰 Painel de Premiações e Rateio")
+    st.markdown("### 💰 Painel de Premiações e Rateio Detalhado")
     
-    # Busca os dados atualizados
     premios_loto = st.session_state.premios.get("Lotofácil", {})
+    ganhadores = st.session_state.get("ganhadores_loto", {})
     
-    # 1. CARD DE DESTAQUE: ESTIMATIVA 15 PONTOS
-    valor_est = premios_loto.get("estimativa", premios_loto.get(15, 1700000.0))
-    
+    # --- CARD DESTAQUE: PRÓXIMO PRÊMIO ---
+    valor_est = premios_loto.get("estimativa", 1700000.0)
     st.markdown(f"""
-    <div style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; padding: 25px; border-radius: 15px; text-align: center; border: 2px solid #60a5fa; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-bottom: 20px;">
-        <span style="font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;">🏆 Próximo Prêmio Estimado</span><br>
-        <span style="font-size: 42px; font-weight: 900;">{formatar_real(valor_est)}</span>
+    <div style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-bottom: 20px;">
+        <span style="font-size: 16px; font-weight: bold; text-transform: uppercase;">🏆 Estimativa para o Próximo Concurso</span><br>
+        <span style="font-size: 38px; font-weight: 900;">{formatar_real(valor_est)}</span>
     </div>
     """, unsafe_allow_html=True)
 
-    # 2. COLUNAS PARA RATEIO (14 e 15 pontos reais)
+    # --- RATEIO REAL DO ÚLTIMO CONCURSO ---
     col1, col2 = st.columns(2)
+    
     with col1:
-        v15_real = premios_loto.get(15, 0)
-        st.metric("Ganhadores 15 Pontos", "Último Sorteio", help="Valor pago para quem acertou 15 dezenas")
-        st.markdown(f"<h3 style='color: #d4af37;'>{formatar_real(v15_real)}</h3>", unsafe_allow_html=True)
+        v15 = premios_loto.get(15, 0)
+        g15 = ganhadores.get(15, 0)
+        total_15 = v15 * g15 if g15 > 0 else v15
+        st.markdown(f"""
+        <div style="background: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; border-top: 5px solid #d4af37;">
+            <span style="color: #64748b; font-size: 12px; font-weight: bold;">15 PONTOS</span><br>
+            <span style="font-size: 18px; color: #1e293b;"><b>Prêmio:</b> {formatar_real(v15)}</span><br>
+            <span style="font-size: 14px; color: #1e293b;">👥 <b>Ganhadores:</b> {g15}</span><br>
+            <span style="font-size: 14px; color: #1e293b;">💰 <b>Total Pago:</b> {formatar_real(total_15)}</span>
+        </div>
+        """, unsafe_allow_html=True)
 
     with col2:
-        v14_real = premios_loto.get(14, 1500.0)
-        st.metric("Rateio 14 Pontos", "Média por ganhador", delta="Oficial")
-        st.markdown(f"<h3 style='color: #3b82f6;'>{formatar_real(v14_real)}</h3>", unsafe_allow_html=True)
+        v14 = premios_loto.get(14, 0)
+        g14 = ganhadores.get(14, 0)
+        total_14 = v14 * g14
+        st.markdown(f"""
+        <div style="background: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; border-top: 5px solid #3b82f6;">
+            <span style="color: #64748b; font-size: 12px; font-weight: bold;">14 PONTOS</span><br>
+            <span style="font-size: 18px; color: #1e293b;"><b>Prêmio:</b> {formatar_real(v14)}</span><br>
+            <span style="font-size: 14px; color: #1e293b;">👥 <b>Ganhadores:</b> {g14}</span><br>
+            <span style="font-size: 14px; color: #1e293b;">💰 <b>Total Pago:</b> {formatar_real(total_14)}</span>
+        </div>
+        """, unsafe_allow_html=True)
 
-    st.markdown("---")
+    st.markdown("<br>", unsafe_allow_html=True)
     
-    # 3. PRÊMIOS FIXOS (11, 12 e 13)
-    st.subheader("📌 Prêmios por Acerto (Fixos)")
+    # --- PRÊMIOS FIXOS ---
+    st.subheader("📌 Detalhes dos Prêmios Fixos")
     c1, c2, c3 = st.columns(3)
     
-    with c1:
-        st.markdown(f"""
-        <div style="background: #f8fafc; padding: 15px; border-radius: 10px; border-left: 5px solid #22c55e; text-align: center; color: #1e293b;">
-            <b>13 PONTOS</b><br><span style="font-size: 18px;">{formatar_real(premios_loto.get(13, 35.0))}</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with c2:
-        st.markdown(f"""
-        <div style="background: #f8fafc; padding: 15px; border-radius: 10px; border-left: 5px solid #eab308; text-align: center; color: #1e293b;">
-            <b>12 PONTOS</b><br><span style="font-size: 18px;">{formatar_real(premios_loto.get(12, 14.0))}</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with c3:
-        st.markdown(f"""
-        <div style="background: #f8fafc; padding: 15px; border-radius: 10px; border-left: 5px solid #ef4444; text-align: center; color: #1e293b;">
-            <b>11 PONTOS</b><br><span style="font-size: 18px;">{formatar_real(premios_loto.get(11, 7.0))}</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.info("💡 Para atualizar estes valores com o sorteio mais recente, vá até a aba **Banco de Dados** e clique em **Sincronizar**.")
-
-
+    for c, acertos, cor in zip([c1, c2, c3], [13, 12, 11], ["#22c55e", "#eab308", "#ef4444"]):
+        with c:
+            v = premios_loto.get(acertos, 0)
+            g = ganhadores.get(acertos, 0)
+            st.markdown(f"""
+            <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border-left: 4px solid {cor};">
+                <b style="font-size: 12px;">{acertos} PONTOS</b><br>
+                <span style="font-size: 14px;">{formatar_real(v)}</span><br>
+                <span style="font-size: 11px; color: #64748b;">{g:,} ganhadores</span>
+            </div>
+            """, unsafe_allow_html=True)
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database - Gerenciar Resultados")
@@ -1425,6 +1413,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
