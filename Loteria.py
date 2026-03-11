@@ -43,14 +43,30 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui també
 
 def buscar_ultimo_resultado_api():
     try:
-        url = "https://loterica.api.ghgi.com.br/api/lotofacil/latest"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        response = requests.get(url, headers=headers, timeout=10)
+        # Link oficial da Caixa (mais seguro e estável)
+        url = "https://servicebus2.caixa.gov.br/portalloterias/api/lotofacil"
+        
+        # O "Disfarce" de navegador para a Caixa não te bloquear
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
+        }
+        
+        # verify=False evita erros de certificado SSL que acontecem muito no Streamlit
+        response = requests.get(url, headers=headers, timeout=15, verify=False)
+        
         if response.status_code == 200:
             dados = response.json()
-            return str(dados['concurso']), [int(n) for n in dados['dezenas']]
-    except:
+            # Ajustando para o formato que seu código espera:
+            # dados['numero'] é o concurso e dados['listaDezenas'] são os números
+            concurso = str(dados['numero'])
+            dezenas = [int(n) for n in dados['listaDezenas']]
+            
+            return concurso, dezenas
+    except Exception as e:
+        # Se quiser ver o erro no console para testar, descomente a linha abaixo:
+        # print(f"Erro na API: {e}")
         return None, None
+        
     return None, None
 
 def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
@@ -1322,6 +1338,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
