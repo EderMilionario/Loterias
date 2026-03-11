@@ -57,39 +57,57 @@ def  treinado_e_prever_ia ( mod_alvo, tamanho= 20 ) : # Forcei o tamanho 20 aqui
     return sorted([int(i + 1) for i in indices_vencedores])
 # --- [FIM DA FUNÇÃO IA CORRIGIDA] ---
 
-# --- [INÍCIO DA ATUALIZAÇÃO DA API] ---
+# --- [INÍCIO DA ATUALIZAÇÃO DA API CORRIGIDA] ---
 def buscar_ultimo_resultado_api():
     try:
+        # API Principal (Heroku/Caixa)
         url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
         response = requests.get(url, timeout=15)
         
         if response.status_code == 200:
             dados = response.json()
             
-            # 1. Extrai dados básicos
+            # 1. Extrai Concurso e Dezenas
             concurso = str(dados.get('concurso', dados.get('numero', '0')))
             dezenas = [int(n) for n in dados.get('dezenas', dados.get('listaDezenas', []))]
             
-            # 2. ATUALIZAÇÃO CRÍTICA: Captura o Rateio (Premiação Real)
+            # 2. Mapeamento Inteligente de Prêmios
             premios_api = {}
-            # Mapeia as faixas de premiação da API para o padrão do seu sistema
+            
+            # Captura premiações do concurso que JÁ PASSOU
             if 'premiacoes' in dados:
                 for p in dados['premiacoes']:
-                    faixa = str(p['descricao']).split()[0] # Pega "15", "14", etc.
-                    if faixa.isdigit():
-                        premios_api[int(faixa)] = float(p.get('valorOficial', 0))
+                    # Extrai apenas o número da descrição (ex: "15 acertos" -> 15)
+                    busca_num = re.findall(r'\d+', p['descricao'])
+                    if busca_num:
+                        faixa = int(busca_num[0])
+                        valor = float(p.get('valorOficial', 0))
+                        if valor > 0:
+                            premios_api[faixa] = valor
+
+            # 3. Captura ESTIMATIVA do próximo prêmio (O prêmio de 15 pontos futuro)
+            # Tenta vários campos possíveis da API
+            estimativa = dados.get('valorEstimadoProximoConcurso', 
+                         dados.get('valorEstimado', 
+                         dados.get('proximoEstimativa', 0)))
             
-            # 3. Injeta os valores reais no session_state para o rateio funcionar
+            if float(estimativa) > 0:
+                premios_api["estimativa"] = float(estimativa)
+            
+            # Injeta no estado da sessão
             if premios_api:
-                st.session_state.premios["Lotofácil"] = premios_api
+                # Mantém os valores padrão caso a API falhe em alguma faixa
+                base = {15: 1700000.0, 14: 1500.0, 13: 35.0, 12: 14.0, 11: 7.0, "estimativa": 1700000.0}
+                base.update(premios_api)
+                st.session_state.premios["Lotofácil"] = base
             
             return concurso, dezenas
             
     except Exception as e:
+        print(f"Erro API: {e}")
         return None, None
     return None, None
 # --- [FIM DA ATUALIZAÇÃO DA API] ---
-
 
 def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
     """Calcula bônus para dezenas no pool baseado no que já foi escolhido."""
@@ -1380,6 +1398,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
