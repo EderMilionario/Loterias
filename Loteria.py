@@ -1054,48 +1054,47 @@ with abas[3]:
     st.markdown("### 🌐 Sincronização Online")
     if st.button("🔄 ATUALIZAR SORTEIOS"):
         try:
-            # 1. Busca Dezenas e Concurso na Guidi
-            resp = requests.get("https://api.guidi.com.br/loteria/lotofacil/ultimo", timeout=15).json()
+            # Fonte 1: API do heroku (que costuma ter o json completo)
+            r = requests.get("https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest", timeout=5).json()
             
-            conc = str(resp['numero'])
-            dez = [int(n) for n in resp['listaDezenas']]
+            # Atualiza dezenas e concurso
+            st.session_state.concurso_input = str(r.get('concurso', ''))
+            st.session_state.dezenas_input = ", ".join(map(str, r.get('dezenas', [])))
             
-            # Atualiza Inputs de tela
-            st.session_state.concurso_input = conc
-            st.session_state.dezenas_input = ", ".join(map(str, dez))
+            # Mapeamento para garantir que grave em String e Inteiro (Evita o erro de não atualizar)
+            for item in r.get('listaRateio', []):
+                f = item['faixa']
+                v = float(item['valorRateio'])
+                # Grava nos dois formatos para garantir que sua Aba 2 e Aba de Conferir achem o valor
+                if f == 1: # 15 pontos
+                    val_15 = float(r.get('valorEstimadoProximoConcurso', v))
+                    st.session_state.premios["Lotofácil"][15] = val_15
+                    st.session_state.premios["Lotofácil"]["15"] = val_15
+                if f == 2: 
+                    st.session_state.premios["Lotofácil"][14] = v
+                    st.session_state.premios["Lotofácil"]["14"] = v
+                if f == 3: 
+                    st.session_state.premios["Lotofácil"][13] = v
+                    st.session_state.premios["Lotofácil"]["13"] = v
+                if f == 4: 
+                    st.session_state.premios["Lotofácil"][12] = v
+                    st.session_state.premios["Lotofácil"]["12"] = v
+                if f == 5: 
+                    st.session_state.premios["Lotofácil"][11] = v
+                    st.session_state.premios["Lotofácil"]["11"] = v
             
-            # 2. ATUALIZAÇÃO DOS VALORES (O X da questão)
-            # Prêmio Estimado (15 pontos)
-            v_estimado = float(resp.get('valorEstimado', 0))
-            
-            # Grava tanto como número quanto como string para garantir que qualquer parte do código funcione
-            st.session_state.premios["Lotofácil"][15] = v_estimado
-            st.session_state.premios["Lotofácil"]["15"] = v_estimado
-            
-            # Rateio Real (14, 13, 12, 11)
-            if 'listaRateio' in resp:
-                for item in resp['listaRateio']:
-                    faixa = item['faixa'] # 2=14pts, 3=13pts, 4=12pts, 5=11pts
-                    valor = float(item['valorRateio'])
-                    
-                    if faixa == 2: 
-                        st.session_state.premios["Lotofácil"][14] = valor
-                        st.session_state.premios["Lotofácil"]["14"] = valor
-                    if faixa == 3: 
-                        st.session_state.premios["Lotofácil"][13] = valor
-                        st.session_state.premios["Lotofácil"]["13"] = valor
-                    if faixa == 4: 
-                        st.session_state.premios["Lotofácil"][12] = valor
-                        st.session_state.premios["Lotofácil"]["12"] = valor
-                    if faixa == 5: 
-                        st.session_state.premios["Lotofácil"][11] = valor
-                        st.session_state.premios["Lotofácil"]["11"] = valor
-            
-            st.success(f"✅ Sincronizado: Concurso {conc} e Valores atualizados!")
+            st.success("✅ Sistema Sincronizado com Sucesso!")
             st.rerun()
 
         except Exception as e:
-            st.error(f"Erro ao conectar na API: {e}")
+            # Se a primeira falhar, tenta uma segunda fonte rápida só para não te deixar na mão
+            try:
+                r = requests.get("https://servicebus2.caixa.gov.br/portalloterias/api/lotofacil", timeout=5, verify=False).json()
+                st.session_state.concurso_input = str(r.get('numero', ''))
+                st.session_state.dezenas_input = ", ".join(map(str, r.get('listaDezenas', [])))
+                st.warning("⚠️ Dezenas atualizadas via Backup (Caixa), valores de rateio podem exigir ajuste manual.")
+            except:
+                st.error("❌ Todas as APIs de loteria estão fora do ar. Tente novamente em alguns minutos.") 
     
     
     # --- [FIM DO BLOCO API ABA 3] ---
@@ -1399,6 +1398,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
