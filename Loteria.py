@@ -41,30 +41,41 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui també
 # --- [FIM DA FUNÇÃO IA CORRIGIDA] ---
 
 
+import requests
+import urllib3
+
+# Desativa avisos de segurança que travam o Streamlit
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 def buscar_ultimo_resultado_api():
     try:
-        # Link oficial da Caixa (mais seguro e estável)
+        # Link do Barramento da Caixa
         url = "https://servicebus2.caixa.gov.br/portalloterias/api/lotofacil"
         
-        # O "Disfarce" de navegador para a Caixa não te bloquear
+        # Header completo e real de um navegador Chrome no Windows
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "pt-BR,pt;q=0.9",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+            "Referer": "https://loterias.caixa.gov.br/"
         }
         
-        # verify=False evita erros de certificado SSL que acontecem muito no Streamlit
-        response = requests.get(url, headers=headers, timeout=15, verify=False)
+        # Faz a chamada ignorando verificação de SSL (verify=False)
+        response = requests.get(url, headers=headers, timeout=20, verify=False)
         
         if response.status_code == 200:
             dados = response.json()
-            # Ajustando para o formato que seu código espera:
-            # dados['numero'] é o concurso e dados['listaDezenas'] são os números
-            concurso = str(dados['numero'])
-            dezenas = [int(n) for n in dados['listaDezenas']]
             
-            return concurso, dezenas
+            # Mapeamento exato dos campos da Caixa para o SEU código
+            concurso_id = str(dados.get('numero'))
+            # A Caixa retorna 'listaDezenas', seu código espera 'dezenas'
+            dezenas_lista = [int(n) for n in dados.get('listaDezenas', [])]
+            
+            return concurso_id, dezenas_lista
+            
     except Exception as e:
-        # Se quiser ver o erro no console para testar, descomente a linha abaixo:
-        # print(f"Erro na API: {e}")
+        # Isso vai mostrar o erro real no seu terminal se algo falhar
+        print(f"DEBUG: Erro na chamada: {e}")
         return None, None
         
     return None, None
@@ -1338,6 +1349,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
