@@ -1017,7 +1017,7 @@ with abas[1]:
 
                         
 # --- [ABA 2: CONFIGURAR VALORES E RATEIO] ---
-with tab2:
+with abas[2]:
     st.header("💰 Tabela de Premiações (Valores Reais)")
     st.info("Os valores abaixo são atualizados automaticamente via API da Caixa.")
 
@@ -1404,6 +1404,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
