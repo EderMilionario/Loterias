@@ -57,35 +57,38 @@ def  treinado_e_prever_ia ( mod_alvo, tamanho= 20 ) : # Forcei o tamanho 20 aqui
     return sorted([int(i + 1) for i in indices_vencedores])
 # --- [FIM DA FUNÇÃO IA CORRIGIDA] ---
 
+# --- [INÍCIO DA ATUALIZAÇÃO DA API] ---
 def buscar_ultimo_resultado_api():
     try:
-        # Usando a URL que você já tinha e funcionava
         url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
-        }
+        response = requests.get(url, timeout=15)
         
-        url_alternativa = "https://api.guidi.com.br/loteria/lotofacil/ultimo"
-        
-        try:
-            response = requests.get(url_alternativa, headers=headers, timeout=15)
-            if response.status_code == 200:
-                dados = response.json()
-                concurso = str(dados['numero'])
-                dezenas = [int(n) for n in dados['listaDezenas']]
-                return concurso, dezenas
-        except:
-            # Se a alternativa falhar, tenta a reserva
-            url_reserva = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
-            response = requests.get(url_reserva, timeout=15)
-            if response.status_code == 200:
-                dados = response.json()
-                return str(dados['concurso']), [int(n) for n in dados['dezenas']]
-
+        if response.status_code == 200:
+            dados = response.json()
+            
+            # 1. Extrai dados básicos
+            concurso = str(dados.get('concurso', dados.get('numero', '0')))
+            dezenas = [int(n) for n in dados.get('dezenas', dados.get('listaDezenas', []))]
+            
+            # 2. ATUALIZAÇÃO CRÍTICA: Captura o Rateio (Premiação Real)
+            premios_api = {}
+            # Mapeia as faixas de premiação da API para o padrão do seu sistema
+            if 'premiacoes' in dados:
+                for p in dados['premiacoes']:
+                    faixa = str(p['descricao']).split()[0] # Pega "15", "14", etc.
+                    if faixa.isdigit():
+                        premios_api[int(faixa)] = float(p.get('valorOficial', 0))
+            
+            # 3. Injeta os valores reais no session_state para o rateio funcionar
+            if premios_api:
+                st.session_state.premios["Lotofácil"] = premios_api
+            
+            return concurso, dezenas
+            
     except Exception as e:
         return None, None
-        
     return None, None
+# --- [FIM DA ATUALIZAÇÃO DA API] ---
 
 
 def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
@@ -1054,56 +1057,29 @@ with abas[3]:
     
     m_db = st.selectbox("Selecione a Loteria", list(st.session_state.custos.keys()), key="m_db_final_novo")
 
-        # --- [INÍCIO DO BLOCO API ABA 3] ---
-    if st.button("🔄 ATUALIZAR SORTEIOS"):
-        try:
-            # Usando um espelho mais estável que não costuma dar 404
-            url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
-        
-            response = requests.get(url, timeout=15)
-        
-            if response.status_code == 200:
-                r = response.json()
-            
-                # 1. ATUALIZA CONCURSO E DEZENAS
-                # Nessa API as chaves são 'concurso' e 'dezenas'
-                num_concurso = str(r.get('concurso', ''))
-                dez = r.get('dezenas', [])
-            
-                if num_concurso:
-                    st.session_state.concurso_input = num_concurso
-                if dez:
-                    st.session_state.dezenas_input = ", ".join(map(str, dez))
-            
-                # 2. ATUALIZA OS VALORES (RATEIO)
-                # Pegando o prêmio principal
-                v15 = float(r.get('valorEstimadoProximoConcurso', 0))
-                if v15 == 0:
-                    v15 = float(r.get('acumuladoProxConcurso', 0))
-                
-                st.session_state.premios["Lotofácil"][15] = v15
-                st.session_state.premios["Lotofácil"]["15"] = v15
-            
-                # Mapeia as faixas de premiação
-                rateio = r.get('listaRateio', [])
-                mapa = {2: 14, 3: 13, 4: 12, 5: 11}
-            
-                for item in rateio:
-                    f_api = item.get('faixa')
-                    if f_api in mapa:
-                        v_pago = float(item.get('valorRateio', 0))
-                        f_real = mapa[f_api]
-                        st.session_state.premios["Lotofácil"][f_real] = v_pago
-                        st.session_state.premios["Lotofácil"][str(f_real)] = v_pago
-            
-                st.success(f"✅ SUCESSO! Concurso {num_concurso} carregado.")
-                st.rerun()
-            else:
-                st.error(f"Erro no servidor de contingência: {response.status_code}")
+       # --- [INÍCIO DO BLOCO API ABA 3] ---
+    st.subheader("🔄 Sincronização em Tempo Real")
+    st.write("Clique abaixo para buscar o último sorteio e atualizar o rateio oficial.")
 
+    if st.button("🔄 SINCRONIZAR ÚLTIMO CONCURSO"):
+        try:
+            conc, dez = buscar_ultimo_resultado_api()
+            
+            if conc and dez:
+                # 1. Atualiza o dicionário de resultados para o Radar e IA
+                st.session_state.ultimo_res["Lotofácil"][conc] = dez
+                
+                # 2. Feedback visual de sucesso
+                st.success(f"✅ Concurso {conc} e Rateio atualizados com sucesso!")
+                
+                # 3. Força o recarregamento para aplicar os novos valores de prêmios na tela
+                st.rerun() 
+            else:
+                st.error("⚠️ A API retornou dados vazios. Tente novamente em instantes.")
+                
         except Exception as e:
-            st.error(f"❌ Falha geral: {e}")
-    # --- [FIM DO BLOCO API ABA 3] ---
+            st.error(f"❌ Falha geral na sincronização: {e}")
+    # --- [FIM DO BLOCO API ABA 3] --- 
 
 
     st.markdown("---")
@@ -1404,6 +1380,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
