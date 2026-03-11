@@ -1052,34 +1052,42 @@ with abas[3]:
 
         # --- [INÍCIO DO BLOCO API ABA 3] ---
     st.markdown("### 🌐 Sincronização Online")
-    
     if st.button("🔄 ATUALIZAR SORTEIOS"):
+        # 1. Busca as dezenas e o concurso
         conc, dez = buscar_ultimo_resultado_api()
+        
         if conc and dez:
             st.session_state.concurso_input = conc
             st.session_state.dezenas_input = ", ".join(map(str, dez))
             
+            # 2. Busca os VALORES na API Guidi (que você já usa)
             try:
                 import requests
-                # Puxa os dados brutos da Caixa
-                r = requests.get("https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest", timeout=10).json()
+                # Fazendo a chamada para a mesma API que você já usa e funciona
+                resp = requests.get("https://api.guidi.com.br/loteria/lotofacil/ultimo", timeout=10).json()
                 
-                # 15 Pontos (Estimado)
-                st.session_state.premios["Lotofácil"][15] = float(r.get('valorEstimadoProximoConcurso', 0))
+                # Prêmio Estimado (15 pontos)
+                if 'valorEstimado' in resp:
+                    st.session_state.premios["Lotofácil"][15] = float(resp['valorEstimado'])
                 
-                # 14, 13, 12 e 11 Pontos (Rateio do último sorteio)
-                for item in r.get('listaRateio', []):
-                    f = item['faixa']
-                    valor = float(item['valorRateio'])
-                    if f == 2: st.session_state.premios["Lotofácil"][14] = valor
-                    if f == 3: st.session_state.premios["Lotofácil"][13] = valor
-                    if f == 4: st.session_state.premios["Lotofácil"][12] = valor
-                    if f == 5: st.session_state.premios["Lotofácil"][11] = valor
+                # Rateio Real (14, 13, 12, 11)
+                if 'listaRateio' in resp:
+                    for item in resp['listaRateio']:
+                        f = item['faixa'] # 1=15pts, 2=14pts, 3=13pts...
+                        v = float(item['valorRateio'])
+                        
+                        if f == 2: st.session_state.premios["Lotofácil"][14] = v
+                        if f == 3: st.session_state.premios["Lotofácil"][13] = v
+                        if f == 4: st.session_state.premios["Lotofácil"][12] = v
+                        if f == 5: st.session_state.premios["Lotofácil"][11] = v
                 
-                st.success(f"✅ Concurso {conc} e prêmios atualizados!")
+                st.success(f"✅ Concurso {conc} e valores atualizados via Guidi!")
             except:
-                st.warning("✅ Dezenas atualizadas, mas erro nos valores da Caixa.")
+                st.warning("✅ Dezenas atualizadas, mas não foi possível capturar os prêmios agora.")
+            
             st.rerun()
+    
+    
     # --- [FIM DO BLOCO API ABA 3] ---
 
 
@@ -1381,6 +1389,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
