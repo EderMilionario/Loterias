@@ -1072,34 +1072,34 @@ with abas[3]:
                 if lista_dezenas:
                     st.session_state.dezenas_input = ", ".join(map(str, lista_dezenas))
             
-            # 2. ATUALIZA O ESTIMADO (O PRÊMIO DE 15)
-            # Algumas APIs usam 'valorEstimadoProximoConcurso'
-            v15 = float(r.get('valorEstimadoProximoConcurso', 0))
-            if v15 == 0: # Backup caso a chave tenha outro nome
-                v15 = float(r.get('acumuladoProxConcurso', 0))
+                # 2. ATUALIZA O ESTIMADO (O PRÊMIO DE 15)
+                # Algumas APIs usam 'valorEstimadoProximoConcurso'
+                v15 = float(r.get('valorEstimadoProximoConcurso', 0))
+                if v15 == 0: # Backup caso a chave tenha outro nome
+                    v15 = float(r.get('acumuladoProxConcurso', 0))
             
-            st.session_state.premios["Lotofácil"][15] = v15
-            st.session_state.premios["Lotofácil"]["15"] = v15
+                st.session_state.premios["Lotofácil"][15] = v15
+                st.session_state.premios["Lotofácil"]["15"] = v15
             
-            # 3. ATUALIZA O RATEIO (14, 13, 12, 11)
-            # Aqui é onde o bicho pega: mapeando a lista de rateio da API
-            rateio_dados = r.get('listaRateio', [])
-            # Na Lotofácil: faixa 2=14pts, 3=13pts, 4=12pts, 5=11pts
-            mapa_f = {2: 14, 3: 13, 4: 12, 5: 11}
+                # 3. ATUALIZA O RATEIO (14, 13, 12, 11)
+                # Aqui é onde o bicho pega: mapeando a lista de rateio da API
+                rateio_dados = r.get('listaRateio', [])
+                # Na Lotofácil: faixa 2=14pts, 3=13pts, 4=12pts, 5=11pts
+                mapa_f = {2: 14, 3: 13, 4: 12, 5: 11}
             
-            for item in rateio_dados:
-                f_api = item.get('faixa')
-                if f_api in mapa_f:
-                    v_pago = float(item.get('valorRateio', 0))
-                    f_real = mapa_f[f_api]
-                    st.session_state.premios["Lotofácil"][f_real] = v_pago
-                    st.session_state.premios["Lotofácil"][str(f_real)] = v_pago
+                for item in rateio_dados:
+                    f_api = item.get('faixa')
+                    if f_api in mapa_f:
+                        v_pago = float(item.get('valorRateio', 0))
+                        f_real = mapa_f[f_api]
+                        st.session_state.premios["Lotofácil"][f_real] = v_pago
+                        st.session_state.premios["Lotofácil"][str(f_real)] = v_pago
             
-            st.success(f"✅ Sincronizado: Concurso {num_concurso} na tela!")
-            st.rerun()
+                st.success(f"✅ Sincronizado: Concurso {num_concurso} na tela!")
+                st.rerun()
             
-    except Exception as e:
-        st.error(f"Erro na API: {e}")
+        except Exception as e:
+            st.error(f"Erro na API: {e}")
     # --- [FIM DO BLOCO API ABA 3] ---
 
 
@@ -1401,6 +1401,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
