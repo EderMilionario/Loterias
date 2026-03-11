@@ -1022,26 +1022,25 @@ with abas[2]:
     st.header("⚙️ Configuração de Valores")
     mod_v = st.selectbox("Loteria", list(st.session_state.premios.keys()), key="v_sel")
     
-    # --- CARDS DE RESUMO ---
     st.write("### 💰 Valores Atuais")
-    # Criando 5 colunas para os 5 prêmios
     cols = st.columns(5)
-    for i, faixa in enumerate([15, 14, 13, 12, 11]):
+    # Lista os prêmios do 15 ao 11
+    ordem_premios = [15, 14, 13, 12, 11]
+    for i, faixa in enumerate(ordem_premios):
         val = st.session_state.premios[mod_v].get(faixa, 0)
         txt = f"R$ {val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         cols[i].metric(f"{faixa} Pts", txt)
     
     st.divider()
 
-    # --- SEUS INPUTS ORIGINAIS ---
     novos_v = {}
     for faixa, valor in st.session_state.premios[mod_v].items():
         novos_v[faixa] = st.number_input(f"Prêmio {faixa} acertos", value=float(valor), format="%.2f", key=f"v_{mod_v}_{faixa}")
     
     if st.button("💾 SALVAR VALORES"): 
         st.session_state.premios[mod_v] = novos_v
-        st.success("✅ Valores salvos com sucesso!")  
-
+        st.success("✅ Valores salvos!")
+        st.rerun()
        
 
 
@@ -1053,31 +1052,29 @@ with abas[3]:
 
         # --- [INÍCIO DO BLOCO API ABA 3] ---
     st.markdown("### 🌐 Sincronização Online")
+    
     if st.button("🔄 ATUALIZAR SORTEIOS"):
-        conc, dez = buscar_ultimo_resultado_api() # Sua função original
+        conc, dez = buscar_ultimo_resultado_api()
         if conc and dez:
             st.session_state.concurso_input = conc
             st.session_state.dezenas_input = ", ".join(map(str, dez))
-            
             try:
                 import requests
                 r = requests.get("https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest", timeout=10).json()
-                
-                # Atualiza 15 e 14 (Variáveis)
+                # Atualiza TODOS os prêmios no sistema
                 st.session_state.premios["Lotofácil"][15] = float(r.get('valorEstimadoProximoConcurso', 0))
                 for item in r.get('listaRateio', []):
-                    if item['faixa'] == 2: st.session_state.premios["Lotofácil"][14] = float(item['valorRateio'])
-                    # Atualiza 13, 12 e 11 (Fixos da API)
-                    if item['faixa'] == 3: st.session_state.premios["Lotofácil"][13] = float(item['valorRateio'])
-                    if item['faixa'] == 4: st.session_state.premios["Lotofácil"][12] = float(item['valorRateio'])
-                    if item['faixa'] == 5: st.session_state.premios["Lotofácil"][11] = float(item['valorRateio'])
-                
-                st.success(f"✅ Concurso {conc} e TODOS os prêmios (11 a 15) atualizados!")
+                    f = item['faixa']
+                    if f == 2: st.session_state.premios["Lotofácil"][14] = float(item['valorRateio'])
+                    if f == 3: st.session_state.premios["Lotofácil"][13] = float(item['valorRateio'])
+                    if f == 4: st.session_state.premios["Lotofácil"][12] = float(item['valorRateio'])
+                    if f == 5: st.session_state.premios["Lotofácil"][11] = float(item['valorRateio'])
+                st.success(f"✅ Concurso {conc} e prêmios (11 a 15) atualizados!")
             except:
-                st.warning("✅ Dezenas atualizadas, mas houve erro nos valores.")
+                st.warning("✅ Dezenas atualizadas, mas erro nos valores.")
             st.rerun()
-            else:
-                st.error("❌ A API não retornou dados. Verifique sua conexão ou tente manual.")
+        else:
+            st.error("❌ Erro ao buscar sorteio.")
     # --- [FIM DO BLOCO API ABA 3] ---
 
 
@@ -1379,6 +1376,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
