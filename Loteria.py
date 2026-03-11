@@ -22,11 +22,10 @@ if "premios" not in st.session_state:
         "Lotofácil": {15: 1700000.0, 14: 1500.0, 13: 35.0, 12: 14.0, 11: 7.0}
     }
 
-# Forma correta de acessar (usando .get para não travar o app)
-prêmios_loto = st. estado_sessão . prêmios . get ( "Lotofacil" , { } )
-p15_valor = prêmios_loto. get ( 15 , 0 )  # Busca a chave 15, se não achar usa 0
-p15 = formatar_real ( p15_valor )
-
+# Forma correta de acessar (sem espaços e em inglês para o Python entender)
+premios_loto = st.session_state.premios.get("Lotofácil", {})
+p15_valor = premios_loto.get(15, 0)  # Busca a chave 15, se não achar usa 0
+p15 = formatar_real(p15_valor)
 # --- [FUNÇÕES DE INTELIGÊNCIA] ---
 
 # --- [INÍCIO DA FUNÇÃO IA CORRIGIDA] ---
@@ -1383,6 +1382,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
