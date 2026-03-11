@@ -1058,36 +1058,30 @@ with abas[3]:
 
         # --- [INÍCIO DO BLOCO API ABA 3] ---
     if st.button("🔄 ATUALIZAR SORTEIOS"):
-    try:
-        url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
-        r = requests.get(url, timeout=10).json()
-        if r:
-            # 1. Atualiza Concurso e Dezenas
-            st.session_state.concurso_input = str(r.get('concurso', ''))
-            st.session_state.dezenas_input = ", ".join(map(str, r.get('dezenas', [])))
+        try: # <--- Essa linha tem que estar pra frente do "if"
+            url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
+            r = requests.get(url, timeout=10).json()
+            if r:
+                # Tudo aqui dentro também tem que estar alinhado
+                st.session_state.concurso_input = str(r.get('concurso', ''))
+                st.session_state.dezenas_input = ", ".join(map(str, r.get('dezenas', [])))
             
-            # 2. Limpa e Atualiza os Prêmios (Evita erro de chave duplicada)
-            st.session_state.premios["Lotofácil"] = {}
+                v15 = float(r.get('valorEstimadoProximoConcurso', 0))
+                st.session_state.premios["Lotofácil"][15] = v15
+                st.session_state.premios["Lotofácil"]["15"] = v15
             
-            # 15 Pontos (Estimativa)
-            v15 = float(r.get('valorEstimadoProximoConcurso', 0))
-            st.session_state.premios["Lotofácil"][15] = v15
-            st.session_state.premios["Lotofácil"]["15"] = v15
+                mapa = {2: 14, 3: 13, 4: 12, 5: 11}
+                for item in r.get('listaRateio', []):
+                    f = item.get('faixa')
+                    if f in mapa:
+                        v = float(item.get('valorRateio', 0))
+                        st.session_state.premios["Lotofácil"][mapa[f]] = v
+                        st.session_state.premios["Lotofácil"][str(mapa[f])] = v
             
-            # Rateio (14 a 11)
-            mapa = {2: 14, 3: 13, 4: 12, 5: 11}
-            for item in r.get('listaRateio', []):
-                f = item.get('faixa')
-                if f in mapa:
-                    v = float(item.get('valorRateio', 0))
-                    st.session_state.premios["Lotofácil"][mapa[f]] = v
-                    st.session_state.premios["Lotofácil"][str(mapa[f])] = v
-            
-            st.success("✅ Atualizado com sucesso!")
-            st.rerun()
-    except Exception as e:
-        st.error(f"Erro ao conectar: {e}")
-    
+                st.success("✅ Atualizado com sucesso!")
+                st.rerun()
+        except Exception as e:
+            st.error(f"Erro ao conectar: {e}")
     # --- [FIM DO BLOCO API ABA 3] ---
 
 
@@ -1389,6 +1383,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
