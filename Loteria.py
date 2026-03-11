@@ -1058,41 +1058,49 @@ with abas[3]:
         # --- [INÍCIO DO BLOCO API ABA 3] ---
     if st.button("🔄 ATUALIZAR SORTEIOS"):
         try:
-            # URL e Headers exatamente como no seu código original 
-            url = "https://loterica.api.ghgi.com.br/api/lotofacil/latest"
-            headers = {"User-Agent": "Mozilla/5.0"}
+            # A URL da GHGI caiu. Vamos usar a única que está respondendo hoje (Proxy Caixa)
+            url = "https://servicebus2.caixa.gov.br/portalloterias/api/lotofacil"
         
-            response = requests.get(url, headers=headers, timeout=10)
+            # O seu disfarce (Headers) é essencial aqui para não ser bloqueado
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+            }
+        
+            # verify=False evita o erro de SSL do governo que trava o Python
+            response = requests.get(url, headers=headers, timeout=15, verify=False)
         
             if response.status_code == 200:
-                dados = response.json()
+                r = response.json()
             
-                # Extração dos dados conforme o seu arquivo 
-                num_concurso = str(dados['concurso'])
-                dezenas_lista = [int(n) for n in dados['dezenas']]
+                # 1. ATUALIZA CONCURSO E DEZENAS
+                st.session_state.concurso_input = str(r.get('numero', ''))
+                dez = r.get('listaDezenas', [])
+                if dez:
+             c      st.session_state.dezenas_input = ", ".join(map(str, dez))
             
-                # Atualiza os campos de entrada na tela
-                st.session_state.concurso_input = num_concurso
-                st.session_state.dezenas_input = ", ".join(map(str, dezenas_lista))
+                # 2. ATUALIZA OS VALORES (RATEIO)
+                # 15 Pontos (Valor acumulado/estimado)
+                v15 = float(r.get('valorEstimadoProximoConcurso', 0))
+                st.session_state.premios["Lotofácil"][15] = v15
+                st.session_state.premios["Lotofácil"]["15"] = v15
             
-                # Atualiza os prêmios (Rateio)
-                # Nota: Essa API ghgi foca no resultado; se ela não trouxer prêmios, 
-                # mantemos os valores padrão que já estão no seu código [cite: 162]
-                if 'premiacoes' in dados:
-                    for p in dados['premiacoes']:
-                        acertos = p.get('acertos')
-                        valor = float(p.get('valor_pago', 0))
-                        if acertos in [11, 12, 13, 14, 15]:
-                            st.session_state.premios["Lotofácil"][acertos] = valor
-                            st.session_state.premios["Lotofácil"][str(acertos)] = valor
-
-                st.success(f"✅ Concurso {num_concurso} carregado com sucesso!")
+                # Outras faixas (14, 13, 12, 11)
+                for item in r.get('listaRateio', []):
+                    f = item.get('faixa')
+                    v = float(item.get('valorRateio', 0))
+                    mapa = {2: 14, 3: 13, 4: 12, 5: 11}
+                    if f in mapa:
+                        faixa_real = mapa[f]
+                        st.session_state.premios["Lotofácil"][faixa_real] = v
+                        st.session_state.premios["Lotofácil"][str(faixa_real)] = v
+            
+                st.success(f"✅ SUCESSO! Concurso {r.get('numero')} carregado direto da Caixa.")
                 st.rerun()
             else:
-                st.error(f"Erro na API (Status {response.status_code})")
-            
+                st.error(f"O servidor da Caixa recusou a conexão (Erro {response.status_code})")
+
         except Exception as e:
-            st.error(f"Falha ao conectar: {e}")
+            st.error(f"❌ Erro Crítico: {e}. Verifique sua conexão de internet.")
     # --- [FIM DO BLOCO API ABA 3] ---
 
 
@@ -1394,6 +1402,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
