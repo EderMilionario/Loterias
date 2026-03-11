@@ -1058,23 +1058,28 @@ with abas[3]:
         if conc and dez:
             st.session_state.concurso_input = conc
             st.session_state.dezenas_input = ", ".join(map(str, dez))
+            
             try:
                 import requests
+                # Puxa os dados brutos da Caixa
                 r = requests.get("https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest", timeout=10).json()
-                # Atualiza TODOS os prêmios no sistema
+                
+                # 15 Pontos (Estimado)
                 st.session_state.premios["Lotofácil"][15] = float(r.get('valorEstimadoProximoConcurso', 0))
+                
+                # 14, 13, 12 e 11 Pontos (Rateio do último sorteio)
                 for item in r.get('listaRateio', []):
                     f = item['faixa']
-                    if f == 2: st.session_state.premios["Lotofácil"][14] = float(item['valorRateio'])
-                    if f == 3: st.session_state.premios["Lotofácil"][13] = float(item['valorRateio'])
-                    if f == 4: st.session_state.premios["Lotofácil"][12] = float(item['valorRateio'])
-                    if f == 5: st.session_state.premios["Lotofácil"][11] = float(item['valorRateio'])
-                st.success(f"✅ Concurso {conc} e prêmios (11 a 15) atualizados!")
+                    valor = float(item['valorRateio'])
+                    if f == 2: st.session_state.premios["Lotofácil"][14] = valor
+                    if f == 3: st.session_state.premios["Lotofácil"][13] = valor
+                    if f == 4: st.session_state.premios["Lotofácil"][12] = valor
+                    if f == 5: st.session_state.premios["Lotofácil"][11] = valor
+                
+                st.success(f"✅ Concurso {conc} e prêmios atualizados!")
             except:
-                st.warning("✅ Dezenas atualizadas, mas erro nos valores.")
+                st.warning("✅ Dezenas atualizadas, mas erro nos valores da Caixa.")
             st.rerun()
-        else:
-            st.error("❌ Erro ao buscar sorteio.")
     # --- [FIM DO BLOCO API ABA 3] ---
 
 
@@ -1376,6 +1381,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
