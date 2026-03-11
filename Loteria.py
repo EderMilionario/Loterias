@@ -1058,43 +1058,41 @@ with abas[3]:
         # --- [INÍCIO DO BLOCO API ABA 3] ---
     if st.button("🔄 ATUALIZAR SORTEIOS"):
         try:
-            # TENTATIVA 1: API GIGA BICHO (Costuma atualizar mais rápido)
-            r = requests.get("https://py-loterias.vercel.app/lotofacil", timeout=10).json()
+            # URL e Headers exatamente como no seu código original 
+            url = "https://loterica.api.ghgi.com.br/api/lotofacil/latest"
+            headers = {"User-Agent": "Mozilla/5.0"}
         
-            # Se essa API funcionar, os campos são 'concurso', 'dezenas' e 'premiacao'
-            if 'concurso' in r:
-                st.session_state.concurso_input = str(r.get('concurso', ''))
-                st.session_state.dezenas_input = ", ".join(map(str, r.get('dezenas', [])))
+            response = requests.get(url, headers=headers, timeout=10)
+        
+            if response.status_code == 200:
+                dados = response.json()
             
-                # Ajuste de prêmios para essa API específica
-                for p in r.get('premiacao', []):
-                    descricao = p.get('descricao', '')
-                    valor = float(p.get('valor', 0))
-                    if "15 Acertos" in descricao:
-                        st.session_state.premios["Lotofácil"][15] = valor
-                        st.session_state.premios["Lotofácil"]["15"] = valor
-                    elif "14 Acertos" in descricao:
-                        st.session_state.premios["Lotofácil"][14] = valor
-                        st.session_state.premios["Lotofácil"]["14"] = valor
-                    elif "13 Acertos" in descricao:
-                        st.session_state.premios["Lotofácil"][13] = valor
-                        st.session_state.premios["Lotofácil"]["13"] = valor
+                # Extração dos dados conforme o seu arquivo 
+                num_concurso = str(dados['concurso'])
+                dezenas_lista = [int(n) for n in dados['dezenas']]
             
-                st.success(f"✅ Sincronizado via GigaAPI: Concurso {r.get('concurso')}!")
+                # Atualiza os campos de entrada na tela
+                st.session_state.concurso_input = num_concurso
+                st.session_state.dezenas_input = ", ".join(map(str, dezenas_lista))
+            
+                # Atualiza os prêmios (Rateio)
+                # Nota: Essa API ghgi foca no resultado; se ela não trouxer prêmios, 
+                # mantemos os valores padrão que já estão no seu código [cite: 162]
+                if 'premiacoes' in dados:
+                    for p in dados['premiacoes']:
+                        acertos = p.get('acertos')
+                        valor = float(p.get('valor_pago', 0))
+                        if acertos in [11, 12, 13, 14, 15]:
+                            st.session_state.premios["Lotofácil"][acertos] = valor
+                            st.session_state.premios["Lotofácil"][str(acertos)] = valor
+
+                st.success(f"✅ Concurso {num_concurso} carregado com sucesso!")
                 st.rerun()
             else:
-                raise Exception("API 1 falhou, tentando backup...")
-
-        except:
-            # TENTATIVA 2: BACKUP (Heroku) com tratamento de erro forçado
-            try:
-                r = requests.get("https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest", timeout=10).json()
-                st.session_state.concurso_input = str(r.get('concurso', ''))
-                st.session_state.dezenas_input = ", ".join(map(str, r.get('dezenas', [])))
-                st.warning("⚠️ Atualizado via Backup (Dados podem estar atrasados).")
-                st.rerun()
-            except Exception as e:
-                st.error(f"❌ Nenhuma API respondeu com dados novos: {e}")
+                st.error(f"Erro na API (Status {response.status_code})")
+            
+        except Exception as e:
+            st.error(f"Falha ao conectar: {e}")
     # --- [FIM DO BLOCO API ABA 3] ---
 
 
@@ -1396,6 +1394,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
