@@ -1076,7 +1076,7 @@ with abas[3]:
                 st.session_state.concurso_input = str(r.get('numero', ''))
                 dez = r.get('listaDezenas', [])
                 if dez:
-                c      st.session_state.dezenas_input = ", ".join(map(str, dez))
+                    st.session_state.dezenas_input = ", ".join(map(str, dez))
             
                 # 2. ATUALIZA OS VALORES (RATEIO)
                 # 15 Pontos (Valor acumulado/estimado)
@@ -1402,6 +1402,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
