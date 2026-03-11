@@ -41,41 +41,36 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui també
 # --- [FIM DA FUNÇÃO IA CORRIGIDA] ---
 
 
-import requests
-import urllib3
-
-# Desativa avisos de segurança que travam o Streamlit
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
 def buscar_ultimo_resultado_api():
     try:
-        # Link do Barramento da Caixa
-        url = "https://servicebus2.caixa.gov.br/portalloterias/api/lotofacil"
+        # Usando uma API pública que atua como ponte (mais permissiva com servidores)
+        url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
         
-        # Header completo e real de um navegador Chrome no Windows
+        # Tentativa 2: Se a primeira falhar, usamos um link alternativo de redundância
         headers = {
-            "Accept": "application/json, text/plain, */*",
-            "Accept-Language": "pt-BR,pt;q=0.9",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
-            "Referer": "https://loterias.caixa.gov.br/"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
         }
         
-        # Faz a chamada ignorando verificação de SSL (verify=False)
-        response = requests.get(url, headers=headers, timeout=20, verify=False)
+        # Vamos tentar uma API que raramente bloqueia IPs de servidores:
+        url_alternativa = "https://api.guidi.com.br/loteria/lotofacil/ultimo"
         
-        if response.status_code == 200:
-            dados = response.json()
-            
-            # Mapeamento exato dos campos da Caixa para o SEU código
-            concurso_id = str(dados.get('numero'))
-            # A Caixa retorna 'listaDezenas', seu código espera 'dezenas'
-            dezenas_lista = [int(n) for n in dados.get('listaDezenas', [])]
-            
-            return concurso_id, dezenas_lista
-            
+        try:
+            response = requests.get(url_alternativa, headers=headers, timeout=15)
+            if response.status_code == 200:
+                dados = response.json()
+                # O formato da Guidi é diferente, vamos ajustar para o SEU código:
+                concurso = str(dados['numero'])
+                dezenas = [int(n) for n in dados['listaDezenas']]
+                return concurso, dezenas
+        except:
+            # Se a alternativa falhar, tenta a última cartada (Loterias API)
+            url_reserva = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
+            response = requests.get(url_reserva, timeout=15)
+            if response.status_code == 200:
+                dados = response.json()
+                return str(dados['concurso']), [int(n) for n in dados['dezenas']]
+
     except Exception as e:
-        # Isso vai mostrar o erro real no seu terminal se algo falhar
-        print(f"DEBUG: Erro na chamada: {e}")
         return None, None
         
     return None, None
@@ -1349,6 +1344,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
