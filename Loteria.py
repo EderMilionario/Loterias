@@ -9,6 +9,17 @@ from itertools import combinations
 from fpdf import FPDF
 import io
 
+# Crie a função de formatação no topo do código (depois dos imports)
+def formatar_real(valor):
+    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+# Na Aba Valores, use assim:
+p15 = formatar_real(st.session_state.premios["Lotofácil"][0])
+p14 = formatar_real(st.session_state.premios["Lotofácil"][1])
+
+st.markdown(f"### Prêmio Estimado 15 pts: {p15}")
+st.markdown(f"### Último Rateio 14 pts: {p14}")
+
 # --- [FUNÇÕES DE INTELIGÊNCIA] ---
 
 # --- [INÍCIO DA FUNÇÃO IA CORRIGIDA] ---
@@ -40,40 +51,56 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui també
     return sorted([int(i + 1) for i in indices_vencedores])
 # --- [FIM DA FUNÇÃO IA CORRIGIDA] ---
 
-
 def buscar_ultimo_resultado_api():
     try:
-        # Usando uma API pública que atua como ponte (mais permissiva com servidores)
         url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
-        
-        # Tentativa 2: Se a primeira falhar, usamos um link alternativo de redundância
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
         }
-        
-        # Vamos tentar uma API que raramente bloqueia IPs de servidores:
         url_alternativa = "https://api.guidi.com.br/loteria/lotofacil/ultimo"
         
         try:
             response = requests.get(url_alternativa, headers=headers, timeout=15)
             if response.status_code == 200:
                 dados = response.json()
-                # O formato da Guidi é diferente, vamos ajustar para o SEU código:
                 concurso = str(dados['numero'])
                 dezenas = [int(n) for n in dados['listaDezenas']]
+                
+                # --- INÍCIO DA MINHA SUGESTÃO (COLE AQUI) ---
+                try:
+                    if 'valorEstimado' in dados:
+                        st.session_state.premios["Lotofácil"][0] = float(dados['valorEstimado'])
+                    if 'listaRateio' in dados and len(dados['listaRateio']) > 1:
+                        st.session_state.premios["Lotofácil"][1] = float(dados['listaRateio'][1]['valorRateio'])
+                except: pass
+                # --- FIM DA SUGESTÃO ---
+
                 return concurso, dezenas
         except:
-            # Se a alternativa falhar, tenta a última cartada (Loterias API)
             url_reserva = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
             response = requests.get(url_reserva, timeout=15)
             if response.status_code == 200:
                 dados = response.json()
+                
+                # --- INÍCIO DA MINHA SUGESTÃO (COLE AQUI TAMBÉM) ---
+                try:
+                    if 'valorEstimadoProximoConcurso' in dados:
+                        st.session_state.premios["Lotofácil"][0] = float(dados['valorEstimadoProximoConcurso'])
+                    if 'listaRateio' in dados:
+                        for rateio in dados['listaRateio']:
+                            if rateio['faixa'] == 2:
+                                st.session_state.premios["Lotofácil"][1] = float(rateio['valorRateio'])
+                except: pass
+                # --- FIM DA SUGESTÃO ---
+
                 return str(dados['concurso']), [int(n) for n in dados['dezenas']]
 
     except Exception as e:
         return None, None
         
     return None, None
+
+
 
 def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
     """Calcula bônus para dezenas no pool baseado no que já foi escolhido."""
@@ -1010,13 +1037,47 @@ with abas[1]:
 with abas[2]:
     mostrar_status_backup()
     st.header("⚙️ Configuração de Valores")
-    mod_v = st.selectbox("Loteria", list(st.session_state.premios.keys()), key="v_sel")
+    
+    # Função interna para formatar moeda (R$)
+    def f_moeda(v):
+        return f"R$ {float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    mod_v = st.selectbox("Selecione a Loteria", list(st.session_state.premios.keys()), key="v_sel")
+    
+    # --- BLOCO DAS CAIXINHAS (CARDS VISUAIS) ---
+    st.markdown("### 💰 Resumo de Premiação Atual")
+    cols_v = st.columns(len(st.session_state.premios[mod_v]))
+    
+    for idx, (faixa, valor) in enumerate(st.session_state.premios[mod_v].items()):
+        with cols_v[idx]:
+            label_card = "PRÊMIO ESTIMADO" if faixa == 15 else f"RATEIO {faixa} PTS"
+            st.markdown(f"""
+                <div style="background: linear-gradient(45deg, #1e3799, #0984e3); padding: 15px; border-radius: 10px; text-align: center; color: white; border: 2px solid #000;">
+                    <small style="font-weight: bold;">{label_card}</small><br>
+                    <span style="font-size: 18px; font-weight: bold;">{f_moeda(valor)}</span>
+                </div>
+            """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # --- CAMPOS DE EDIÇÃO (INPUTS) ---
+    st.subheader("Editar Valores")
     novos_v = {}
-    for faixa, valor in st.session_state.premios[mod_v].items():
-        novos_v[faixa] = st.number_input(f"Prêmio {faixa} acertos", value=float(valor), format="%.2f", key=f"v_{mod_v}_{faixa}")
-    if st.button("💾 SALVAR VALORES"): 
+    c_inputs = st.columns(2) # Organiza os inputs em duas colunas para não ficar gigante
+    
+    for i, (faixa, valor) in enumerate(st.session_state.premios[mod_v].items()):
+        with c_inputs[i % 2]:
+            novos_v[faixa] = st.number_input(
+                f"Valor para {faixa} acertos (Use apenas números)", 
+                value=float(valor), 
+                format="%.2f", 
+                key=f"v_{mod_v}_{faixa}"
+            )
+            
+    if st.button("💾 SALVAR E APLICAR VALORES"): 
         st.session_state.premios[mod_v] = novos_v
-        st.success("✅ Valores atualizados!")
+        st.success("✅ Valores atualizados com sucesso!")
+        st.rerun() # Atualiza a tela para as caixinhas mudarem na hora
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database - Gerenciar Resultados")
@@ -1344,6 +1405,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
