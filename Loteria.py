@@ -1020,25 +1020,31 @@ with abas[1]:
 with abas[2]:
     mostrar_status_backup()
     st.header("⚙️ Configuração de Valores")
-    mod_v = st.selectbox("Loteria", list(st.session_state.premios.keys()), key="v_sel")
+    mod_v = st.selectbox("Loteria", list(st.session_state.premios.keys()), key="v_sel_edit")
     
-    st.write("### 💰 Valores Atuais")
-    cols = st.columns(5)
-    # Lista os prêmios do 15 ao 11
-    ordem_premios = [15, 14, 13, 12, 11]
-    for i, faixa in enumerate(ordem_premios):
-        val = st.session_state.premios[mod_v].get(faixa, 0)
-        txt = f"R$ {val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        cols[i].metric(f"{faixa} Pts", txt)
+    st.write("### 💰 Valores Atuais na Memória")
+    # Mostra apenas uma vez cada faixa (11 a 15)
+    for f in [15, 14, 13, 12, 11]:
+        v = st.session_state.premios[mod_v].get(f) or st.session_state.premios[mod_v].get(str(f), 0)
+        v_br = f"R$ {float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        st.write(f"**{f} Pontos:** {v_br}")
     
     st.divider()
 
     novos_v = {}
-    for faixa, valor in st.session_state.premios[mod_v].items():
-        novos_v[faixa] = st.number_input(f"Prêmio {faixa} acertos", value=float(valor), format="%.2f", key=f"v_{mod_v}_{faixa}")
+    # O SEGREDO: Usar set() para ignorar duplicatas de '15' e 15
+    chaves_unicas = sorted(list(set(int(k) for k in st.session_state.premios[mod_v].keys())), reverse=True)
+    
+    for faixa in chaves_unicas:
+        valor = st.session_state.premios[mod_v].get(faixa) or st.session_state.premios[mod_v].get(str(faixa), 0)
+        # O key= agora é único e evita o erro DuplicateElementKey
+        novos_v[faixa] = st.number_input(f"Editar Prêmio {faixa}", value=float(valor), format="%.2f", key=f"input_v_{mod_v}_{faixa}")
     
     if st.button("💾 SALVAR VALORES"): 
-        st.session_state.premios[mod_v] = novos_v
+        # Salva nos dois formatos para garantir que o resto do seu código ache
+        for f, val in novos_v.items():
+            st.session_state.premios[mod_v][f] = val
+            st.session_state.premios[mod_v][str(f)] = val
         st.success("✅ Valores salvos!")
         st.rerun()
        
@@ -1388,6 +1394,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
