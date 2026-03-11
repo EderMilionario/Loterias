@@ -1057,30 +1057,49 @@ with abas[3]:
 
         # --- [INÍCIO DO BLOCO API ABA 3] ---
     if st.button("🔄 ATUALIZAR SORTEIOS"):
-        try: # <--- Essa linha tem que estar pra frente do "if"
-            url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
-            r = requests.get(url, timeout=10).json()
+        try:
+            # Mudando para a rota específica de "latest" que força o resultado
+            r = requests.get("https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest", timeout=10).json()
+        
             if r:
-                # Tudo aqui dentro também tem que estar alinhado
-                st.session_state.concurso_input = str(r.get('concurso', ''))
-                st.session_state.dezenas_input = ", ".join(map(str, r.get('dezenas', [])))
+                # 1. PEGA O CONCURSO E AS DEZENAS (O RESULTADO QUE SAIU)
+                # Usando r.get com fallback para não quebrar nada
+                num_concurso = str(r.get('concurso', ''))
+                lista_dezenas = r.get('dezenas', [])
             
-                v15 = float(r.get('valorEstimadoProximoConcurso', 0))
-                st.session_state.premios["Lotofácil"][15] = v15
-                st.session_state.premios["Lotofácil"]["15"] = v15
+                if num_concurso:
+                    st.session_state.concurso_input = num_concurso
+                if lista_dezenas:
+                    st.session_state.dezenas_input = ", ".join(map(str, lista_dezenas))
             
-                mapa = {2: 14, 3: 13, 4: 12, 5: 11}
-                for item in r.get('listaRateio', []):
-                    f = item.get('faixa')
-                    if f in mapa:
-                        v = float(item.get('valorRateio', 0))
-                        st.session_state.premios["Lotofácil"][mapa[f]] = v
-                        st.session_state.premios["Lotofácil"][str(mapa[f])] = v
+            # 2. ATUALIZA O ESTIMADO (O PRÊMIO DE 15)
+            # Algumas APIs usam 'valorEstimadoProximoConcurso'
+            v15 = float(r.get('valorEstimadoProximoConcurso', 0))
+            if v15 == 0: # Backup caso a chave tenha outro nome
+                v15 = float(r.get('acumuladoProxConcurso', 0))
             
-                st.success("✅ Atualizado com sucesso!")
-                st.rerun()
-        except Exception as e:
-            st.error(f"Erro ao conectar: {e}")
+            st.session_state.premios["Lotofácil"][15] = v15
+            st.session_state.premios["Lotofácil"]["15"] = v15
+            
+            # 3. ATUALIZA O RATEIO (14, 13, 12, 11)
+            # Aqui é onde o bicho pega: mapeando a lista de rateio da API
+            rateio_dados = r.get('listaRateio', [])
+            # Na Lotofácil: faixa 2=14pts, 3=13pts, 4=12pts, 5=11pts
+            mapa_f = {2: 14, 3: 13, 4: 12, 5: 11}
+            
+            for item in rateio_dados:
+                f_api = item.get('faixa')
+                if f_api in mapa_f:
+                    v_pago = float(item.get('valorRateio', 0))
+                    f_real = mapa_f[f_api]
+                    st.session_state.premios["Lotofácil"][f_real] = v_pago
+                    st.session_state.premios["Lotofácil"][str(f_real)] = v_pago
+            
+            st.success(f"✅ Sincronizado: Concurso {num_concurso} na tela!")
+            st.rerun()
+            
+    except Exception as e:
+        st.error(f"Erro na API: {e}")
     # --- [FIM DO BLOCO API ABA 3] ---
 
 
@@ -1382,6 +1401,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
