@@ -1053,39 +1053,49 @@ with abas[3]:
         # --- [INÍCIO DO BLOCO API ABA 3] ---
     st.markdown("### 🌐 Sincronização Online")
     if st.button("🔄 ATUALIZAR SORTEIOS"):
-        # 1. Busca as dezenas e o concurso
-        conc, dez = buscar_ultimo_resultado_api()
-        
-        if conc and dez:
+        try:
+            # 1. Busca Dezenas e Concurso na Guidi
+            resp = requests.get("https://api.guidi.com.br/loteria/lotofacil/ultimo", timeout=15).json()
+            
+            conc = str(resp['numero'])
+            dez = [int(n) for n in resp['listaDezenas']]
+            
+            # Atualiza Inputs de tela
             st.session_state.concurso_input = conc
             st.session_state.dezenas_input = ", ".join(map(str, dez))
             
-            # 2. Busca os VALORES na API Guidi (que você já usa)
-            try:
-                import requests
-                # Fazendo a chamada para a mesma API que você já usa e funciona
-                resp = requests.get("https://api.guidi.com.br/loteria/lotofacil/ultimo", timeout=10).json()
-                
-                # Prêmio Estimado (15 pontos)
-                if 'valorEstimado' in resp:
-                    st.session_state.premios["Lotofácil"][15] = float(resp['valorEstimado'])
-                
-                # Rateio Real (14, 13, 12, 11)
-                if 'listaRateio' in resp:
-                    for item in resp['listaRateio']:
-                        f = item['faixa'] # 1=15pts, 2=14pts, 3=13pts...
-                        v = float(item['valorRateio'])
-                        
-                        if f == 2: st.session_state.premios["Lotofácil"][14] = v
-                        if f == 3: st.session_state.premios["Lotofácil"][13] = v
-                        if f == 4: st.session_state.premios["Lotofácil"][12] = v
-                        if f == 5: st.session_state.premios["Lotofácil"][11] = v
-                
-                st.success(f"✅ Concurso {conc} e valores atualizados via Guidi!")
-            except:
-                st.warning("✅ Dezenas atualizadas, mas não foi possível capturar os prêmios agora.")
+            # 2. ATUALIZAÇÃO DOS VALORES (O X da questão)
+            # Prêmio Estimado (15 pontos)
+            v_estimado = float(resp.get('valorEstimado', 0))
             
+            # Grava tanto como número quanto como string para garantir que qualquer parte do código funcione
+            st.session_state.premios["Lotofácil"][15] = v_estimado
+            st.session_state.premios["Lotofácil"]["15"] = v_estimado
+            
+            # Rateio Real (14, 13, 12, 11)
+            if 'listaRateio' in resp:
+                for item in resp['listaRateio']:
+                    faixa = item['faixa'] # 2=14pts, 3=13pts, 4=12pts, 5=11pts
+                    valor = float(item['valorRateio'])
+                    
+                    if faixa == 2: 
+                        st.session_state.premios["Lotofácil"][14] = valor
+                        st.session_state.premios["Lotofácil"]["14"] = valor
+                    if faixa == 3: 
+                        st.session_state.premios["Lotofácil"][13] = valor
+                        st.session_state.premios["Lotofácil"]["13"] = valor
+                    if faixa == 4: 
+                        st.session_state.premios["Lotofácil"][12] = valor
+                        st.session_state.premios["Lotofácil"]["12"] = valor
+                    if faixa == 5: 
+                        st.session_state.premios["Lotofácil"][11] = valor
+                        st.session_state.premios["Lotofácil"]["11"] = valor
+            
+            st.success(f"✅ Sincronizado: Concurso {conc} e Valores atualizados!")
             st.rerun()
+
+        except Exception as e:
+            st.error(f"Erro ao conectar na API: {e}")
     
     
     # --- [FIM DO BLOCO API ABA 3] ---
@@ -1389,6 +1399,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
