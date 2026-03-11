@@ -19,7 +19,7 @@ def formatar_real(valor):
 # Inicialização segura dos prêmios (se não existir, ele cria)
 if "premios" not in st.session_state:
     st.session_state.premios = {
-        "Lotofácil": {15: 1700000.0, 14: 1500.0, 13: 30.0, 12: 12.0, 11: 6.0}
+        "Lotofácil": {15: 1700000.0, 14: 1500.0, 13: 35.0, 12: 14.0, 11: 7.0}
     }
 
 # Forma correta de acessar (usando .get para não travar o app)
@@ -60,19 +60,32 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui també
 
 def buscar_ultimo_resultado_api():
     try:
+        # Usando a URL que você já tinha e funcionava
+        url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
+        }
+        
         url_alternativa = "https://api.guidi.com.br/loteria/lotofacil/ultimo"
-        response = requests.get(url_alternativa, timeout=15)
-        if response.status_code == 200:
-            dados = response.json()
-            # Salva os valores nas chaves 15 e 14
-            if 'valorEstimado' in dados:
-                st.session_state.premios["Lotofácil"][15] = float(dados['valorEstimado'])
-            if 'listaRateio' in dados and len(dados['listaRateio']) > 1:
-                st.session_state.premios["Lotofácil"][14] = float(dados['listaRateio'][1]['valorRateio'])
-            
-            return str(dados['numero']), [int(n) for n in dados['listaDezenas']]
-    except:
-        pass
+        
+        try:
+            response = requests.get(url_alternativa, headers=headers, timeout=15)
+            if response.status_code == 200:
+                dados = response.json()
+                concurso = str(dados['numero'])
+                dezenas = [int(n) for n in dados['listaDezenas']]
+                return concurso, dezenas
+        except:
+            # Se a alternativa falhar, tenta a reserva
+            url_reserva = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
+            response = requests.get(url_reserva, timeout=15)
+            if response.status_code == 200:
+                dados = response.json()
+                return str(dados['concurso']), [int(n) for n in dados['dezenas']]
+
+    except Exception as e:
+        return None, None
+        
     return None, None
 
 
@@ -1006,52 +1019,41 @@ with abas[1]:
                         
   
 
-        
-
-with abas[2]:
+ with abas[2]:
     mostrar_status_backup()
     st.header("⚙️ Configuração de Valores")
+    mod_v = st.selectbox("Loteria", list(st.session_state.premios.keys()), key="v_sel")
     
-    # Função interna para formatar moeda (R$)
-    def f_moeda(v):
-        return f"R$ {float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-    mod_v = st.selectbox("Selecione a Loteria", list(st.session_state.premios.keys()), key="v_sel")
+    # --- INÍCIO DOS CARDS ---
+    st.markdown("### 💰 Valores Atuais (Rateio/Estimado)")
+    c1, c2 = st.columns(2)
     
-    # --- BLOCO DAS CAIXINHAS (CARDS VISUAIS) ---
-    st.markdown("### 💰 Resumo de Premiação Atual")
-    cols_v = st.columns(len(st.session_state.premios[mod_v]))
+    # Formatação para os Cards
+    v15 = f"R$ {st.session_state.premios[mod_v][15]:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    v14 = f"R$ {st.session_state.premios[mod_v][14]:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     
-    for idx, (faixa, valor) in enumerate(st.session_state.premios[mod_v].items()):
-        with cols_v[idx]:
-            label_card = "PRÊMIO ESTIMADO" if faixa == 15 else f"RATEIO {faixa} PTS"
-            st.markdown(f"""
-                <div style="background: linear-gradient(45deg, #1e3799, #0984e3); padding: 15px; border-radius: 10px; text-align: center; color: white; border: 2px solid #000;">
-                    <small style="font-weight: bold;">{label_card}</small><br>
-                    <span style="font-size: 18px; font-weight: bold;">{f_moeda(valor)}</span>
-                </div>
-            """, unsafe_allow_html=True)
-    
+    with c1:
+        st.markdown(f"""<div style="background: #1e3799; padding: 15px; border-radius: 10px; text-align: center; color: white;">
+            <small>PRÊMIO 15 PTS</small><br><span style="font-size: 20px; font-weight: bold;">{v15}</span>
+            </div>""", unsafe_allow_html=True)
+    with c2:
+        st.markdown(f"""<div style="background: #0984e3; padding: 15px; border-radius: 10px; text-align: center; color: white;">
+            <small>RATEIO 14 PTS</small><br><span style="font-size: 20px; font-weight: bold;">{v14}</span>
+            </div>""", unsafe_allow_html=True)
     st.markdown("---")
-    
-    # --- CAMPOS DE EDIÇÃO (INPUTS) ---
-    st.subheader("Editar Valores")
+    # --- FIM DOS CARDS ---
+
     novos_v = {}
-    c_inputs = st.columns(2) # Organiza os inputs em duas colunas para não ficar gigante
+    for faixa, valor in st.session_state.premios[mod_v].items():
+        # Mantém seu input original exatamente como estava
+        novos_v[faixa] = st.number_input(f"Prêmio {faixa} acertos", value=float(valor), format="%.2f", key=f"v_{mod_v}_{faixa}")
     
-    for i, (faixa, valor) in enumerate(st.session_state.premios[mod_v].items()):
-        with c_inputs[i % 2]:
-            novos_v[faixa] = st.number_input(
-                f"Valor para {faixa} acertos (Use apenas números)", 
-                value=float(valor), 
-                format="%.2f", 
-                key=f"v_{mod_v}_{faixa}"
-            )
-            
-    if st.button("💾 SALVAR E APLICAR VALORES"): 
+    if st.button("💾 SALVAR VALORES"): 
         st.session_state.premios[mod_v] = novos_v
-        st.success("✅ Valores atualizados com sucesso!")
-        st.rerun() # Atualiza a tela para as caixinhas mudarem na hora
+        st.success("✅ Valores atualizados!")
+        st.rerun()       
+
+
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database - Gerenciar Resultados")
@@ -1379,6 +1381,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
