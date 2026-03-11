@@ -59,49 +59,45 @@ def  treinado_e_prever_ia ( mod_alvo, tamanho= 20 ) : # Forcei o tamanho 20 aqui
 
 def buscar_ultimo_resultado_api():
     try:
+        # 1. Tenta a API Principal (Herokuapp) que é mais completa
         url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
         response = requests.get(url, timeout=15)
         
-        # Valores padrão de segurança (caso a API falhe ou venha zerada)
-        premios_default = {15: 0.0, 14: 1500.0, 13: 35.0, 12: 14.0, 11: 7.0, "estimativa": 1700000.0}
-        ganhadores_default = {15: 0, 14: 0, 13: 0, 12: 0, 11: 0}
+        # Valores de segurança para evitar "Zeros" nas faixas fixas
+        premios_api = {15: 0.0, 14: 0.0, 13: 35.0, 12: 14.0, 11: 7.0, "estimativa": 0.0}
+        ganhadores_api = {15: 0, 14: 0, 13: 0, 12: 0, 11: 0}
 
         if response.status_code == 200:
             dados = response.json()
-            concurso = str(dados.get('concurso', dados.get('numero', '0')))
-            dezenas = [int(n) for n in dados.get('dezenas', dados.get('listaDezenas', []))]
+            concurso = str(dados.get('concurso', '0'))
+            dezenas = [int(n) for n in dados.get('dezenas', [])]
             
-            premios_api = premios_default.copy()
-            ganhadores_api = ganhadores_default.copy()
-            
+            # Captura a estimativa do próximo
+            est = dados.get('valorEstimadoProximoConcurso', 0)
+            premios_api["estimativa"] = float(est) if est else 0.0
+
+            # Lógica para extrair premiações e ganhadores
             if 'premiacoes' in dados:
                 for p in dados['premiacoes']:
-                    # Extrai o número da faixa (ex: "15 acertos")
-                    busca_num = re.findall(r'\d+', p['descricao'])
-                    if busca_num:
-                        faixa = int(busca_num[0])
-                        v_oficial = float(p.get('valorOficial', 0))
-                        qtd_ganhadores = int(p.get('quantidadeGanhadores', 0))
+                    # Identifica a faixa (ex: "15 acertos" vira 15)
+                    busca = re.findall(r'\d+', p['descricao'])
+                    if busca:
+                        faixa = int(busca[0])
+                        valor = float(p.get('valorOficial', 0))
+                        qtd = int(p.get('quantidadeGanhadores', 0))
                         
-                        # SÓ ATUALIZA SE O VALOR FOR MAIOR QUE ZERO
-                        # Isso impede que o sistema zere as faixas fixas (11, 12, 13)
-                        if v_oficial > 0:
-                            premios_api[faixa] = v_oficial
-                        if qtd_ganhadores > 0:
-                            ganhadores_api[faixa] = qtd_ganhadores
+                        # Só atualiza se a API trouxer valor real, senão mantém o fixo
+                        if valor > 0: premios_api[faixa] = valor
+                        if qtd > 0: ganhadores_api[faixa] = qtd
             
-            # Captura a estimativa do próximo prêmio
-            est = dados.get('valorEstimadoProximoConcurso', dados.get('valorEstimado', 0))
-            if float(est) > 0:
-                premios_api["estimativa"] = float(est)
-            
-            # Salva no estado da sessão
+            # Salva tudo no sistema
             st.session_state.premios["Lotofácil"] = premios_api
             st.session_state["ganhadores_loto"] = ganhadores_api
             
             return concurso, dezenas
+            
     except Exception as e:
-        print(f"Erro na sincronização: {e}")
+        st.error(f"Erro ao sincronizar: {e}")
         return None, None
     return None, None
 
@@ -1423,6 +1419,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
