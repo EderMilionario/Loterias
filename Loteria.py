@@ -1037,36 +1037,63 @@ with abas[1]:
             st.rerun()
 
                         
-# --- [ABA 2: CONFIGURAR VALORES E RATEIO] ---
+# --- [ABA 2: CONFIGURAR VALORES E RATEIO - VISUAL DASHBOARD] ---
 with abas[2]:
-    st.header("💰 Tabela de Premiações (Valores Reais)")
-    st.info("Os valores abaixo são atualizados automaticamente via API da Caixa.")
-
-    # Busca os prêmios do session_state (carregados no início ou pelo botão de atualizar)
+    st.markdown("### 💰 Painel de Premiações e Rateio")
+    
+    # Busca os dados atualizados
     premios_loto = st.session_state.premios.get("Lotofácil", {})
     
-    col_fixos, col_rateio = st.columns(2)
+    # 1. CARD DE DESTAQUE: ESTIMATIVA 15 PONTOS
+    valor_est = premios_loto.get("estimativa", premios_loto.get(15, 1700000.0))
+    
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; padding: 25px; border-radius: 15px; text-align: center; border: 2px solid #60a5fa; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-bottom: 20px;">
+        <span style="font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;">🏆 Próximo Prêmio Estimado</span><br>
+        <span style="font-size: 42px; font-weight: 900;">{formatar_real(valor_est)}</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-    with col_fixos:
-        st.subheader("📌 Prêmios Fixos")
+    # 2. COLUNAS PARA RATEIO (14 e 15 pontos reais)
+    col1, col2 = st.columns(2)
+    with col1:
+        v15_real = premios_loto.get(15, 0)
+        st.metric("Ganhadores 15 Pontos", "Último Sorteio", help="Valor pago para quem acertou 15 dezenas")
+        st.markdown(f"<h3 style='color: #d4af37;'>{formatar_real(v15_real)}</h3>", unsafe_allow_html=True)
+
+    with col2:
+        v14_real = premios_loto.get(14, 1500.0)
+        st.metric("Rateio 14 Pontos", "Média por ganhador", delta="Oficial")
+        st.markdown(f"<h3 style='color: #3b82f6;'>{formatar_real(v14_real)}</h3>", unsafe_allow_html=True)
+
+    st.markdown("---")
+    
+    # 3. PRÊMIOS FIXOS (11, 12 e 13)
+    st.subheader("📌 Prêmios por Acerto (Fixos)")
+    c1, c2, c3 = st.columns(3)
+    
+    with c1:
         st.markdown(f"""
-        **11 Pontos:** {formatar_real(premios_loto.get(11, 7.0))}  
-        **12 Pontos:** {formatar_real(premios_loto.get(12, 14.0))}  
-        **13 Pontos:** {formatar_real(premios_loto.get(13, 35.0))}
-        """)
+        <div style="background: #f8fafc; padding: 15px; border-radius: 10px; border-left: 5px solid #22c55e; text-align: center; color: #1e293b;">
+            <b>13 PONTOS</b><br><span style="font-size: 18px;">{formatar_real(premios_loto.get(13, 35.0))}</span>
+        </div>
+        """, unsafe_allow_html=True)
 
-    with col_rateio:
-        st.subheader("📊 Rateio do Concurso")
-        # Mostra o valor de 14 e 15 pontos que veio da API
-        v14 = premios_loto.get(14, 1500.0)
-        v15 = premios_loto.get(15, 1700000.0)
-        
-        st.metric("Estimativa 15 Pontos", formatar_real(v15))
-        st.metric("Rateio 14 Pontos", formatar_real(v14))
+    with c2:
+        st.markdown(f"""
+        <div style="background: #f8fafc; padding: 15px; border-radius: 10px; border-left: 5px solid #eab308; text-align: center; color: #1e293b;">
+            <b>12 PONTOS</b><br><span style="font-size: 18px;">{formatar_real(premios_loto.get(12, 14.0))}</span>
+        </div>
+        """, unsafe_allow_html=True)
 
-    st.divider()
-    st.caption("Nota: Se os valores acima estiverem desatualizados, use o botão 'Atualizar Sorteios' na Aba Principal.")
-       
+    with c3:
+        st.markdown(f"""
+        <div style="background: #f8fafc; padding: 15px; border-radius: 10px; border-left: 5px solid #ef4444; text-align: center; color: #1e293b;">
+            <b>11 PONTOS</b><br><span style="font-size: 18px;">{formatar_real(premios_loto.get(11, 7.0))}</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.info("💡 Para atualizar estes valores com o sorteio mais recente, vá até a aba **Banco de Dados** e clique em **Sincronizar**.")
 
 
 with abas[3]:
@@ -1398,6 +1425,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
