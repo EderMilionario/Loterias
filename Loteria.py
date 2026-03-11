@@ -274,6 +274,7 @@ def calcular_premio_multiplo_lotofacil(n_dezenas_jogadas, n_acertos):
     if n_acertos < 11:
         return 0.0
     
+    # TABELA OFICIAL DE MULTIPLICADORES DA CAIXA
     tabela_premios = {
         15: {15: (1, 0, 0, 0, 0), 14: (0, 1, 0, 0, 0), 13: (0, 0, 1, 0, 0), 12: (0, 0, 0, 1, 0), 11: (0, 0, 0, 0, 1)},
         16: {15: (1, 15, 0, 0, 0), 14: (0, 2, 14, 0, 0), 13: (0, 0, 3, 13, 0), 12: (0, 0, 0, 4, 12), 11: (0, 0, 0, 0, 5)},
@@ -283,17 +284,30 @@ def calcular_premio_multiplo_lotofacil(n_dezenas_jogadas, n_acertos):
         20: {15: (1, 75, 1050, 4550, 9825), 14: (0, 6, 210, 1820, 7280), 13: (0, 0, 21, 252, 2247), 12: (0, 0, 0, 56, 1232), 11: (0, 0, 0, 0, 126)}
     }
 
+    # Verifica se a combinação de dezenas jogadas e acertos existe na tabela
     if n_dezenas_jogadas not in tabela_premios or n_acertos not in tabela_premios[n_dezenas_jogadas]:
         return 0.0
 
+    # Pega a linha correspondente aos multiplicadores (ex: se acertou 14 jogando 16, traz (0, 2, 14, 0, 0))
     qtds = tabela_premios[n_dezenas_jogadas][n_acertos]
-    valores = st.session_state.premios["Lotofácil"]
     
-    total = (qtds[0] * valores.get("15", 0) +
-             qtds[1] * valores.get("14", 0) +
-             qtds[2] * valores.get("13", 0) +
-             qtds[3] * valores.get("12", 0) +
-             qtds[4] * valores.get("11", 0))
+    # Acessa os valores unitários salvos na sessão (Aba 3)
+    valores = st.session_state.premios.get("Lotofácil", {})
+    
+    # Captura segura dos valores (tenta chave inteira, depois string, se não existir usa o valor fixo padrão)
+    v15 = valores.get(15, valores.get("15", 0.0))
+    v14 = valores.get(14, valores.get("14", 0.0))
+    v13 = valores.get(13, valores.get("13", 35.0))
+    v12 = valores.get(12, valores.get("12", 14.0))
+    v11 = valores.get(11, valores.get("11", 7.0))
+
+    # Realiza a soma total: (Multiplicador x Valor da Faixa)
+    total = (qtds[0] * v15 + 
+             qtds[1] * v14 + 
+             qtds[2] * v13 + 
+             qtds[3] * v12 + 
+             qtds[4] * v11)
+             
     return total
 
 def jogo_ja_saiu(jogo, mod):
@@ -1419,6 +1433,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
