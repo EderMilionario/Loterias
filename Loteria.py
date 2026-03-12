@@ -963,19 +963,15 @@ with abas[1]:
 with abas[2]:
     st.header("💰 VALORES E RATEIO OFICIAL")
     
-    # Chama a função com o nome que já está no teu código
-    dados_api = buscar_ultimo_resultado_api()
-    
     if dados_api:
-        # Pega a estimativa e o próximo concurso do JSON
+        # Puxa o prêmio estimado do próximo concurso
         valor_est = dados_api.get('valorEstimadoProximoConcurso', 0)
         prox_conc = dados_api.get('proximoConcurso', '---')
         
         st.success(f"🚀 **PRÓXIMO CONCURSO ({prox_conc}):** ESTIMATIVA DE **R$ {valor_est:,.2f}**")
-        
         st.markdown("---")
         
-        # Tabela de Rateio (Ganhadores de 11 a 15 pontos)
+        # Monta a tabela de rateio com todas as faixas (11 a 15 pontos)
         st.subheader(f"📊 Detalhes do Concurso {dados_api.get('concurso')}")
         lista_rateio = dados_api.get('listaRateio', [])
         
@@ -987,13 +983,11 @@ with abas[2]:
                     "Ganhadores": item['numeroDeGanhadores'],
                     "Prêmio Unitário": f"R$ {item['valorRateio']:,.2f}"
                 })
-            
-            # Desenha a tabela com os teus dados
             st.table(pd.DataFrame(tabela_premios))
         else:
             st.warning("⚠️ Rateio ainda não disponível.")
     else:
-        st.error("❌ Erro de Conexão: A API não retornou os valores.")
+        st.error("❌ Erro de Conexão: A API não retornou dados.")
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database - Gerenciar Resultados")
@@ -1004,7 +998,7 @@ with abas[3]:
     st.markdown("### 🌐 Sincronização Online")
     if st.button("🔄 BUSCAR ÚLTIMO RESULTADO (API)", use_container_width=True):
         with st.spinner("Consultando servidores da Caixa..."):
-            c_api, d_api = buscar_ultimo_resultado_api()
+            dados_api = buscar_ultimo_resultado_api()
             if c_api and d_api:
                 # Grava no dicionário global
                 st.session_state.ultimo_res[m_db][str(c_api)] = d_api
@@ -1321,6 +1315,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
