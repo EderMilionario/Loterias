@@ -43,24 +43,24 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui també
 
 def buscar_ultimo_resultado_api():
     try:
+        # URL mais estável e rápida
         url = "https://loterica.api.ghgi.com.br/api/lotofacil/latest"
-        headers = {"User-Agent": "Mozilla/5.0"}
+        # O Header é OBRIGATÓRIO para a API não recusar o Streamlit
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        
         response = requests.get(url, headers=headers, timeout=10)
         
         if response.status_code == 200:
             dados = response.json()
             
-            # GUARDAMOS OS VALORES AQUI PARA A ABA 2 PEGAR DEPOIS
-            st.session_state['dados_valores'] = {
-                'estimativa': dados.get('valorEstimadoProximoConcurso', 0),
-                'proximo_concurso': dados.get('proximoConcurso', '---'),
-                'rateio': dados.get('listaRateio', []),
-                'concurso_atual': dados.get('concurso')
-            }
+            # GUARDAMOS TUDO NO SESSION_STATE PARA A ABA 2 USAR DEPOIS
+            st.session_state['dados_api_completo'] = dados
             
-            # RETORNAMOS EXATAMENTE O QUE SEU CODIGO NA LINHA 966/1007 ESPERA
+            # RETORNO EXATO QUE O SEU CÓDIGO JÁ USA (Linhas 966 e 1007)
+            # Retorna Concurso (String) e Dezenas (Lista de Inteiros)
             return str(dados['concurso']), [int(n) for n in dados['dezenas']]
-    except:
+    except Exception as e:
+        print(f"Erro técnico de conexão: {e}")
         return None, None
     return None, None
 def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
@@ -990,34 +990,42 @@ with abas[1]:
             st.session_state.jogos_salvos = []
             st.rerun()
 
-                        
-  
-
-        
-
+                         
 with abas[2]:
     st.header("💰 VALORES E RATEIO OFICIAL")
     
-    if 'dados_valores' in st.session_state:
-        v = st.session_state['dados_valores']
+    if 'dados_api_completo' in st.session_state:
+        d = st.session_state['dados_api_completo']
         
-        # Exibe o prêmio estimado
-        st.success(f"🚀 **PRÓXIMO CONCURSO ({v['proximo_concurso']}):** ESTIMATIVA DE **R$ {v['estimativa']:,.2f}**")
+        # 1. PRÊMIO ESTIMADO (PROX. CONCURSO)
+        valor_est = d.get('valorEstimadoProximoConcurso', 0)
+        prox_conc = d.get('proximoConcurso', '---')
+        st.success(f"🚀 **PRÓXIMO CONCURSO ({prox_conc}):** ESTIMATIVA DE **R$ {valor_est:,.2f}**")
         
-        st.write(f"📊 **Rateio Detalhado - Concurso {v['concurso_atual']}:**")
+        st.markdown("---")
         
-        # Monta a tabela se houver rateio
-        if v['rateio']:
-            df_tab = pd.DataFrame([
-                {
-                    "Acertos": f"{i['faixa']} Pontos",
-                    "Ganhadores": i['numeroDeGanhadores'],
-                    "Prêmio": f"R$ {i['valorRateio']:,.2f}"
-                } for i in v['rateio']
-            ])
-            st.table(df_tab)
+        # 2. TABELA DE RATEIO (GANHADORES)
+        st.subheader(f"📊 Rateio Oficial - Concurso {d.get('concurso')}")
+        lista_rateio = d.get('listaRateio', [])
+        
+        if lista_rateio:
+            dados_tabela = []
+            for item in lista_rateio:
+                dados_tabela.append({
+                    "Acertos": f"{item['faixa']} Pontos",
+                    "Ganhadores": item['numeroDeGanhadores'],
+                    "Prêmio Unitário": f"R$ {item['valorRateio']:,.2f}"
+                })
+            # Mostra a tabela formatada usando o pandas que você já importou
+            st.table(pd.DataFrame(dados_tabela))
+        else:
+            st.warning("⚠️ O rateio detalhado ainda não foi liberado.")
     else:
-        st.warning("Clique no botão de 'Atualizar' ou verifique a conexão para carregar os valores.")
+        st.error("❌ A API não retornou dados. Clique em atualizar ou verifique a conexão.")  
+
+        
+
+
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database - Gerenciar Resultados")
@@ -1345,6 +1353,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
