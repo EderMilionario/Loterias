@@ -40,39 +40,31 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui també
     return sorted([int(i + 1) for i in indices_vencedores])
 # --- [FIM DA FUNÇÃO IA CORRIGIDA] ---
 
-
 def buscar_ultimo_resultado_api():
-    # Tentamos duas URLs diferentes caso uma esteja bloqueada
+    # Tentamos a GHGI primeiro, depois a oficial da Caixa como backup
     urls = [
         "https://loterica.api.ghgi.com.br/api/lotofacil/latest",
         "https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil"
     ]
-    
-    # Simula um navegador Chrome real para evitar bloqueio de IP
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-        "Accept": "application/json"
-    }
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
     for url in urls:
         try:
-            response = requests.get(url, headers=headers, timeout=15)
+            response = requests.get(url, headers=headers, timeout=10)
             if response.status_code == 200:
                 dados = response.json()
+                # Verifica se o rateio existe nesta resposta
+                rateio = dados.get('listaRateio') or dados.get('listaRateioPremios')
                 
-                # Salva o JSON para a Aba 2 usar (Rateio/Prêmio)
-                st.session_state['dados_api_completo'] = dados
-                
-                # Mapeia os campos dependendo de qual API respondeu
-                conc = dados.get('concurso') or dados.get('numero')
-                dez = dados.get('dezenas') or dados.get('listaDezenas')
-                
-                if conc and dez:
+                if rateio: # Se achou o rateio, para aqui e salva
+                    st.session_state['dados_api_completo'] = dados
+                    conc = dados.get('concurso') or dados.get('numero')
+                    dez = dados.get('dezenas') or dados.get('listaDezenas')
                     return str(conc), [int(n) for n in dez]
         except:
-            continue # Se a primeira falhar, tenta a próxima URL
-            
+            continue
     return None, None
+
 def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
     """Calcula bônus para dezenas no pool baseado no que já foi escolhido."""
     pesos = {n: 1.0 for n in pool_disponivel}
@@ -1001,47 +993,37 @@ with abas[1]:
             st.rerun()
 
 with abas[2]:
-    mostrar_status_backup()
     st.header("💰 VALORES E RATEIO OFICIAL")
     
     if 'dados_api_completo' in st.session_state:
         d = st.session_state['dados_api_completo']
         
-        # 1. PEGAR ESTIMATIVA (Tenta todos os nomes possíveis)
-        estimativa = d.get('valorEstimadoProximoConcurso') or d.get('valorEstimadoPremios') or d.get('valor_estimado', 0)
-        prox_num = d.get('proximoConcurso') or d.get('numero_proximo') or "---"
+        # Próximo prémio
+        est = d.get('valorEstimadoProximoConcurso') or d.get('valorEstimadoPremios') or 0
+        st.success(f"🚀 **PRÓXIMO CONCURSO:** ESTIMATIVA DE **R$ {float(est):,.2f}**")
         
-        st.success(f"🚀 **PRÓXIMO CONCURSO ({prox_num}):** ESTIMATIVA DE **R$ {float(estimativa):,.2f}**")
-        st.markdown("---")
-        
-        # 2. PEGAR RATEIO (Tenta todos os nomes possíveis)
-        # Algumas APIs usam 'listaRateio', outras 'listaRateioPremios', outras 'rateio'
-        lista = d.get('listaRateio') or d.get('listaRateioPremios') or d.get('rateio', [])
-        
-        st.subheader(f"📊 Detalhes do Concurso {d.get('concurso') or d.get('numero', 'Atual')}")
+        # Forçar busca de rateio
+        lista = d.get('listaRateio') or d.get('listaRateioPremios') or []
         
         if lista:
-            dados_tabela = []
+            st.subheader(f"📊 Detalhes do Concurso {d.get('concurso') or d.get('numero')}")
+            dados_tab = []
             for i in lista:
-                # Extrai os valores ignorando se a chave é 'faixa', 'descricao', 'quantidade', etc.
-                faixa = i.get('faixa') or i.get('descricao') or i.get('faixa_nome')
-                ganhadores = i.get('numeroDeGanhadores') or i.get('quantidadeNoFaixa') or i.get('ganhadores', 0)
-                valor = i.get('valorRateio') or i.get('valorSorteado') or i.get('valor_unitario', 0)
+                # Mapeamento flexível de nomes
+                f = i.get('faixa') or i.get('descricao')
+                g = i.get('numeroDeGanhadores') or i.get('quantidadeNoFaixa')
+                v = i.get('valorRateio') or i.get('valorSorteado')
                 
-                dados_tabela.append({
-                    "Acertos": f"{faixa} Pontos" if str(faixa).isdigit() else faixa,
-                    "Ganhadores": ganhadores,
-                    "Prêmio Unitário": f"R$ {float(valor):,.2f}"
+                dados_tab.append({
+                    "Acertos": f"{f} Pontos" if str(f).isdigit() else f,
+                    "Ganhadores": g,
+                    "Prémio": f"R$ {float(v):,.2f}"
                 })
-            
-            # Exibe a tabela formatada
-            st.table(pd.DataFrame(dados_tabela))
+            st.table(pd.DataFrame(dados_tab))
         else:
-            st.warning("⚠️ O rateio oficial ainda não foi processado por esta API. Tente atualizar em instantes.")
-            # Linha de debug para você ver o que está vindo se der erro (apague depois se quiser)
-            # st.write("Dados recebidos:", d.keys()) 
+            st.error("⚠️ O rateio não foi encontrado nos dados da API. Tente o botão 'Atualizar'.")
     else:
-        st.error("❌ Sem dados na memória. Vá ao Radar e clique em Atualizar.")                         
+        st.warning("Sem dados. Vá ao Radar e clique em Atualizar.")                         
 
 
         
@@ -1374,6 +1356,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
