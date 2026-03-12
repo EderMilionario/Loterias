@@ -41,42 +41,19 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui també
 # --- [FIM DA FUNÇÃO IA CORRIGIDA] ---
 
 
-def buscar_dados_completos_api():
+def buscar_ultimo_resultado_api():
     try:
+        # URL que traz o rateio e a estimativa que pediste
         url = "https://loterica.api.ghgi.com.br/api/lotofacil/latest"
         headers = {"User-Agent": "Mozilla/5.0"}
         response = requests.get(url, headers=headers, timeout=10)
         if response.status_code == 200:
-            return response.json() # Retorna o JSON inteiro para termos acesso ao rateio
+            dados = response.json()
+            # Retorna o JSON completo para a Aba Valores usar
+            return dados
     except:
         return None
     return None
-def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
-    """Calcula bônus para dezenas no pool baseado no que já foi escolhido."""
-    pesos = {n: 1.0 for n in pool_disponivel}
-    if not dezenas_selecionadas or not matriz_afinidade:
-        return pesos
-    
-    for d_fixa in dezenas_selecionadas:
-        for d_pool in pool_disponivel:
-            if d_pool not in dezenas_selecionadas:
-                # O índice da matriz deve ser inteiro
-                idx_f = int(d_fixa)
-                idx_p = int(d_pool)
-                bonus = matriz_afinidade[idx_f][idx_p] * 0.5
-                pesos[d_pool] += bonus
-    return pesos
-
-def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo):
-    if not matriz_afinidade or len(pool_atual) <= tamanho_objetivo:
-        return sorted(list(pool_atual))
-    
-    pool_refinado = list(pool_atual)
-    while len(pool_refinado) > tamanho_objetivo:
-        # Aqui removemos as dezenas com menor soma de afinidade
-        piores_dezenas = sorted(pool_refinado, key=lambda d: sum(matriz_afinidade[int(d)]), reverse=False)
-        pool_refinado.remove(piores_dezenas[0])
-    return sorted(pool_refinado)
     
 
 def calcular_matriz_afinidade_kadosh(mod):
@@ -984,21 +961,21 @@ with abas[1]:
         
 
 with abas[2]:
-    mostrar_status_backup()
     st.header("💰 VALORES E RATEIO OFICIAL")
     
-    dados_api = buscar_dados_completos_api()
+    # Chama a função com o nome que já está no teu código
+    dados_api = buscar_ultimo_resultado_api()
     
     if dados_api:
-        # --- ESTIMATIVA DO PRÓXIMO CONCURSO ---
+        # Pega a estimativa e o próximo concurso do JSON
         valor_est = dados_api.get('valorEstimadoProximoConcurso', 0)
         prox_conc = dados_api.get('proximoConcurso', '---')
         
-        st.info(f"🚀 **PRÓXIMO CONCURSO ({prox_conc}):** ESTIMATIVA DE **R$ {valor_est:,.2f}**")
+        st.success(f"🚀 **PRÓXIMO CONCURSO ({prox_conc}):** ESTIMATIVA DE **R$ {valor_est:,.2f}**")
         
         st.markdown("---")
         
-        # --- TABELA DE RATEIO (GANHADORES) ---
+        # Tabela de Rateio (Ganhadores de 11 a 15 pontos)
         st.subheader(f"📊 Detalhes do Concurso {dados_api.get('concurso')}")
         lista_rateio = dados_api.get('listaRateio', [])
         
@@ -1008,24 +985,15 @@ with abas[2]:
                 tabela_premios.append({
                     "Acertos": f"{item['faixa']} Pontos",
                     "Ganhadores": item['numeroDeGanhadores'],
-                    "Prémio Unitário": f"R$ {item['valorRateio']:,.2f}"
+                    "Prêmio Unitário": f"R$ {item['valorRateio']:,.2f}"
                 })
             
-            # Exibe a tabela formatada
+            # Desenha a tabela com os teus dados
             st.table(pd.DataFrame(tabela_premios))
-            
-            # Atualiza o sistema de prémios para os cálculos automáticos de lucro
-            st.session_state.premios["Lotofácil"] = {
-                15: lista_rateio[0].get('valorRateio', 0),
-                14: lista_rateio[1].get('valorRateio', 0),
-                13: lista_rateio[2].get('valorRateio', 0),
-                12: lista_rateio[3].get('valorRateio', 0),
-                11: lista_rateio[4].get('valorRateio', 0)
-            }
         else:
-            st.warning("⚠️ Rateio ainda não disponível para este concurso.")
+            st.warning("⚠️ Rateio ainda não disponível.")
     else:
-        st.error("❌ Erro de Conexão: Não foi possível carregar os valores da API.")
+        st.error("❌ Erro de Conexão: A API não retornou os valores.")
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database - Gerenciar Resultados")
@@ -1353,6 +1321,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
