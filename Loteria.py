@@ -964,12 +964,25 @@ if dados_api: # Agora a linha 966 vai funcionar porque a variável existe
     # Aqui entra o código que exibe o prêmio e rateio que você queria
     valor_est = dados_api.get('valorEstimadoProximoConcurso', 0)
     prox_conc = dados_api.get('proximoConcurso', '---')
+    with abas[2]: 
+    st.header("💰 VALORES E RATEIO OFICIAL")
     
-    with abas[2]: # Aba Valores
-        st.header("💰 VALORES E RATEIO OFICIAL")
-        st.success(f"🚀 **PRÓXIMO CONCURSO ({prox_conc}):** ESTIMATIVA DE **R$ {valor_est:,.2f}**")
+    # Tenta buscar os dados
+    dados_api = buscar_ultimo_resultado_api()
+    
+    if dados_api:
+        # Pega os valores do JSON
+        valor_est = dados_api.get('valorEstimadoProximoConcurso', 0)
+        prox_conc = dados_api.get('proximoConcurso', '---')
         
+        # Exibe o destaque do prêmio
+        st.success(f"🚀 **PRÓXIMO CONCURSO ({prox_conc}):** ESTIMATIVA DE **R$ {valor_est:,.2f}**")
+        st.markdown("---")
+        
+        # Monta a tabela de rateio
+        st.subheader(f"📊 Detalhes do Concurso {dados_api.get('concurso')}")
         lista_rateio = dados_api.get('listaRateio', [])
+        
         if lista_rateio:
             tabela_premios = []
             for item in lista_rateio:
@@ -979,6 +992,13 @@ if dados_api: # Agora a linha 966 vai funcionar porque a variável existe
                     "Prêmio Unitário": f"R$ {item['valorRateio']:,.2f}"
                 })
             st.table(pd.DataFrame(tabela_premios))
+        else:
+            st.warning("⚠️ O rateio ainda não foi liberado para este concurso.")
+    else:
+        # SE A API DER ERRO, MOSTRA ISSO EM VEZ DE FICAR BRANCO
+        st.error("❌ Erro de Conexão: A API loto-ghgi não respondeu.")
+        st.info("Verifique se a função buscar_ultimo_resultado_api() no topo do código está com a URL: https://loterica.api.ghgi.com.br/api/lotofacil/latest")
+    
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database - Gerenciar Resultados")
@@ -1306,6 +1326,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
