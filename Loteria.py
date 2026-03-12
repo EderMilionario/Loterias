@@ -1311,6 +1311,19 @@ with abas[5]:
 // 3. Backup: Leitura automática via session_state (Aba 5 reflete o JSON)
 // 4. Paridade: Fórmula dinâmica integrada no motor de validação
         """, language="javascript")
+        # --- [BOTÃO DE ATIVAÇÃO DA IA - ADICIONADO COM PRECISÃO] ---
+    st.markdown("---")
+    st.subheader("🤖 COMANDO DE INTELIGÊNCIA ARTIFICIAL")
+    if st.button("🚀 Executar Treinamento e Sugestão IA"):
+        with st.spinner("Analisando tendências de calor e atraso..."):
+            # Chamada corrigida conforme a nova definição da linha 31
+            sugestao = treinar_e_prever_ia(mod) 
+            if sugestao:
+                st.session_state.favoritas[mod] = sugestao
+                st.success(f"✅ IA KADOSH: {len(sugestao)} dezenas sugeridas e aplicadas ao Pool!")
+                st.rerun()
+            else:
+                st.error("⚠️ Falha: Base de dados insuficiente para esta modalidade.")
 
 with abas[6]:
     st.header("🔗 Afinidade e Vínculos de Dezenas")
@@ -1433,6 +1446,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
