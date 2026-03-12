@@ -46,13 +46,23 @@ def buscar_ultimo_resultado_api():
         url = "https://loterica.api.ghgi.com.br/api/lotofacil/latest"
         headers = {"User-Agent": "Mozilla/5.0"}
         response = requests.get(url, headers=headers, timeout=10)
+        
         if response.status_code == 200:
             dados = response.json()
+            
+            # GUARDAMOS OS VALORES AQUI PARA A ABA 2 PEGAR DEPOIS
+            st.session_state['dados_valores'] = {
+                'estimativa': dados.get('valorEstimadoProximoConcurso', 0),
+                'proximo_concurso': dados.get('proximoConcurso', '---'),
+                'rateio': dados.get('listaRateio', []),
+                'concurso_atual': dados.get('concurso')
+            }
+            
+            # RETORNAMOS EXATAMENTE O QUE SEU CODIGO NA LINHA 966/1007 ESPERA
             return str(dados['concurso']), [int(n) for n in dados['dezenas']]
     except:
         return None, None
     return None, None
-
 def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
     """Calcula bônus para dezenas no pool baseado no que já foi escolhido."""
     pesos = {n: 1.0 for n in pool_disponivel}
@@ -986,15 +996,28 @@ with abas[1]:
         
 
 with abas[2]:
-    mostrar_status_backup()
-    st.header("⚙️ Configuração de Valores")
-    mod_v = st.selectbox("Loteria", list(st.session_state.premios.keys()), key="v_sel")
-    novos_v = {}
-    for faixa, valor in st.session_state.premios[mod_v].items():
-        novos_v[faixa] = st.number_input(f"Prêmio {faixa} acertos", value=float(valor), format="%.2f", key=f"v_{mod_v}_{faixa}")
-    if st.button("💾 SALVAR VALORES"): 
-        st.session_state.premios[mod_v] = novos_v
-        st.success("✅ Valores atualizados!")
+    st.header("💰 VALORES E RATEIO OFICIAL")
+    
+    if 'dados_valores' in st.session_state:
+        v = st.session_state['dados_valores']
+        
+        # Exibe o prêmio estimado
+        st.success(f"🚀 **PRÓXIMO CONCURSO ({v['proximo_concurso']}):** ESTIMATIVA DE **R$ {v['estimativa']:,.2f}**")
+        
+        st.write(f"📊 **Rateio Detalhado - Concurso {v['concurso_atual']}:**")
+        
+        # Monta a tabela se houver rateio
+        if v['rateio']:
+            df_tab = pd.DataFrame([
+                {
+                    "Acertos": f"{i['faixa']} Pontos",
+                    "Ganhadores": i['numeroDeGanhadores'],
+                    "Prêmio": f"R$ {i['valorRateio']:,.2f}"
+                } for i in v['rateio']
+            ])
+            st.table(df_tab)
+    else:
+        st.warning("Clique no botão de 'Atualizar' ou verifique a conexão para carregar os valores.")
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database - Gerenciar Resultados")
@@ -1322,6 +1345,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
