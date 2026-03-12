@@ -43,14 +43,11 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui també
 
 def buscar_ultimo_resultado_api():
     try:
-        # URL que traz o rateio e a estimativa que pediste
         url = "https://loterica.api.ghgi.com.br/api/lotofacil/latest"
         headers = {"User-Agent": "Mozilla/5.0"}
         response = requests.get(url, headers=headers, timeout=10)
         if response.status_code == 200:
-            dados = response.json()
-            # Retorna o JSON completo para a Aba Valores usar
-            return dados
+            return response.json()
     except:
         return None
     return None
@@ -960,21 +957,19 @@ with abas[1]:
 
         
 
-with abas[2]:
-    st.header("💰 VALORES E RATEIO OFICIAL")
+# CHAME A FUNÇÃO ANTES DO IF
+dados_api = buscar_ultimo_resultado_api()
+
+if dados_api: # Agora a linha 966 vai funcionar porque a variável existe
+    # Aqui entra o código que exibe o prêmio e rateio que você queria
+    valor_est = dados_api.get('valorEstimadoProximoConcurso', 0)
+    prox_conc = dados_api.get('proximoConcurso', '---')
     
-    if dados_api:
-        # Puxa o prêmio estimado do próximo concurso
-        valor_est = dados_api.get('valorEstimadoProximoConcurso', 0)
-        prox_conc = dados_api.get('proximoConcurso', '---')
-        
+    with abas[2]: # Aba Valores
+        st.header("💰 VALORES E RATEIO OFICIAL")
         st.success(f"🚀 **PRÓXIMO CONCURSO ({prox_conc}):** ESTIMATIVA DE **R$ {valor_est:,.2f}**")
-        st.markdown("---")
         
-        # Monta a tabela de rateio com todas as faixas (11 a 15 pontos)
-        st.subheader(f"📊 Detalhes do Concurso {dados_api.get('concurso')}")
         lista_rateio = dados_api.get('listaRateio', [])
-        
         if lista_rateio:
             tabela_premios = []
             for item in lista_rateio:
@@ -984,10 +979,6 @@ with abas[2]:
                     "Prêmio Unitário": f"R$ {item['valorRateio']:,.2f}"
                 })
             st.table(pd.DataFrame(tabela_premios))
-        else:
-            st.warning("⚠️ Rateio ainda não disponível.")
-    else:
-        st.error("❌ Erro de Conexão: A API não retornou dados.")
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database - Gerenciar Resultados")
@@ -1315,6 +1306,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
