@@ -42,26 +42,36 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui també
 
 
 def buscar_ultimo_resultado_api():
-    try:
-        # URL mais estável e rápida
-        url = "https://loterica.api.ghgi.com.br/api/lotofacil/latest"
-        # O Header é OBRIGATÓRIO para a API não recusar o Streamlit
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-        
-        response = requests.get(url, headers=headers, timeout=10)
-        
-        if response.status_code == 200:
-            dados = response.json()
+    # Tentamos duas URLs diferentes caso uma esteja bloqueada
+    urls = [
+        "https://loterica.api.ghgi.com.br/api/lotofacil/latest",
+        "https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil"
+    ]
+    
+    # Simula um navegador Chrome real para evitar bloqueio de IP
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "Accept": "application/json"
+    }
+
+    for url in urls:
+        try:
+            response = requests.get(url, headers=headers, timeout=15)
+            if response.status_code == 200:
+                dados = response.json()
+                
+                # Salva o JSON para a Aba 2 usar (Rateio/Prêmio)
+                st.session_state['dados_api_completo'] = dados
+                
+                # Mapeia os campos dependendo de qual API respondeu
+                conc = dados.get('concurso') or dados.get('numero')
+                dez = dados.get('dezenas') or dados.get('listaDezenas')
+                
+                if conc and dez:
+                    return str(conc), [int(n) for n in dez]
+        except:
+            continue # Se a primeira falhar, tenta a próxima URL
             
-            # GUARDAMOS TUDO NO SESSION_STATE PARA A ABA 2 USAR DEPOIS
-            st.session_state['dados_api_completo'] = dados
-            
-            # RETORNO EXATO QUE O SEU CÓDIGO JÁ USA (Linhas 966 e 1007)
-            # Retorna Concurso (String) e Dezenas (Lista de Inteiros)
-            return str(dados['concurso']), [int(n) for n in dados['dezenas']]
-    except Exception as e:
-        print(f"Erro técnico de conexão: {e}")
-        return None, None
     return None, None
 def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
     """Calcula bônus para dezenas no pool baseado no que já foi escolhido."""
@@ -997,31 +1007,27 @@ with abas[2]:
     if 'dados_api_completo' in st.session_state:
         d = st.session_state['dados_api_completo']
         
-        # 1. PRÊMIO ESTIMADO (PROX. CONCURSO)
-        valor_est = d.get('valorEstimadoProximoConcurso', 0)
-        prox_conc = d.get('proximoConcurso', '---')
-        st.success(f"🚀 **PRÓXIMO CONCURSO ({prox_conc}):** ESTIMATIVA DE **R$ {valor_est:,.2f}**")
+        # Pega a estimativa do próximo prêmio
+        estimativa = d.get('valorEstimadoProximoConcurso') or d.get('valorEstimadoPremios') or 0
+        prox_num = d.get('proximoConcurso') or (int(d.get('concurso', 0)) + 1)
         
-        st.markdown("---")
+        st.success(f"🚀 **PRÓXIMO CONCURSO ({prox_num}):** ESTIMATIVA DE **R$ {float(estimativa):,.2f}**")
         
-        # 2. TABELA DE RATEIO (GANHADORES)
-        st.subheader(f"📊 Rateio Oficial - Concurso {d.get('concurso')}")
-        lista_rateio = d.get('listaRateio', [])
+        # Monta a Tabela de Rateio (11 a 15 pontos)
+        st.subheader(f"📊 Detalhes do Concurso {d.get('concurso') or d.get('numero')}")
+        lista = d.get('listaRateio') or d.get('listaRateioPremios', [])
         
-        if lista_rateio:
-            dados_tabela = []
-            for item in lista_rateio:
-                dados_tabela.append({
-                    "Acertos": f"{item['faixa']} Pontos",
-                    "Ganhadores": item['numeroDeGanhadores'],
-                    "Prêmio Unitário": f"R$ {item['valorRateio']:,.2f}"
+        if lista:
+            tabela_dados = []
+            for i in lista:
+                tabela_dados.append({
+                    "Acertos": i.get('faixa') or i.get('descricao'),
+                    "Ganhadores": i.get('numeroDeGanhadores') or i.get('quantidadeNoFaixa'),
+                    "Prêmio Unitário": f"R$ {i.get('valorRateio', i.get('valorSorteado')):,.2f}"
                 })
-            # Mostra a tabela formatada usando o pandas que você já importou
-            st.table(pd.DataFrame(dados_tabela))
-        else:
-            st.warning("⚠️ O rateio detalhado ainda não foi liberado.")
+            st.table(pd.DataFrame(tabela_dados))
     else:
-        st.error("❌ A API não retornou dados. Clique em atualizar ou verifique a conexão.")  
+        st.error("❌ A conexão com os servidores da Caixa falhou. Tente atualizar o Radar em alguns minutos.")  
 
         
 
@@ -1353,6 +1359,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
