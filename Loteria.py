@@ -41,28 +41,33 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui també
 # --- [FIM DA FUNÇÃO IA CORRIGIDA] ---
 
 def buscar_ultimo_resultado_api():
-    # Tentamos a GHGI primeiro, depois a oficial da Caixa como backup
-    urls = [
-        "https://loterica.api.ghgi.com.br/api/lotofacil/latest",
-        "https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil"
-    ]
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    # URL da GHGI (mais completa que a da Caixa para prêmios)
+    url = "https://loterica.api.ghgi.com.br/api/lotofacil/latest"
+    
+    # Simulação PROFISSIONAL de navegador para furar o bloqueio de IP
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Origin": "https://lotericas.com.br",
+        "Referer": "https://lotericas.com.br/"
+    }
 
-    for url in urls:
-        try:
-            response = requests.get(url, headers=headers, timeout=10)
-            if response.status_code == 200:
-                dados = response.json()
-                # Verifica se o rateio existe nesta resposta
-                rateio = dados.get('listaRateio') or dados.get('listaRateioPremios')
-                
-                if rateio: # Se achou o rateio, para aqui e salva
-                    st.session_state['dados_api_completo'] = dados
-                    conc = dados.get('concurso') or dados.get('numero')
-                    dez = dados.get('dezenas') or dados.get('listaDezenas')
-                    return str(conc), [int(n) for n in dez]
-        except:
-            continue
+    try:
+        # Aumentei o tempo de espera para 20 segundos
+        response = requests.get(url, headers=headers, timeout=20)
+        
+        if response.status_code == 200:
+            dados = response.json()
+            # Salva o pacote de dados bruto para a Aba 2 não ficar vazia
+            st.session_state['dados_api_completo'] = dados
+            
+            # Retorna o que seu Radar precisa (Concurso e Dezenas)
+            return str(dados.get('concurso')), [int(n) for n in dados.get('dezenas', [])]
+        else:
+            st.error(f"Erro de Servidor: {response.status_code}")
+    except Exception as e:
+        st.error(f"Falha de Conexão Real: {e}")
+        
     return None, None
 
 def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
@@ -995,35 +1000,30 @@ with abas[1]:
 with abas[2]:
     st.header("💰 VALORES E RATEIO OFICIAL")
     
-    if 'dados_api_completo' in st.session_state:
-        d = st.session_state['dados_api_completo']
+    dados = st.session_state.get('dados_api_completo')
+    
+    if dados:
+        # Pega a estimativa do prêmio
+        est = dados.get('valorEstimadoProximoConcurso') or 0
+        prox = dados.get('proximoConcurso') or "---"
+        st.success(f"🚀 **PRÓXIMO CONCURSO ({prox}):** ESTIMATIVA DE **R$ {float(est):,.2f}**")
         
-        # Próximo prémio
-        est = d.get('valorEstimadoProximoConcurso') or d.get('valorEstimadoPremios') or 0
-        st.success(f"🚀 **PRÓXIMO CONCURSO:** ESTIMATIVA DE **R$ {float(est):,.2f}**")
-        
-        # Forçar busca de rateio
-        lista = d.get('listaRateio') or d.get('listaRateioPremios') or []
-        
+        # Pega a lista de quem ganhou (11 a 15 pontos)
+        lista = dados.get('listaRateio', [])
         if lista:
-            st.subheader(f"📊 Detalhes do Concurso {d.get('concurso') or d.get('numero')}")
-            dados_tab = []
-            for i in lista:
-                # Mapeamento flexível de nomes
-                f = i.get('faixa') or i.get('descricao')
-                g = i.get('numeroDeGanhadores') or i.get('quantidadeNoFaixa')
-                v = i.get('valorRateio') or i.get('valorSorteado')
-                
-                dados_tab.append({
-                    "Acertos": f"{f} Pontos" if str(f).isdigit() else f,
-                    "Ganhadores": g,
-                    "Prémio": f"R$ {float(v):,.2f}"
+            st.subheader(f"📊 Detalhes do Concurso {dados.get('concurso')}")
+            df_lista = []
+            for item in lista:
+                df_lista.append({
+                    "Acertos": f"{item.get('faixa')} Pontos",
+                    "Ganhadores": item.get('numeroDeGanhadores'),
+                    "Prêmio Unitário": f"R$ {float(item.get('valorRateio')):,.2f}"
                 })
-            st.table(pd.DataFrame(dados_tab))
+            st.table(pd.DataFrame(df_lista))
         else:
-            st.error("⚠️ O rateio não foi encontrado nos dados da API. Tente o botão 'Atualizar'.")
+            st.warning("⚠️ O prêmio apareceu, mas o rateio ainda está sendo processado pela API.")
     else:
-        st.warning("Sem dados. Vá ao Radar e clique em Atualizar.")                         
+        st.error("❌ O sistema não conseguiu puxar os dados. O site da loteria bloqueou a conexão do Streamlit.")                         
 
 
         
@@ -1356,6 +1356,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
