@@ -1000,34 +1000,49 @@ with abas[1]:
             st.session_state.jogos_salvos = []
             st.rerun()
 
-                         
 with abas[2]:
+    mostrar_status_backup()
     st.header("💰 VALORES E RATEIO OFICIAL")
     
     if 'dados_api_completo' in st.session_state:
         d = st.session_state['dados_api_completo']
         
-        # Pega a estimativa do próximo prêmio
-        estimativa = d.get('valorEstimadoProximoConcurso') or d.get('valorEstimadoPremios') or 0
-        prox_num = d.get('proximoConcurso') or (int(d.get('concurso', 0)) + 1)
+        # 1. PEGAR ESTIMATIVA (Tenta todos os nomes possíveis)
+        estimativa = d.get('valorEstimadoProximoConcurso') or d.get('valorEstimadoPremios') or d.get('valor_estimado', 0)
+        prox_num = d.get('proximoConcurso') or d.get('numero_proximo') or "---"
         
         st.success(f"🚀 **PRÓXIMO CONCURSO ({prox_num}):** ESTIMATIVA DE **R$ {float(estimativa):,.2f}**")
+        st.markdown("---")
         
-        # Monta a Tabela de Rateio (11 a 15 pontos)
-        st.subheader(f"📊 Detalhes do Concurso {d.get('concurso') or d.get('numero')}")
-        lista = d.get('listaRateio') or d.get('listaRateioPremios', [])
+        # 2. PEGAR RATEIO (Tenta todos os nomes possíveis)
+        # Algumas APIs usam 'listaRateio', outras 'listaRateioPremios', outras 'rateio'
+        lista = d.get('listaRateio') or d.get('listaRateioPremios') or d.get('rateio', [])
+        
+        st.subheader(f"📊 Detalhes do Concurso {d.get('concurso') or d.get('numero', 'Atual')}")
         
         if lista:
-            tabela_dados = []
+            dados_tabela = []
             for i in lista:
-                tabela_dados.append({
-                    "Acertos": i.get('faixa') or i.get('descricao'),
-                    "Ganhadores": i.get('numeroDeGanhadores') or i.get('quantidadeNoFaixa'),
-                    "Prêmio Unitário": f"R$ {i.get('valorRateio', i.get('valorSorteado')):,.2f}"
+                # Extrai os valores ignorando se a chave é 'faixa', 'descricao', 'quantidade', etc.
+                faixa = i.get('faixa') or i.get('descricao') or i.get('faixa_nome')
+                ganhadores = i.get('numeroDeGanhadores') or i.get('quantidadeNoFaixa') or i.get('ganhadores', 0)
+                valor = i.get('valorRateio') or i.get('valorSorteado') or i.get('valor_unitario', 0)
+                
+                dados_tabela.append({
+                    "Acertos": f"{faixa} Pontos" if str(faixa).isdigit() else faixa,
+                    "Ganhadores": ganhadores,
+                    "Prêmio Unitário": f"R$ {float(valor):,.2f}"
                 })
-            st.table(pd.DataFrame(tabela_dados))
+            
+            # Exibe a tabela formatada
+            st.table(pd.DataFrame(dados_tabela))
+        else:
+            st.warning("⚠️ O rateio oficial ainda não foi processado por esta API. Tente atualizar em instantes.")
+            # Linha de debug para você ver o que está vindo se der erro (apague depois se quiser)
+            # st.write("Dados recebidos:", d.keys()) 
     else:
-        st.error("❌ A conexão com os servidores da Caixa falhou. Tente atualizar o Radar em alguns minutos.")  
+        st.error("❌ Sem dados na memória. Vá ao Radar e clique em Atualizar.")                         
+
 
         
 
@@ -1359,6 +1374,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
