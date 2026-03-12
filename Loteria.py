@@ -47,10 +47,38 @@ def buscar_ultimo_resultado_api():
         headers = {"User-Agent": "Mozilla/5.0"}
         response = requests.get(url, headers=headers, timeout=10)
         if response.status_code == 200:
-            return response.json()
+            dados = response.json()
+            return str(dados['concurso']), [int(n) for n in dados['dezenas']]
     except:
-        return None
-    return None
+        return None, None
+    return None, None
+
+def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
+    """Calcula bônus para dezenas no pool baseado no que já foi escolhido."""
+    pesos = {n: 1.0 for n in pool_disponivel}
+    if not dezenas_selecionadas or not matriz_afinidade:
+        return pesos
+    
+    for d_fixa in dezenas_selecionadas:
+        for d_pool in pool_disponivel:
+            if d_pool not in dezenas_selecionadas:
+                # O índice da matriz deve ser inteiro
+                idx_f = int(d_fixa)
+                idx_p = int(d_pool)
+                bonus = matriz_afinidade[idx_f][idx_p] * 0.5
+                pesos[d_pool] += bonus
+    return pesos
+
+def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo):
+    if not matriz_afinidade or len(pool_atual) <= tamanho_objetivo:
+        return sorted(list(pool_atual))
+    
+    pool_refinado = list(pool_atual)
+    while len(pool_refinado) > tamanho_objetivo:
+        # Aqui removemos as dezenas com menor soma de afinidade
+        piores_dezenas = sorted(pool_refinado, key=lambda d: sum(matriz_afinidade[int(d)]), reverse=False)
+        pool_refinado.remove(piores_dezenas[0])
+    return sorted(pool_refinado)
     
 
 def calcular_matriz_afinidade_kadosh(mod):
@@ -957,48 +985,16 @@ with abas[1]:
 
         
 
-# CHAME A FUNÇÃO ANTES DO IF
-dados_api = buscar_ultimo_resultado_api()
-
-if dados_api: # Agora a linha 966 vai funcionar porque a variável existe
-    # Aqui entra o código que exibe o prêmio e rateio que você queria
-    valor_est = dados_api.get('valorEstimadoProximoConcurso', 0)
-    prox_conc = dados_api.get('proximoConcurso', '---')
-    with abas[2]: 
-    st.header("💰 VALORES E RATEIO OFICIAL")
-    
-    # Tenta buscar os dados
-    dados_api = buscar_ultimo_resultado_api()
-    
-    if dados_api:
-        # Pega os valores do JSON
-        valor_est = dados_api.get('valorEstimadoProximoConcurso', 0)
-        prox_conc = dados_api.get('proximoConcurso', '---')
-        
-        # Exibe o destaque do prêmio
-        st.success(f"🚀 **PRÓXIMO CONCURSO ({prox_conc}):** ESTIMATIVA DE **R$ {valor_est:,.2f}**")
-        st.markdown("---")
-        
-        # Monta a tabela de rateio
-        st.subheader(f"📊 Detalhes do Concurso {dados_api.get('concurso')}")
-        lista_rateio = dados_api.get('listaRateio', [])
-        
-        if lista_rateio:
-            tabela_premios = []
-            for item in lista_rateio:
-                tabela_premios.append({
-                    "Acertos": f"{item['faixa']} Pontos",
-                    "Ganhadores": item['numeroDeGanhadores'],
-                    "Prêmio Unitário": f"R$ {item['valorRateio']:,.2f}"
-                })
-            st.table(pd.DataFrame(tabela_premios))
-        else:
-            st.warning("⚠️ O rateio ainda não foi liberado para este concurso.")
-    else:
-        # SE A API DER ERRO, MOSTRA ISSO EM VEZ DE FICAR BRANCO
-        st.error("❌ Erro de Conexão: A API loto-ghgi não respondeu.")
-        st.info("Verifique se a função buscar_ultimo_resultado_api() no topo do código está com a URL: https://loterica.api.ghgi.com.br/api/lotofacil/latest")
-    
+with abas[2]:
+    mostrar_status_backup()
+    st.header("⚙️ Configuração de Valores")
+    mod_v = st.selectbox("Loteria", list(st.session_state.premios.keys()), key="v_sel")
+    novos_v = {}
+    for faixa, valor in st.session_state.premios[mod_v].items():
+        novos_v[faixa] = st.number_input(f"Prêmio {faixa} acertos", value=float(valor), format="%.2f", key=f"v_{mod_v}_{faixa}")
+    if st.button("💾 SALVAR VALORES"): 
+        st.session_state.premios[mod_v] = novos_v
+        st.success("✅ Valores atualizados!")
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database - Gerenciar Resultados")
@@ -1009,7 +1005,7 @@ with abas[3]:
     st.markdown("### 🌐 Sincronização Online")
     if st.button("🔄 BUSCAR ÚLTIMO RESULTADO (API)", use_container_width=True):
         with st.spinner("Consultando servidores da Caixa..."):
-            dados_api = buscar_ultimo_resultado_api()
+            c_api, d_api = buscar_ultimo_resultado_api()
             if c_api and d_api:
                 # Grava no dicionário global
                 st.session_state.ultimo_res[m_db][str(c_api)] = d_api
@@ -1326,11 +1322,6 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
-
-
-
-
-
 
 
 
