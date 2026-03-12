@@ -31,7 +31,7 @@ p15 = formatar_real(p15_valor)
 # --- [INÍCIO DA FUNÇÃO IA CORRIGIDA] ---
 def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui também
     import numpy as np
-    res_histórico = st. estado_sessão . último_res . obter ( mod_alvo, { } )
+    res_histórico = st. session_state . último_res . obter ( mod_alvo, { } )
     
     # Se tiver pelo menos 1 resultado, ele já tenta trabalhar
     if len(res_historico) < 1: 
@@ -1446,6 +1446,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
