@@ -9,29 +9,12 @@ from itertools import combinations
 from fpdf import FPDF
 import io
 
-# Função de formatação segura
-def formatar_real(valor):
-    try:
-        return f"R$ {float(valor):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except:
-        return "R$ 0,00"
-
-# Inicialização segura dos prêmios (se não existir, ele cria)
-if "premios" not in st.session_state:
-    st.session_state.premios = {
-        "Lotofácil": {15: 1700000.0, 14: 1500.0, 13: 35.0, 12: 14.0, 11: 7.0}
-    }
-
-# Forma correta de acessar (sem espaços e em inglês para o Python entender)
-premios_loto = st.session_state.premios.get("Lotofácil", {})
-p15_valor = premios_loto.get(15, 0)  # Busca a chave 15, se não achar usa 0
-p15 = formatar_real(p15_valor)
 # --- [FUNÇÕES DE INTELIGÊNCIA] ---
 
 # --- [INÍCIO DA FUNÇÃO IA CORRIGIDA] ---
 def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui também
     import numpy as np
-    res_histórico = st. session_state . último_res . obter ( mod_alvo, { } )
+    res_historico = st.session_state.ultimo_res.get(mod_alvo, {})
     
     # Se tiver pelo menos 1 resultado, ele já tenta trabalhar
     if len(res_historico) < 1: 
@@ -57,47 +40,18 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui també
     return sorted([int(i + 1) for i in indices_vencedores])
 # --- [FIM DA FUNÇÃO IA CORRIGIDA] ---
 
+
 def buscar_ultimo_resultado_api():
     try:
-        url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
-        response = requests.get(url, timeout=15)
-        
-        # Valores de Segurança para faixas fixas (11, 12, 13)
-        premios_api = {15: 0.0, 14: 0.0, 13: 35.0, 12: 14.0, 11: 7.0, "estimativa": 0.0}
-        ganhadores_api = {15: 0, 14: 0, 13: 0, 12: 0, 11: 0}
-
+        url = "https://loterica.api.ghgi.com.br/api/lotofacil/latest"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, headers=headers, timeout=10)
         if response.status_code == 200:
             dados = response.json()
-            concurso = str(dados.get('concurso', '0'))
-            dezenas = [int(n) for n in dados.get('dezenas', [])]
-            
-            # Captura a estimativa do próximo
-            est = dados.get('valorEstimadoProximoConcurso', 0)
-            premios_api["estimativa"] = float(est)
-
-            if 'premiacoes' in dados:
-                for p in dados['premiacoes']:
-                    # Extrai apenas os números da descrição (ex: "15 acertos" vira 15)
-                    busca = re.findall(r'\d+', p['descricao'])
-                    if busca:
-                        faixa = int(busca[0])
-                        valor = float(p.get('valorOficial', 0))
-                        qtd = int(p.get('quantidadeGanhadores', 0))
-                        
-                        # Atualiza se a API trouxer dados válidos
-                        if faixa in premios_api:
-                            premios_api[faixa] = valor
-                            ganhadores_api[faixa] = qtd
-            
-            # SALVAMENTO NAS VARIÁVEIS DE ESTADO
-            st.session_state.premios["Lotofácil"] = premios_api
-            st.session_state["ganhadores_loto"] = ganhadores_api
-            
-            return concurso, dezenas
-            
-    except Exception as e:
-        st.error(f"Erro na conexão: {e}")
+            return str(dados['concurso']), [int(n) for n in dados['dezenas']]
+    except:
         return None, None
+    return None, None
 
 def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
     """Calcula bônus para dezenas no pool baseado no que já foi escolhido."""
@@ -274,7 +228,6 @@ def calcular_premio_multiplo_lotofacil(n_dezenas_jogadas, n_acertos):
     if n_acertos < 11:
         return 0.0
     
-    # TABELA OFICIAL DE MULTIPLICADORES DA CAIXA
     tabela_premios = {
         15: {15: (1, 0, 0, 0, 0), 14: (0, 1, 0, 0, 0), 13: (0, 0, 1, 0, 0), 12: (0, 0, 0, 1, 0), 11: (0, 0, 0, 0, 1)},
         16: {15: (1, 15, 0, 0, 0), 14: (0, 2, 14, 0, 0), 13: (0, 0, 3, 13, 0), 12: (0, 0, 0, 4, 12), 11: (0, 0, 0, 0, 5)},
@@ -284,30 +237,17 @@ def calcular_premio_multiplo_lotofacil(n_dezenas_jogadas, n_acertos):
         20: {15: (1, 75, 1050, 4550, 9825), 14: (0, 6, 210, 1820, 7280), 13: (0, 0, 21, 252, 2247), 12: (0, 0, 0, 56, 1232), 11: (0, 0, 0, 0, 126)}
     }
 
-    # Verifica se a combinação de dezenas jogadas e acertos existe na tabela
     if n_dezenas_jogadas not in tabela_premios or n_acertos not in tabela_premios[n_dezenas_jogadas]:
         return 0.0
 
-    # Pega a linha correspondente aos multiplicadores (ex: se acertou 14 jogando 16, traz (0, 2, 14, 0, 0))
     qtds = tabela_premios[n_dezenas_jogadas][n_acertos]
+    valores = st.session_state.premios["Lotofácil"]
     
-    # Acessa os valores unitários salvos na sessão (Aba 3)
-    valores = st.session_state.premios.get("Lotofácil", {})
-    
-    # Captura segura dos valores (tenta chave inteira, depois string, se não existir usa o valor fixo padrão)
-    v15 = valores.get(15, valores.get("15", 0.0))
-    v14 = valores.get(14, valores.get("14", 0.0))
-    v13 = valores.get(13, valores.get("13", 35.0))
-    v12 = valores.get(12, valores.get("12", 14.0))
-    v11 = valores.get(11, valores.get("11", 7.0))
-
-    # Realiza a soma total: (Multiplicador x Valor da Faixa)
-    total = (qtds[0] * v15 + 
-             qtds[1] * v14 + 
-             qtds[2] * v13 + 
-             qtds[3] * v12 + 
-             qtds[4] * v11)
-             
+    total = (qtds[0] * valores.get("15", 0) +
+             qtds[1] * valores.get("14", 0) +
+             qtds[2] * valores.get("13", 0) +
+             qtds[3] * valores.get("12", 0) +
+             qtds[4] * valores.get("11", 0))
     return total
 
 def jogo_ja_saiu(jogo, mod):
@@ -1041,98 +981,47 @@ with abas[1]:
             st.rerun()
 
                         
+  
+
+        
+
 with abas[2]:
-    st.markdown("### 💰 Painel de Premiações e Rateio Detalhado")
-    
-    # Busca os dados atuais do estado da sessão
-    dados_premios = st.session_state.premios.get("Lotofácil", {})
-    dados_ganhadores = st.session_state.get("ganhadores_loto", {15:0, 14:0, 13:0, 12:0, 11:0})
-    
-    # --- CARD ESTIMATIVA (PRÓXIMO) ---
-    v_est = dados_premios.get("estimativa", 0)
-    st.markdown(f"""
-    <div style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-bottom: 20px;">
-        <span style="font-size: 16px; font-weight: bold; text-transform: uppercase;">🏆 Estimativa para o Próximo Concurso</span><br>
-        <span style="font-size: 38px; font-weight: 900;">{formatar_real(v_est)}</span>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # --- RATEIO REAL DO CONCURSO ATUAL ---
-    col1, col2 = st.columns(2)
-    
-    # 15 Pontos
-    with col1:
-        v15 = dados_premios.get(15, 0)
-        g15 = dados_ganhadores.get(15, 0)
-        st.markdown(f"""
-        <div style="background: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; border-top: 5px solid #d4af37;">
-            <span style="color: #64748b; font-size: 12px; font-weight: bold;">15 PONTOS</span><br>
-            <span style="font-size: 18px; color: #1e293b;"><b>Prêmio:</b> {formatar_real(v15)}</span><br>
-            <span style="font-size: 14px; color: #1e293b;">👥 <b>Ganhadores:</b> {g15}</span><br>
-            <span style="font-size: 14px; color: #1e293b;">💰 <b>Total Pago:</b> {formatar_real(v15 * g15)}</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # 14 Pontos
-    with col2:
-        v14 = dados_premios.get(14, 0)
-        g14 = dados_ganhadores.get(14, 0)
-        st.markdown(f"""
-        <div style="background: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; border-top: 5px solid #3b82f6;">
-            <span style="color: #64748b; font-size: 12px; font-weight: bold;">14 PONTOS</span><br>
-            <span style="font-size: 18px; color: #1e293b;"><b>Prêmio:</b> {formatar_real(v14)}</span><br>
-            <span style="font-size: 14px; color: #1e293b;">👥 <b>Ganhadores:</b> {g14}</span><br>
-            <span style="font-size: 14px; color: #1e293b;">💰 <b>Total Pago:</b> {formatar_real(v14 * g14)}</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # --- PRÊMIOS FIXOS (11, 12, 13) ---
-    st.subheader("📌 Detalhes dos Prêmios Fixos")
-    c1, c2, c3 = st.columns(3)
-    
-    config_fixos = [(c1, 13, "#22c55e"), (c2, 12, "#eab308"), (c3, 11, "#ef4444")]
-    for col, acerto, cor in config_fixos:
-        with col:
-            v_fixo = dados_premios.get(acerto, 0)
-            g_fixo = dados_ganhadores.get(acerto, 0)
-            st.markdown(f"""
-            <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border-left: 4px solid {cor};">
-                <b style="font-size: 12px;">{acerto} PONTOS</b><br>
-                <span style="font-size: 14px;">{formatar_real(v_fixo)}</span><br>
-                <span style="font-size: 11px; color: #64748b;">{g_fixo:,} ganhadores</span>
-            </div>
-            """, unsafe_allow_html=True)
+    mostrar_status_backup()
+    st.header("⚙️ Configuração de Valores")
+    mod_v = st.selectbox("Loteria", list(st.session_state.premios.keys()), key="v_sel")
+    novos_v = {}
+    for faixa, valor in st.session_state.premios[mod_v].items():
+        novos_v[faixa] = st.number_input(f"Prêmio {faixa} acertos", value=float(valor), format="%.2f", key=f"v_{mod_v}_{faixa}")
+    if st.button("💾 SALVAR VALORES"): 
+        st.session_state.premios[mod_v] = novos_v
+        st.success("✅ Valores atualizados!")
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database - Gerenciar Resultados")
     
     m_db = st.selectbox("Selecione a Loteria", list(st.session_state.custos.keys()), key="m_db_final_novo")
 
-       # --- [INÍCIO DO BLOCO API ABA 3] ---
-    st.subheader("🔄 Sincronização em Tempo Real")
-    st.write("Clique abaixo para buscar o último sorteio e atualizar o rateio oficial.")
-
-    if st.button("🔄 SINCRONIZAR ÚLTIMO CONCURSO"):
-        try:
-            conc, dez = buscar_ultimo_resultado_api()
-            
-            if conc and dez:
-                # 1. Atualiza o dicionário de resultados para o Radar e IA
-                st.session_state.ultimo_res["Lotofácil"][conc] = dez
+        # --- [INÍCIO DO BLOCO API ABA 3] ---
+    st.markdown("### 🌐 Sincronização Online")
+    if st.button("🔄 BUSCAR ÚLTIMO RESULTADO (API)", use_container_width=True):
+        with st.spinner("Consultando servidores da Caixa..."):
+            c_api, d_api = buscar_ultimo_resultado_api()
+            if c_api and d_api:
+                # Grava no dicionário global
+                st.session_state.ultimo_res[m_db][str(c_api)] = d_api
                 
-                # 2. Feedback visual de sucesso
-                st.success(f"✅ Concurso {conc} e Rateio atualizados com sucesso!")
+                # Sincroniza a IA imediatamente com o novo dado
+                tamanho_necessario = 20 if "DIAMANTE" in str(st.session_state.get('fe_escolhido', '')) else 18
+                pool_ia = treinar_e_prever_ia(m_db, tamanho=tamanho_necessario)
+                if pool_ia:
+                    st.session_state.favoritas[m_db] = pool_ia
                 
-                # 3. Força o recarregamento para aplicar os novos valores de prêmios na tela
-                st.rerun() 
+                st.success(f"🚀 SUCESSO! Concurso {c_api} gravado e IA sincronizada.")
+                st.toast(f"Concurso {c_api} adicionado!", icon="✅")
+                st.rerun()
             else:
-                st.error("⚠️ A API retornou dados vazios. Tente novamente em instantes.")
-                
-        except Exception as e:
-            st.error(f"❌ Falha geral na sincronização: {e}")
-    # --- [FIM DO BLOCO API ABA 3] --- 
+                st.error("❌ A API não retornou dados. Verifique sua conexão ou tente manual.")
+    # --- [FIM DO BLOCO API ABA 3] ---
 
 
     st.markdown("---")
@@ -1311,19 +1200,6 @@ with abas[5]:
 // 3. Backup: Leitura automática via session_state (Aba 5 reflete o JSON)
 // 4. Paridade: Fórmula dinâmica integrada no motor de validação
         """, language="javascript")
-        # --- [BOTÃO DE ATIVAÇÃO DA IA - ADICIONADO COM PRECISÃO] ---
-    st.markdown("---")
-    st.subheader("🤖 COMANDO DE INTELIGÊNCIA ARTIFICIAL")
-    if st.button("🚀 Executar Treinamento e Sugestão IA"):
-        with st.spinner("Analisando tendências de calor e atraso..."):
-            # Chamada corrigida conforme a nova definição da linha 31
-            sugestao = treinar_e_prever_ia(mod) 
-            if sugestao:
-                st.session_state.favoritas[mod] = sugestao
-                st.success(f"✅ IA KADOSH: {len(sugestao)} dezenas sugeridas e aplicadas ao Pool!")
-                st.rerun()
-            else:
-                st.error("⚠️ Falha: Base de dados insuficiente para esta modalidade.")
 
 with abas[6]:
     st.header("🔗 Afinidade e Vínculos de Dezenas")
@@ -1446,49 +1322,6 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
