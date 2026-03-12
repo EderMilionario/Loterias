@@ -29,7 +29,7 @@ p15 = formatar_real(p15_valor)
 # --- [FUNÇÕES DE INTELIGÊNCIA] ---
 
 # --- [INÍCIO DA FUNÇÃO IA CORRIGIDA] ---
-def  treinado_e_prever_ia ( mod_alvo, tamanho= 20 ) : # Forcei o tamanho 20 aqui também
+def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui também
     import numpy as np
     res_histórico = st. estado_sessão . último_res . obter ( mod_alvo, { } )
     
@@ -1446,6 +1446,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
