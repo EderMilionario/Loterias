@@ -41,18 +41,16 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui també
 # --- [FIM DA FUNÇÃO IA CORRIGIDA] ---
 
 
-def buscar_ultimo_resultado_api():
+def buscar_dados_completos_api():
     try:
         url = "https://loterica.api.ghgi.com.br/api/lotofacil/latest"
         headers = {"User-Agent": "Mozilla/5.0"}
         response = requests.get(url, headers=headers, timeout=10)
         if response.status_code == 200:
-            dados = response.json()
-            return str(dados['concurso']), [int(n) for n in dados['dezenas']]
+            return response.json() # Retorna o JSON inteiro para termos acesso ao rateio
     except:
-        return None, None
-    return None, None
-
+        return None
+    return None
 def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
     """Calcula bônus para dezenas no pool baseado no que já foi escolhido."""
     pesos = {n: 1.0 for n in pool_disponivel}
@@ -987,14 +985,47 @@ with abas[1]:
 
 with abas[2]:
     mostrar_status_backup()
-    st.header("⚙️ Configuração de Valores")
-    mod_v = st.selectbox("Loteria", list(st.session_state.premios.keys()), key="v_sel")
-    novos_v = {}
-    for faixa, valor in st.session_state.premios[mod_v].items():
-        novos_v[faixa] = st.number_input(f"Prêmio {faixa} acertos", value=float(valor), format="%.2f", key=f"v_{mod_v}_{faixa}")
-    if st.button("💾 SALVAR VALORES"): 
-        st.session_state.premios[mod_v] = novos_v
-        st.success("✅ Valores atualizados!")
+    st.header("💰 VALORES E RATEIO OFICIAL")
+    
+    dados_api = buscar_dados_completos_api()
+    
+    if dados_api:
+        # --- ESTIMATIVA DO PRÓXIMO CONCURSO ---
+        valor_est = dados_api.get('valorEstimadoProximoConcurso', 0)
+        prox_conc = dados_api.get('proximoConcurso', '---')
+        
+        st.info(f"🚀 **PRÓXIMO CONCURSO ({prox_conc}):** ESTIMATIVA DE **R$ {valor_est:,.2f}**")
+        
+        st.markdown("---")
+        
+        # --- TABELA DE RATEIO (GANHADORES) ---
+        st.subheader(f"📊 Detalhes do Concurso {dados_api.get('concurso')}")
+        lista_rateio = dados_api.get('listaRateio', [])
+        
+        if lista_rateio:
+            tabela_premios = []
+            for item in lista_rateio:
+                tabela_premios.append({
+                    "Acertos": f"{item['faixa']} Pontos",
+                    "Ganhadores": item['numeroDeGanhadores'],
+                    "Prémio Unitário": f"R$ {item['valorRateio']:,.2f}"
+                })
+            
+            # Exibe a tabela formatada
+            st.table(pd.DataFrame(tabela_premios))
+            
+            # Atualiza o sistema de prémios para os cálculos automáticos de lucro
+            st.session_state.premios["Lotofácil"] = {
+                15: lista_rateio[0].get('valorRateio', 0),
+                14: lista_rateio[1].get('valorRateio', 0),
+                13: lista_rateio[2].get('valorRateio', 0),
+                12: lista_rateio[3].get('valorRateio', 0),
+                11: lista_rateio[4].get('valorRateio', 0)
+            }
+        else:
+            st.warning("⚠️ Rateio ainda não disponível para este concurso.")
+    else:
+        st.error("❌ Erro de Conexão: Não foi possível carregar os valores da API.")
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database - Gerenciar Resultados")
@@ -1322,6 +1353,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
