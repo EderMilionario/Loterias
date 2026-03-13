@@ -1,43 +1,43 @@
->>> import streamlit as st
-... import requests
-... import json
-... import random
-... import re
-... import pandas as pd
-... from collections import Counter
-... from itertools import combinations
-... from fpdf import FPDF
-... import io
-... 
-... # --- [FUNÇÕES DE INTELIGÊNCIA] ---
-... 
-... # --- [INÍCIO DA FUNÇÃO IA CORRIGIDA] ---
-... def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui também
-...     import numpy as np
-...     res_historico = st.session_state.ultimo_res.get(mod_alvo, {})
-...     
-...     # Se tiver pelo menos 1 resultado, ele já tenta trabalhar
-...     if len(res_historico) < 1: 
-...         return None
-...     
-...     chaves_ordenadas = sorted(res_historico.keys(), key=int)
-...     max_num = 25 if mod_alvo == "Lotofácil" else 60
-...     matriz_binaria = np.zeros((len(chaves_ordenadas), max_num))
-...     
-...     for i, conc in enumerate(chaves_ordenadas):
-...         for num in res_historico[conc]:
-...             if num <= max_num:
-...                 matriz_binaria[i, num-1] = 1
-...             
-...     janela = min(15, len(matriz_binaria) - 1)
-...     pesos_recentes = np.mean(matriz_binaria[-janela:], axis=0)
-...     tendencia_longa = np.mean(matriz_binaria, axis=0)
-...     
-...     predicao_final = (pesos_recentes * 0.7) + (tendencia_longa * 0.3)
-...     
-    # O segredo: a IA agora corta no tamanho exato que a estratégia pede
-    indices_vencedores = predicao_final.argsort()[-tamanho:][::-1]
-    return sorted([int(i + 1) for i in indices_vencedores])
+import streamlit as st
+import requests
+import json
+import random
+import re
+import pandas as pd
+from collections import Counter
+from itertools import combinations
+from fpdf import FPDF
+import io
+ 
+# --- [FUNÇÕES DE INTELIGÊNCIA] ---
+ 
+# --- [INÍCIO DA FUNÇÃO IA CORRIGIDA] ---
+def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui também
+import numpy as np
+    res_historico = st.session_state.ultimo_res.get(mod_alvo, {})
+    
+    # Se tiver pelo menos 1 resultado, ele já tenta trabalhar
+    if len(res_historico) < 1: 
+       return None
+     
+    chaves_ordenadas = sorted(res_historico.keys(), key=int)
+    max_num = 25 if mod_alvo == "Lotofácil" else 60
+    matriz_binaria = np.zeros((len(chaves_ordenadas), max_num))
+     
+    for i, conc in enumerate(chaves_ordenadas):
+        for num in res_historico[conc]:
+            if num <= max_num:
+                matriz_binaria[i, num-1] = 1
+             
+    janela = min(15, len(matriz_binaria) - 1)
+    pesos_recentes = np.mean(matriz_binaria[-janela:], axis=0)
+    tendencia_longa = np.mean(matriz_binaria, axis=0)
+     
+    predicao_final = (pesos_recentes * 0.7) + (tendencia_longa * 0.3)
+   
+# O segredo: a IA agora corta no tamanho exato que a estratégia pede
+indices_vencedores = predicao_final.argsort()[-tamanho:][::-1]
+return sorted([int(i + 1) for i in indices_vencedores])
 # --- [FIM DA FUNÇÃO IA CORRIGIDA] ---
 
 
@@ -1348,6 +1348,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
