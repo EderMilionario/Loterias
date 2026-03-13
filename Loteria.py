@@ -1,4 +1,4 @@
-... import streamlit as st
+>>> import streamlit as st
 ... import requests
 ... import json
 ... import random
@@ -1348,7 +1348,6 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
-
 
 
 
