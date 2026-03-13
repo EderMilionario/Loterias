@@ -710,33 +710,37 @@ with abas[0]:
 
         st.markdown(f"🛠️ **CONFIGURAÇÃO ATIVA:** Pool travado em **{tamanho_alvo_pool}** dezenas.")
 
-        # --- [BLOCO CORRIGIDO: SEM ERRO DE ESPAÇO E SEM ERRO DE QUINA] ---
+        # --- [AJUSTE DO TAMANHO DO VOLANTE] ---
         if mod == "Lotofácil": 
-            max_v = 26
+            max_v_volante = 26
         elif mod == "Quina": 
-            max_v = 81
+            max_v_volante = 81
         elif mod == "Mega-Sena": 
-            max_v = 61
+            max_v_volante = 61
         elif mod == "Dupla-Sena" or mod == "+Milionária": 
-            max_v = 51
+            max_v_volante = 51
         else: 
-            max_v = 61
+            max_v_volante = 61
 
+        # O VOLANTE (SÓ ESTE DEVE EXISTIR)
         pool = st.multiselect(
             "SELECIONE SEU POOL",
-            range(1, max_v),
+            range(1, max_v_volante),
             default=st.session_state.favoritas.get(mod, []),
-            key=f"volante_{mod}"
+            key=f"volante_final_{mod}"
         )
         st.session_state.favoritas[mod] = pool
 
-        col_btn1, col_btn2 = st.columns(2)
+        # --- [BOTÕES DE APOIO] ---
+        col_btn_aux1, col_btn_aux2 = st.columns(2)
 
-        with col_btn1:
+        with col_btn_aux1:
+            # Botão de selecionar tudo (usa o limite da loteria atual)
             if st.button("✅ SELECIONAR TODO VOLANTE"):
-                st.session_state.favoritas[mod] = list(range(1, max_v))
+                st.session_state.favoritas[mod] = list(range(1, max_v_volante))
                 st.rerun()
 
+            # IA: SÓ PARA LOTOFÁCIL
             if mod == "Lotofácil":
                 if st.button("💎 ATIVAR IA (RANKING 1000)"):
                     pool_ia = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool)
@@ -744,11 +748,8 @@ with abas[0]:
                         st.session_state.favoritas[mod] = list(pool_ia)
                         st.rerun()
 
-        with col_btn2:
-            if st.button("🎰 GERAR JOGOS"):
-                # O sistema continua para a lógica de geração abaixo
-                pass 
-
+        with col_btn_aux2:
+            # POOL E REFINAR: SÓ PARA LOTOFÁCIL
             if mod == "Lotofácil":
                 if st.button("🧠 POOL INTELIGENTE"):
                     stats_mod = st.session_state.analise_stats.get(mod, {})
@@ -764,7 +765,9 @@ with abas[0]:
                         pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool)
                         st.session_state.favoritas[mod] = list(pool_refinado)
                         st.rerun()
-        # --- [FIM DO BLOCO] ---
+
+        # O SEU BOTÃO ORIGINAL DE "GERAR JOGOS" QUE ESTÁ NO SEU CÓDIGO 
+        # VAI APARECER LOGO ABAIXO DISSO SEM CONFLITO.
         
        
  
