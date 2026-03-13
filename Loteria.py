@@ -575,9 +575,11 @@ with abas[0]:
         st.session_state.jogos_gerados = []
         st.session_state.ultima_mod_selecionada = mod
         st.rerun()
-
+            # --- [INÍCIO DA CORREÇÃO: ATIVAÇÃO DA IA] ---
+        # 1. Pega os dados do banco
     res_loto = st.session_state.ultimo_res.get(mod, {})
     
+    # 2. TRAVA DE SEGURANÇA: Só faz conta se o banco tiver pelo menos 1 resultado
     if res_loto and len(res_loto) >= 1:
         conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
         contagem = Counter()
@@ -600,8 +602,12 @@ with abas[0]:
         
         st.session_state.analise_stats[mod] = stats_temp
     else:
+        # Se estiver vazio (como na hora do login), ele só avisa e não trava
         st.info("💡 Sistema aguardando carregamento de dados (Backup ou Manual).")
 
+    # --- [FIM DA CORREÇÃO] ---
+
+    
     col_est1, col_est2 = st.columns(2)
     with col_est1:
         if mod == "Lotofácil":
@@ -633,9 +639,12 @@ with abas[0]:
     c1, c2 = st.columns(2)
     with c1:
         if info_fech:
-            if "DIAMANTE" in fe_escolhido: def_dez, def_qtd = 16, 2
-            elif "CÉLULA" in fe_escolhido: def_dez, def_qtd = 16, 1
-            else: def_dez, def_qtd = 15, (24 if "18-15-14" in fe_escolhido else 45)
+            if "DIAMANTE" in fe_escolhido: 
+                def_dez, def_qtd = 16, 2
+            elif "CÉLULA" in fe_escolhido: 
+                def_dez, def_qtd = 16, 1
+            else: 
+                def_dez, def_qtd = 15, (24 if "18-15-14" in fe_escolhido else 45)
         elif est_escolhida != "Personalizado" and mod == "Lotofácil":
             def_dez, def_qtd = info_est["dez"], info_est.get("qtd", 10)
         else:
@@ -648,64 +657,123 @@ with abas[0]:
         qtd = st.number_input("Quantidade de Jogos", 1, 300, def_qtd)
         
     with c2:
+        max_v = 25 if mod=="Lotofácil" else 60 if mod=="Mega-Sena" else 80
+        col_btn1, col_btn2 = st.columns(2)
+        
+                # --- [INÍCIO DOS BOTÕES DE IA ABA 0] ---
+        col_btn1, col_btn2 = st.columns(2)
+        
+        # Define o tamanho ideal do Pool baseado na Matriz selecionada
+        tamanho_alvo = 18 # Padrão
+        if "DIAMANTE" in fe_escolhido or "20-15" in fe_escolhido:
+            tamanho_alvo = 20
+        elif "19-15" in fe_escolhido:
+            tamanho_alvo = 19
+
+        # --- [BLOCOS DOS BOTÕES DO POOL CORRIGIDOS] ---
+        col_btn1, col_btn2 = st.columns(2)
+        
+        # 1. LÓGICA DE TAMANHO DINÂMICO: Identifica quanto a estratégia/matriz exige
+        tamanho_exigido = 18  # Padrão básico
+        
+        # Verifica Matrizes
+        if fe_escolhido != "Nenhum":
+            if "20-15" in fe_escolhido or "DIAMANTE" in fe_escolhido:
+                tamanho_exigido = 20
+            elif "19-15" in fe_escolhido:
+                tamanho_exigido = 19
+            elif "18-15" in fe_escolhido or "CÉLULA" in fe_escolhido:
+                tamanho_exigido = 18
+        # Verifica Estratégias Específicas
+        elif "PRESTIGE 20" in est_escolhida:
+            tamanho_exigido = 20
+        elif "A MARRETA" in est_escolhida:
+            tamanho_exigido = 22 # Pool maior para garantir desdobramento da marreta
+
+# --- [MOTOR DE DECISÃO UNIFICADO: ESTRATÉGIA + MATRIZ] ---
+        # Identifica o tamanho necessário varrendo Estratégias e Matrizes
+        tamanhos_detectados = [18] # Tamanho base mínimo
+        
         if mod == "Lotofácil":
-            tamanhos_detectados = [18]
+            # Checa a Estratégia
             if "A MARRETA" in est_escolhida: tamanhos_detectados.append(22)
             elif "PRESTIGE 20" in est_escolhida: tamanhos_detectados.append(20)
             elif "ELITE KADOSH" in est_escolhida: tamanhos_detectados.append(19)
+            
+            # Checa a Matriz (sobrepõe a estratégia se for maior)
             if fe_escolhido != "Nenhum":
                 info_fe = MATRIZES_FECHAMENTO.get(fe_escolhido, {})
                 tamanhos_detectados.append(info_fe.get("n_pool", 18))
 
-            tamanho_alvo_pool = max(tamanhos_detectados)
-            st.markdown(f"🛠️ **CONFIGURAÇÃO ATIVA:** Pool em **{tamanho_alvo_pool}** dezenas.")
+        # O tamanho alvo será SEMPRE o maior solicitado
+        tamanho_alvo_pool = max(tamanhos_detectados)
+
+        st.markdown(f"🛠️ **CONFIGURAÇÃO ATIVA:** Pool travado em **{tamanho_alvo_pool}** dezenas.")
 
         col_btn1, col_btn2 = st.columns(2)
+
         with col_btn1:
-            if mod == "Lotofácil":
-                if st.button("💎 ATIVAR IA (RANKING 1000)"):
-                    pool_ia = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool)
-                    if pool_ia:
-                        st.session_state.favoritas[mod] = pool_ia
-                        st.rerun()
-            
-            # Botão essencial para todas as loterias
+            # BOTÃO 1: IA (Ranking 1000 - Baseado em Redes Neurais/Tendência)
+            if st.button("💎 ATIVAR IA (RANKING 1000)"):
+                pool_ia = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool)
+                if pool_ia:
+                    st.session_state.favoritas[mod] = pool_ia
+                    st.success(f"🚀 IA configurada para {tamanho_alvo_pool} dezenas!")
+                    st.rerun()
+
+            # BOTÃO 2: TODO O VOLANTE
             if st.button("✅ SELECIONAR TODO VOLANTE"):
-                max_v_bt = 25 if mod == "Lotofácil" else 60 if mod == "Mega-Sena" else 80
+                max_v_bt = 25 if mod == "Lotofácil" else 60
                 st.session_state.favoritas[mod] = list(range(1, max_v_bt + 1))
                 st.rerun()
                 
         with col_btn2:
-            if mod == "Lotofácil":
-                if st.button("🧠 POOL INTELIGENTE"):
-                    stats_mod = st.session_state.analise_stats.get(mod, {})
-                    if stats_mod:
-                        dezenas_ordenadas = sorted(stats_mod.keys(), key=lambda x: stats_mod[x]['score'], reverse=True)
-                        st.session_state.favoritas[mod] = sorted(dezenas_ordenadas[:tamanho_alvo_pool])
-                        st.rerun()
-                if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
-                    pool_base = st.session_state.favoritas.get(mod, [])
-                    matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
-                    pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_objetivo=tamanho_alvo_pool)
-                    st.session_state.favoritas[mod] = pool_refinado
+            # BOTÃO 3: INTELIGENTE (Baseado em Score de Frequência e Atraso)
+            if st.button("🧠 POOL INTELIGENTE"):
+                stats_mod = st.session_state.analise_stats.get(mod, {})
+                if stats_mod:
+                    # Ordena pelo Score e pega exatamente o tamanho necessário
+                    dezenas_ordenadas = sorted(stats_mod.keys(), key=lambda x: stats_mod[x]['score'], reverse=True)
+                    st.session_state.favoritas[mod] = sorted(dezenas_ordenadas[:tamanho_alvo_pool])
+                    st.success(f"🎯 Pool Inteligente: {tamanho_alvo_pool} dezenas!")
                     st.rerun()
 
-        max_v_limit = 26 if mod == "Lotofácil" else 61 if mod == "Mega-Sena" else 81
-        pool = st.multiselect("SELECIONE SEU POOL", range(1, max_v_limit), default=st.session_state.favoritas.get(mod, []))
-        st.session_state.favoritas[mod] = pool
+            # BOTÃO 4: REFINAR (Filtro de Elite por Afinidade)
+            if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
+                pool_base = st.session_state.favoritas.get(mod, [])
+                if len(pool_base) < tamanho_alvo_pool:
+                    # Se o pool estiver vazio, ele gera um via IA para depois refinar
+                    pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
+                
+                matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
+                pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_objetivo=tamanho_alvo_pool)
+                st.session_state.favoritas[mod] = pool_refinado
+                st.success(f"🎯 Refinado para {tamanho_alvo_pool} dezenas!")
+                st.rerun()
 
-    if pool and mod == "Lotofácil":
-        linhas_p = [0]*5
-        for n in pool: linhas_p[(n-1)//5] += 1
-        with st.expander("📊 Distribuição Geográfica do Pool"):
-            cols_q = st.columns(5)
-            for idx, qtd_l in enumerate(linhas_p):
-                cols_q[idx].metric(f"Linha {idx+1}", f"{qtd_l} dez")
+        # Sincronização do multiselect (O default agora puxa do session_state atualizado pelos botões)
+        pool = st.multiselect(
+            "SELECIONE SEU POOL", 
+            range(1, (26 if mod == "Lotofácil" else 61)), 
+            default=st.session_state.favoritas.get(mod, [])
+        )
+        st.session_state.favoritas[mod] = pool
+ 
+
+        # --- [SUGESTÃO 3: ANÁLISE DE QUADRANTES NO POOL] ---
+        if pool and mod == "Lotofácil":
+            linhas_p = [0]*5
+            for n in pool: 
+                linhas_p[(n-1)//5] += 1
+            if any(l == 0 for l in linhas_p):
+                st.warning("⚠️ Atenção: Seu Pool possui linhas vazias! Isso pode reduzir a eficácia dos filtros Kadosh.")
+            with st.expander("📊 Distribuição Geográfica do Pool"):
+                cols_q = st.columns(5)
+                for idx, qtd_l in enumerate(linhas_p):
+                    cols_q[idx].metric(f"Linha {idx+1}", f"{qtd_l} dez")
         
-    # Modo de fixação exclusivo Lotofácil
-    fixas_final = []
-    if mod == "Lotofácil":
         modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
+        fixas_final = []
         if modo_fixa == "Manual":
             fixas_final = st.multiselect("📌 CRAVAR DEZENAS:", options=pool)
         elif modo_fixa == "IA Automática (Score)":
@@ -715,55 +783,92 @@ with abas[0]:
                 melhores_ia = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
                 fixas_final = melhores_ia[:qtd_auto]
                 st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
-    
-    renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
+        
+        renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
 
+    # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-        matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
+        # 1. Garante que a Matriz de Afinidade da Aba 6 está carregada
+        matriz_af = st.session_state.get('matriz_ativa')
+        if matriz_af is None:
+            matriz_af = calcular_matriz_afinidade_kadosh(mod)
+            st.session_state['matriz_ativa'] = matriz_af
+
         if not pool or len(pool) < n_dez:
-            st.error("⚠️ Pool insuficiente.")
+            st.error("⚠️ Erro: Seu Pool é menor que a quantidade de dezenas por bilhete.")
         else:
             novos = []
+            
+            # 2. Função interna que aplica Afinidade + Filtros Kadosh
             def processar_geracao(tamanho_solicitado, quantidade_pedida):
                 sucessos, tentativas = 0, 0
-                while sucessos < quantidade_pedida and tentativas < 20000:
+                while sucessos < quantidade_pedida and tentativas < 20000: # Limite alto para não desistir fácil
                     tentativas += 1
                     jogo_em_construcao = list(fixas_final)
                     pool_trabalho = [n for n in pool if n not in jogo_em_construcao]
+                    
+                    # PREENCHIMENTO INTELIGENTE: Usa a Matriz de Afinidade (Aba 6)
                     while len(jogo_em_construcao) < tamanho_solicitado and pool_trabalho:
                         pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
-                        escolha = random.choices(list(pesos_dict.keys()), weights=list(pesos_dict.values()), k=1)[0]
-                        jogo_em_construcao.append(escolha); pool_trabalho.remove(escolha)
+                        opcoes = list(pesos_dict.keys())
+                        probabilidades = list(pesos_dict.values())
+                        
+                        escolha = random.choices(opcoes, weights=probabilidades, k=1)[0]
+                        jogo_em_construcao.append(escolha)
+                        pool_trabalho.remove(escolha)
                     
                     comb = sorted(jogo_em_construcao)
-                    if any(set(comb) == set(e['n']) for e in novos): continue
                     
+                    # Evita duplicatas
+                    if any(set(comb) == set(existente['n']) for existente in novos):
+                        continue
+                    
+                    # FILTROS KADOSH (Simetria, Soma, Moldura, Quadrantes)
                     passou = True
                     if tamanho_solicitado == 15 and mod == "Lotofácil":
+                        # Aqui ele chama a função 'validar_kadosh_cirurgico' que já tens no topo do código
                         passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
                     
                     if passou:
                         tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
-                        novos.append({"mod": mod, "n": comb, "tam": tamanho_solicitado, "fixas_utilizadas": list(fixas_final), "chance": definir_label_chance(comb, mod), "est": tag_est})
+                        novos.append({
+                            "mod": mod, "n": comb, "tam": tamanho_solicitado, 
+                            "fixas_utilizadas": list(fixas_final),
+                            "chance": definir_label_chance(comb, mod), "est": tag_est
+                        })
                         sucessos += 1
 
-            if mod == "Lotofácil":
-                if fe_escolhido != "Nenhum":
-                    if "DIAMANTE" in fe_escolhido: processar_geracao(16, 2); processar_geracao(15, 10)
-                    elif "CÉLULA" in fe_escolhido: processar_geracao(16, 1); processar_geracao(15, 15)
-                    else: processar_geracao(15, qtd)
-                elif est_escolhida == "6. A MARRETA": processar_geracao(18, 1); processar_geracao(16, 5)
-                elif est_escolhida == "7. SIMETRIA GEOMÉTRICA": processar_geracao(16, 2); processar_geracao(15, 8)
-                elif est_escolhida == "10. KADOSH PRESTIGE 20": processar_geracao(15, 36)
-                elif est_escolhida != "Personalizado":
-                    processar_geracao(info_est['dez'], info_est.get('qtd', 1))
-                    if "qtd_15" in info_est: processar_geracao(15, info_est['qtd_15'])
-                else: processar_geracao(n_dez, qtd)
+            # 3. LÓGICA DE EXECUÇÃO (Mantendo todas as tuas estratégias originais)
+            if fe_escolhido != "Nenhum":
+                if "DIAMANTE" in fe_escolhido:
+                    processar_geracao(16, 2)
+                    processar_geracao(15, 10)
+                elif "CÉLULA" in fe_escolhido:
+                    processar_geracao(16, 1)
+                    processar_geracao(15, 15)
+                else:
+                    processar_geracao(15, qtd)
+            elif est_escolhida == "6. A MARRETA":
+                processar_geracao(18, 1)
+                processar_geracao(16, 5)
+            elif est_escolhida == "7. SIMETRIA GEOMÉTRICA":
+                processar_geracao(16, 2)
+                processar_geracao(15, 8)
+            elif est_escolhida == "10. KADOSH PRESTIGE 20":
+                processar_geracao(15, 36)
+            elif est_escolhida != "Personalizado" and mod == "Lotofácil":
+                processar_geracao(info_est['dez'], info_est.get('qtd', 1))
+                if "qtd_15" in info_est:
+                    processar_geracao(15, info_est['qtd_15'])
             else:
                 processar_geracao(n_dez, qtd)
+            
             st.session_state.jogos_gerados = novos
+            st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com sucesso!")
             st.rerun()
+    # --- [FIM DO NOVO MOTOR SINCRONIZADO] ---
 
+    # --- EXIBIÇÃO DOS JOGOS (FORA DO IF DO BOTÃO) ---
     if st.session_state.jogos_gerados:
         st.markdown("### 📝 Jogos Preparados")
         for i, j in enumerate(st.session_state.jogos_gerados):
@@ -771,15 +876,25 @@ with abas[0]:
             st.code(f"JOGO {i+1:02d} | {j['est']} | {j['tam']} DEZ | {txt_jogo} / {j['chance']}")
     
     if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
-        res_e = st.session_state.ultimo_res.get(mod, {})
-        ultimo_c = int(max(res_e.keys(), key=int)) if res_e else 0
+        res_existentes = st.session_state.ultimo_res.get(mod, {})
+        if res_existentes:
+            ultimo_c = int(max(res_existentes.keys(), key=int))
+        else:
+            ultimo_c = 0
+            
         pool_atual = list(st.session_state.favoritas.get(mod, [])) 
+        
         for jogo in st.session_state.jogos_gerados:
             jogo['concurso_alvo'] = ultimo_c + 1
             jogo['pool_origem'] = pool_atual 
-            jogo.setdefault('fixas_utilizadas', [])
+            
+            if 'fixas_utilizadas' not in jogo:
+                jogo['fixas_utilizadas'] = [] 
+            
             st.session_state.jogos_salvos.append(jogo)
+        
         st.session_state.jogos_gerados = []
+        st.success(f"✅ Jogos salvos com sucesso para o Concurso {ultimo_c + 1}!")
         st.rerun()
 
 with abas[1]:
