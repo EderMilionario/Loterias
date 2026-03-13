@@ -8,9 +8,9 @@ from collections import Counter
 from itertools import combinations
 from fpdf import FPDF
 import io
- 
+
 # --- [FUNÇÕES DE INTELIGÊNCIA] ---
- 
+
 # --- [INÍCIO DA FUNÇÃO IA CORRIGIDA] ---
 def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui também
     import numpy as np
@@ -19,22 +19,22 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui també
     # Se tiver pelo menos 1 resultado, ele já tenta trabalhar
     if len(res_historico) < 1: 
         return None
-     
+    
     chaves_ordenadas = sorted(res_historico.keys(), key=int)
     max_num = 25 if mod_alvo == "Lotofácil" else 60
     matriz_binaria = np.zeros((len(chaves_ordenadas), max_num))
-     
+    
     for i, conc in enumerate(chaves_ordenadas):
         for num in res_historico[conc]:
             if num <= max_num:
                 matriz_binaria[i, num-1] = 1
-             
+            
     janela = min(15, len(matriz_binaria) - 1)
     pesos_recentes = np.mean(matriz_binaria[-janela:], axis=0)
     tendencia_longa = np.mean(matriz_binaria, axis=0)
-     
+    
     predicao_final = (pesos_recentes * 0.7) + (tendencia_longa * 0.3)
-   
+    
     # O segredo: a IA agora corta no tamanho exato que a estratégia pede
     indices_vencedores = predicao_final.argsort()[-tamanho:][::-1]
     return sorted([int(i + 1) for i in indices_vencedores])
@@ -710,57 +710,47 @@ with abas[0]:
 
         st.markdown(f"🛠️ **CONFIGURAÇÃO ATIVA:** Pool travado em **{tamanho_alvo_pool}** dezenas.")
 
-        # --- [TRECHO CORRIGIDO - SEM VÁCUO] ---
         col_btn1, col_btn2 = st.columns(2)
 
         with col_btn1:
-            # BOTÃO 1: IA (Ranking 1000)
-            if st.button("💎 ATIVAR IA (RANKING 1000)", key="btn_ia_core"):
-                # Gera o pool e já salva na gaveta mestra
+            # BOTÃO 1: IA (Ranking 1000 - Baseado em Redes Neurais/Tendência)
+            if st.button("💎 ATIVAR IA (RANKING 1000)"):
                 pool_ia = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool)
                 if pool_ia:
-                    st.session_state.favoritas[mod] = list(pool_ia)
-                    st.success("🚀 IA Aplicada com Sucesso!")
+                    st.session_state.favoritas[mod] = pool_ia
+                    st.success(f"🚀 IA configurada para {tamanho_alvo_pool} dezenas!")
                     st.rerun()
 
             # BOTÃO 2: TODO O VOLANTE
-            if st.button("✅ SELECIONAR TODO VOLANTE", key="btn_full_vol"):
-                max_v = 25 if mod == "Lotofácil" else 80 if mod == "Quina" else 60
-                st.session_state.favoritas[mod] = list(range(1, max_v + 1))
+            if st.button("✅ SELECIONAR TODO VOLANTE"):
+                max_v_bt = 25 if mod == "Lotofácil" else 60
+                st.session_state.favoritas[mod] = list(range(1, max_v_bt + 1))
                 st.rerun()
                 
         with col_btn2:
-            # BOTÃO 3: POOL INTELIGENTE
-            if st.button("🧠 POOL INTELIGENTE", key="btn_pool_intel"):
+            # BOTÃO 3: INTELIGENTE (Baseado em Score de Frequência e Atraso)
+            if st.button("🧠 POOL INTELIGENTE"):
                 stats_mod = st.session_state.analise_stats.get(mod, {})
                 if stats_mod:
+                    # Ordena pelo Score e pega exatamente o tamanho necessário
                     dezenas_ordenadas = sorted(stats_mod.keys(), key=lambda x: stats_mod[x]['score'], reverse=True)
-                    st.session_state.favoritas[mod] = list(dezenas_ordenadas[:tamanho_alvo_pool])
-                    st.success("🎯 Pool Aplicado!")
+                    st.session_state.favoritas[mod] = sorted(dezenas_ordenadas[:tamanho_alvo_pool])
+                    st.success(f"🎯 Pool Inteligente: {tamanho_alvo_pool} dezenas!")
                     st.rerun()
 
-            # BOTÃO 4: REFINAR (RESOLUÇÃO DO CONFLITO DE VÁCUO)
-            if st.button("💎 REFINAR POOL (FILTRO DE ELITE)", key="btn_refinar_final"):
-                # 1. Pega o que está na gaveta (IA ou Pool anterior)
-                base_atual = st.session_state.favoritas.get(mod, [])
+            # BOTÃO 4: REFINAR (Filtro de Elite por Afinidade)
+            if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
+                pool_base = st.session_state.favoritas.get(mod, [])
+                if len(pool_base) < tamanho_alvo_pool:
+                    # Se o pool estiver vazio, ele gera um via IA para depois refinar
+                    pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
                 
-                # 2. Se a gaveta estiver com vácuo, ele NÃO para, ele busca a base da IA agora
-                if len(base_atual) < 6:
-                    base_atual = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
-                
-                if base_atual:
-                    # 3. Força o cálculo da matriz de afinidade real do momento
-                    m_af = calcular_matriz_afinidade_kadosh(mod)
-                    
-                    # 4. Refina a base (seja ela vinda da IA ou do Pool Inteligente)
-                    pool_final = refinar_pool_kadosh(base_atual, m_af, tamanho_objetivo=tamanho_alvo_pool)
-                    
-                    # 5. Sobrescreve a gaveta e força a atualização do volante
-                    st.session_state.favoritas[mod] = list(pool_final)
-                    st.success(f"💎 Refinado para {tamanho_alvo_pool} dezenas!")
-                    st.rerun()
-        # --- [FIM DO TRECHO] ---
-        # --- [FIM DO TRECHO CORRIGIDO] ---
+                matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
+                pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_objetivo=tamanho_alvo_pool)
+                st.session_state.favoritas[mod] = pool_refinado
+                st.success(f"🎯 Refinado para {tamanho_alvo_pool} dezenas!")
+                st.rerun()
+
         # Sincronização do multiselect (O default agora puxa do session_state atualizado pelos botões)
         pool = st.multiselect(
             "SELECIONE SEU POOL", 
@@ -1358,11 +1348,6 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
-
-
-
-
-
 
 
 
