@@ -1109,32 +1109,36 @@ with abas[2]:
     dados = st.session_state.get(f'dados_api_{lot_v}')
 
     if dados:
-        # DESIGN DE ALTA CLAREZA - TAMANHO ORIGINAL COM CONTRASTE REFORÇADO
+        # DESIGN MODERN "LIGHT GLASS" - ULTRA VISIBILIDADE E ELEGÂNCIA
         st.markdown(f"""
-            <div style="background-color: #004a8d; padding: 25px; border-radius: 15px; border-left: 10px solid #ffffff; box-shadow: 4px 4px 12px rgba(0,0,0,0.3); font-family: sans-serif;">
+            <div style="background: #ffffff; padding: 25px; border-radius: 20px; border: 1px solid #e0e0e0; box-shadow: 0px 10px 25px rgba(0,0,0,0.05); font-family: 'Segoe UI', Roboto, sans-serif;">
                 
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h1 style='margin:0; color: #ffffff !important; font-weight: 900; font-size: 40px;'>
-                        {lot_v.upper()}
-                    </h1>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div>
+                        <h1 style='margin:0; color: #004a8d !important; font-weight: 900; font-size: 35px; letter-spacing: -1px;'>
+                            {lot_v.upper()}
+                        </h1>
+                        <p style='margin:0; color: #666; font-size: 14px; font-weight: 600; text-transform: uppercase;'>Portal de Resultados</p>
+                    </div>
                     
-                    <span style="background: #ffffff; color: #004a8d !important; padding: 8px 18px; border-radius: 10px; font-weight: 900; font-size: 18px; border: 2px solid #ffffff;">
-                        CONCURSO {dados.get('numero')}
-                    </span>
+                    <div style="background: #004a8d; color: #ffffff !important; padding: 10px 20px; border-radius: 12px; text-align: center; box-shadow: 0px 4px 10px rgba(0,74,141,0.2);">
+                        <span style="display: block; font-size: 10px; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Concurso</span>
+                        <span style="font-size: 22px; font-weight: 900;">{dados.get('numero')}</span>
+                    </div>
                 </div>
 
-                <hr style='border: 0.5px solid rgba(255, 255, 255, 0.3); margin: 20px 0;'>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; border-left: 6px solid #004a8d;">
+                    <p style='font-size: 14px; margin: 0; color: #666 !important; font-weight: 800; text-transform: uppercase;'>
+                        Estimativa de Prêmio
+                    </p>
+                    <p style='font-size: 48px; margin: 5px 0; color: #004a8d !important; font-weight: 900; line-height: 1;'>
+                        <span style="font-size: 24px; vertical-align: middle;">R$</span> {dados.get('valorEstimadoProximoConcurso', 0):,.2f}
+                    </p>
+                </div>
 
-                <p style='font-size: 18px; margin: 0; color: #ffffff !important; font-weight: bold; text-transform: uppercase;'>
-                    Próximo Prêmio Estimado:
-                </p>
-                
-                <p style='font-size: 52px; margin: 5px 0; color: #ffffff !important; font-weight: 900; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);'>
-                    R$ {dados.get('valorEstimadoProximoConcurso', 0):,.2f}
-                </p>
-
-                <div style="margin-top: 20px; font-size: 15px; color: #ffffff !important; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; font-weight: bold; border: 1px solid rgba(255,255,255,0.4);">
-                    📅 DATA: {dados.get('dataApuracao')} | 📍 LOCAL: {dados.get('localSorteio')}
+                <div style="margin-top: 20px; display: flex; justify-content: space-between; font-size: 14px; color: #444 !important; font-weight: 700; padding: 0 5px;">
+                    <span><span style="color: #004a8d;">📅</span> {dados.get('dataApuracao')}</span>
+                    <span><span style="color: #004a8d;">📍</span> {dados.get('localSorteio')}</span>
                 </div>
             </div>
         """, unsafe_allow_html=True)
