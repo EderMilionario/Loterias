@@ -79,47 +79,60 @@ def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, po
                 pesos[d_pool] += bonus
     return pesos
 
+def calcular_matriz_afinidade_kadosh(mod):
+    res_db = st.session_state.ultimo_res.get(mod, {})
+    # Mantive sua trava original de segurança
+    if len(res_db) < 3: return None
+    
+    limite = 26 if mod == "Lotofácil" else 61
+    # Mantive sua estrutura de lista de listas (Python Puro)
+    matriz = [[0 for _ in range(limite)] for _ in range(limite)]
+    
+    # Ordenação segura das chaves para identificar os recentes
+    chaves_ordenadas = sorted(res_db.keys(), key=lambda x: int(x))
+    ultimos_35 = set(chaves_ordenadas[-35:]) # Uso de set para busca rápida
+    
+    for conc, sorteio in res_db.items():
+        # Lógica de peso injetada sem mudar a estrutura
+        peso = 3 if conc in ultimos_35 else 1
+        
+        nums = sorted([int(n) for n in sorteio])
+        for i in range(len(nums)):
+            for j in range(i + 1, len(nums)):
+                d1, d2 = nums[i], nums[j]
+                if d1 < limite and d2 < limite:
+                    matriz[d1][d2] += peso
+                    matriz[d2][d1] += peso
+    return matriz
+
 def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo):
-    if not matriz_afinidade or len(pool_atual) <= tamanho_objetivo:
+    # Mantive sua verificação original
+    if not matriz_afinidade or not pool_atual:
         return sorted(list(pool_atual))
     
     pool_refinado = list(pool_atual)
+    
+    # 1. REMOVER (Sua lógica original com sum(matriz_afinidade))
     while len(pool_refinado) > tamanho_objetivo:
-        # Aqui removemos as dezenas com menor soma de afinidade
         piores_dezenas = sorted(pool_refinado, key=lambda d: sum(matriz_afinidade[int(d)]), reverse=False)
         pool_refinado.remove(piores_dezenas[0])
-    return sorted(pool_refinado)
-    
 
-# --- INÍCIO DA ATUALIZAÇÃO: MATRIZ COM PESO RECENTE (35 CONCURSOS) ---
-def calcular_matriz_afinidade_kadosh(mod):
-    import numpy as np
-    res_historico = st.session_state.ultimo_res.get(mod, {})
-    if not res_historico:
-        return None
-    
-    chaves_ordenadas = sorted(res_historico.keys(), key=int)
-    limite = 26 if mod == "Lotofácil" else 61
-    matriz_afinidade = np.zeros((limite, limite))
-    
-    # Identificamos quais são os últimos 35 concursos para dar peso extra
-    ultimos_35 = chaves_ordenadas[-35:]
-    
-    for conc in chaves_ordenadas:
-        sorteio = res_historico[conc]
-        # Define o peso: se estiver nos últimos 35, vale 3. Se for antigo, vale 1.
-        peso = 3 if conc in ultimos_35 else 1
-        
-        # Gera as combinações de afinidade (quem sai com quem)
-        for i in range(len(sorteio)):
-            for j in range(i + 1, len(sorteio)):
-                n1, n2 = sorteio[i], sorteio[j]
-                if n1 < limite and n2 < limite:
-                    matriz_afinidade[n1][n2] += peso
-                    matriz_afinidade[n2][n1] += peso
-                    
-    return matriz_afinidade
-# --- FIM DA ATUALIZAÇÃO ---
+    # 2. TROCAR (Cura de vácuo sem mudar nomes de variáveis)
+    dezenas_fora = [d for d in range(1, 26) if d not in pool_refinado]
+    if dezenas_fora:
+        for _ in range(2): # Limite de 2 trocas para estabilidade
+            pior_no_pool = min(pool_refinado, key=lambda d: sum(matriz_afinidade[int(d)]))
+            melhor_fora = max(dezenas_fora, key=lambda d: sum(matriz_afinidade[int(d)]))
+            
+            if sum(matriz_afinidade[int(melhor_fora)]) > sum(matriz_afinidade[int(pior_no_pool)]):
+                pool_refinado.remove(pior_no_pool)
+                pool_refinado.append(melhor_fora)
+                dezenas_fora.remove(melhor_fora)
+                dezenas_fora.append(pior_no_pool)
+            else:
+                break
+            
+    return sorted([int(d) for d in pool_refinado])
 
 
 # --- 1. CONFIGURAÇÃO E ESTÉTICA ---
