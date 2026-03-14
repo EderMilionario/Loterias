@@ -1110,22 +1110,26 @@ with abas[2]:
 
     if dados:
         conteudo_html = f"""
-        <div style="background-color: white; padding: 25px; border-radius: 20px; border: 1px solid #ddd; font-family: sans-serif;">
+        <div style="background-color: #ffffff; padding: 25px; border-radius: 20px; border: 3px solid #000000; font-family: Arial, sans-serif;">
+        
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <div>
-                    <h1 style="margin:0; color: #004a8d; font-size: 35px;">{lot_v.upper()}</h1>
-                    <p style="margin:0; color: #666; font-size: 14px;">PORTAL DE RESULTADOS</p>
+                    <h1 style="margin:0; color: #000000 !important; font-size: 40px; font-weight: 900;">{lot_v.upper()}</h1>
+                    <p style="margin:0; color: #333; font-size: 14px; font-weight: bold;">RESULTADO OFICIAL</p>
                 </div>
-                <div style="background: #004a8d; color: white; padding: 10px 20px; border-radius: 12px; text-align: center;">
-                    <span style="display: block; font-size: 10px;">CONCURSO</span>
-                    <span style="font-size: 22px; font-weight: bold;">{dados.get('numero')}</span>
+            
+                <div style="background: #ffff00; color: #000000 !important; padding: 15px 25px; border-radius: 10px; text-align: center; border: 3px solid #000000;">
+                    <span style="display: block; font-size: 14px; font-weight: 900; text-transform: uppercase;">CONCURSO</span>
+                    <span style="font-size: 30px; font-weight: 900; display: block;">{dados.get('numero')}</span>
                 </div>
             </div>
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; border-left: 6px solid #004a8d;">
-                <p style="margin:0; color: #666; font-weight: bold;">ESTIMATIVA DE PRÊMIO</p>
-                <p style="font-size: 48px; margin: 5px 0; color: #004a8d; font-weight: bold;">R$ {dados.get('valorEstimadoProximoConcurso', 0):,.2f}</p>
+
+            <div style="background: #f0f0f0; padding: 20px; border-radius: 15px; border: 2px solid #000000;">
+                <p style="margin:0; color: #000; font-weight: 900; font-size: 18px;">ESTIMATIVA DE PRÊMIO PRÓXIMO CONCURSO:</p>
+                <p style="font-size: 55px; margin: 5px 0; color: #d32f2f !important; font-weight: 900;">R$ {dados.get('valorEstimadoProximoConcurso', 0):,.2f}</p>
             </div>
-            <div style="margin-top: 20px; display: flex; justify-content: space-between; font-size: 14px; color: #444;">
+
+            <div style="margin-top: 20px; display: flex; justify-content: space-between; font-size: 18px; color: #000 !important; font-weight: 900;">
                 <span>📅 DATA: {dados.get('dataApuracao')}</span>
                 <span>📍 LOCAL: {dados.get('localSorteio')}</span>
             </div>
