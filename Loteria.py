@@ -29,35 +29,91 @@ def rodar_backtesting_kadosh(df, num_concursos=30):
 
 # --- [FUNÇÕES DE INTELIGÊNCIA] ---
 
-# --- [INÍCIO DA FUNÇÃO IA CORRIGIDA] ---
-def treinar_e_prever_ia(mod_alvo, tamanho=20): # Forcei o tamanho 20 aqui também
+def treinar_e_prever_ia(mod_alvo, tamanho=20):
     import numpy as np
+    import pandas as pd
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.model_selection import GridSearchCV
+
     res_historico = st.session_state.ultimo_res.get(mod_alvo, {})
     
-    # Se tiver pelo menos 1 resultado, ele já tenta trabalhar
-    if len(res_historico) < 1: 
+    if len(res_historico) < 35: # Segurança: precisa de base para as árvores "aprenderem"
         return None
     
+    # 1. Preparação dos Dados (Matriz Binária)
     chaves_ordenadas = sorted(res_historico.keys(), key=int)
     max_num = 25 if mod_alvo == "Lotofácil" else 60
-    matriz_binaria = np.zeros((len(chaves_ordenadas), max_num))
+    matriz = np.zeros((len(chaves_ordenadas), max_num))
     
     for i, conc in enumerate(chaves_ordenadas):
         for num in res_historico[conc]:
             if num <= max_num:
-                matriz_binaria[i, num-1] = 1
-            
-    janela = min(15, len(matriz_binaria) - 1)
-    pesos_recentes = np.mean(matriz_binaria[-janela:], axis=0)
-    tendencia_longa = np.mean(matriz_binaria, axis=0)
-    
-    predicao_final = (pesos_recentes * 0.7) + (tendencia_longa * 0.3)
-    
-    # O segredo: a IA agora corta no tamanho exato que a estratégia pede
-    indices_vencedores = predicao_final.argsort()[-tamanho:][::-1]
-    return sorted([int(i + 1) for i in indices_vencedores])
-# --- [FIM DA FUNÇÃO IA CORRIGIDA] ---
+                matriz[i, num-1] = 1
 
+    # 2. Criação de Features (O que a IA vai analisar)
+    # Vamos criar um set de treinamento baseado nos últimos 35 concursos
+    X_train = []
+    y_train = []
+    
+    # A IA estuda blocos passados para tentar prever o próximo
+    for i in range(len(matriz) - 10, len(matriz)):
+        # Criamos características: média curta (5), média longa (15), e atraso
+        feat = np.column_stack([
+            np.mean(matriz[i-5:i], axis=0),  # Tendência imediata
+            np.mean(matriz[i-15:i], axis=0), # Tendência média
+            np.mean(matriz[:i], axis=0)      # Histórico total
+        ])
+        X_train.extend(feat)
+        y_train.extend(matriz[i]) # O que de fato saiu
+
+    # 3. O TORNEIO DE HIPÓTESES (GridSearchCV + Random Forest)
+    rf = RandomForestClassifier(random_state=42)
+    param_grid = {
+        'n_estimators': [50, 100],      # Quantidade de árvores
+        'max_depth': [None, 5, 10],     # Profundidade da análise
+        'min_samples_split': [2, 5]     # Rigidez da decisão
+    }
+    
+    # O grid_search vai testar todas as combinações e escolher a melhor
+    grid_search = GridSearchCV(estimator=rf, param_grid=param_grid, cv=3, n_jobs=-1)
+    
+    try:
+        grid_search.fit(X_train, y_train)
+        melhor_modelo = grid_search.best_estimator_
+        
+        # 4. Predição para o próximo concurso
+        # Usamos os dados mais atuais para alimentar o modelo vencedor
+        X_atual = np.column_stack([
+            np.mean(matriz[-5:], axis=0),
+            np.mean(matriz[-15:], axis=0),
+            np.mean(matriz, axis=0)
+        ])
+        
+        # Obtém a probabilidade de cada número sair
+        probabilidades = melhor_modelo.predict_proba(X_atual)
+        
+        # Ajuste para pegar a probabilidade da classe 1 (sair)
+        # Se for multi-output, pegamos a probabilidade de cada árvore
+        if isinstance(probabilidades, list):
+            preds = [p[0][1] if len(p[0]) > 1 else p[0][0] for p in probabilidades]
+        else:
+            preds = probabilidades[:, 1]
+
+        # 5. O Segredo: O Peso 70/30 entra como "Plano B" no Score Final
+        pesos_originais = (np.mean(matriz[-15:], axis=0) * 0.7) + (np.mean(matriz, axis=0) * 0.3)
+        score_final = (np.array(preds) * 0.8) + (pesos_originais * 0.2) # IA domina 80% da decisão
+        
+        indices_vencedores = score_final.argsort()[-tamanho:][::-1]
+        return sorted([int(i + 1) for i in indices_vencedores])
+        
+    except Exception as e:
+        # Se o torneio de árvores falhar, ele volta para o seu 70/30 original (Segurança)
+        st.warning(f"IA em modo de segurança: {e}")
+        pesos_recentes = np.mean(matriz[-15:], axis=0)
+        tendencia_longa = np.mean(matriz, axis=0)
+        predicao_final = (pesos_recentes * 0.7) + (tendencia_longa * 0.3)
+        indices_vencedores = predicao_final.argsort()[-tamanho:][::-1]
+        return sorted([int(i + 1) for i in indices_vencedores])
 
 def buscar_ultimo_resultado_api(modalidade="Lotofácil"):
     nomes_caixa = {
