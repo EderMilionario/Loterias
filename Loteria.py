@@ -1109,36 +1109,25 @@ with abas[2]:
     dados = st.session_state.get(f'dados_api_{lot_v}')
 
     if dados:
-    # CARD COM DEGRADÊ VIVO E ALTO CONTRASTE (MELHOR LEITURA)
-    st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 25px; border-radius: 15px; border-top: 8px solid #f39200; box-shadow: 6px 6px 20px rgba(0,0,0,0.15); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
-            
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h1 style='margin:0; color: #004a8d !important; font-weight: 900; font-size: 38px; letter-spacing: -1px;'>
-                    {lot_v.upper()}
-                </h1>
-                <span style="background: #f39200; color: #000000 !important; padding: 10px 20px; border-radius: 10px; font-weight: 800; font-size: 18px; border: 2px solid #000;">
-                    CONCURSO {dados.get('numero')}
-                </span>
+        # CARD AZUL COM ESCRITA LARANJA DESTACADA
+        st.markdown(f"""
+            <div style="background-color: #004a8d; padding: 25px; border-radius: 15px; border-left: 10px solid #f39200; box-shadow: 4px 4px 12px rgba(0,0,0,0.4); font-family: sans-serif;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1 style='margin:0; color: #f39200 !important; font-weight: 900; font-size: 40px;'>{lot_v.upper()}</h1>
+                    <span style="background: #f39200; color: #004a8d !important; padding: 8px 18px; border-radius: 20px; font-weight: 900; font-size: 18px;">
+                        CONCURSO {dados.get('numero')}
+                    </span>
+                </div>
+                <hr style='border: 0.5px solid rgba(245, 146, 0, 0.4); margin: 20px 0;'>
+                <p style='font-size: 18px; margin: 0; color: #ffffff !important; font-weight: bold; text-transform: uppercase;'>Próximo Prêmio Estimado:</p>
+                <p style='font-size: 52px; margin: 5px 0; color: #f39200 !important; font-weight: 900; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);'>
+                    R$ {dados.get('valorEstimadoProximoConcurso', 0):,.2f}
+                </p>
+                <div style="margin-top: 20px; font-size: 15px; color: #f39200 !important; background: rgba(0,0,0,0.4); padding: 12px; border-radius: 8px; font-weight: bold; border: 1px solid #f39200;">
+                    <span style="color: white;">📅 DATA:</span> {dados.get('dataApuracao')} | <span style="color: white;">📍 LOCAL:</span> {dados.get('localSorteio')}
+                </div>
             </div>
-
-            <hr style='border: 0.5px solid rgba(0, 74, 141, 0.2); margin: 20px 0;'>
-
-            <p style='font-size: 16px; margin: 0; color: #444444 !important; font-weight: 700; text-transform: uppercase;'>
-                Próximo Prêmio Estimado
-            </p>
-            
-            <p style='font-size: 54px; margin: 5px 0; color: #004a8d !important; font-weight: 900; text-shadow: 1px 1px 0px #ffffff;'>
-                R$ {dados.get('valorEstimadoProximoConcurso', 0):,.2f}
-            </p>
-
-            <div style="margin-top: 20px; font-size: 15px; color: #000000 !important; background: #ffe0b3; padding: 15px; border-radius: 8px; font-weight: bold; border-left: 5px solid #f39200;">
-                📅 <span style="color: #004a8d;">DATA:</span> {dados.get('dataApuracao')} 
-                <span style="margin: 0 15px; color: #f39200;">|</span> 
-                📍 <span style="color: #004a8d;">LOCAL:</span> {dados.get('localSorteio')}
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
         
         st.markdown("### 🏆 Detalhamento do Rateio Oficial")
         rateio = dados.get('listaRateio', [])
@@ -1513,7 +1502,6 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
-
 
 
 
