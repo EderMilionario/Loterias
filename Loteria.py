@@ -1194,9 +1194,39 @@ with abas[5]:
                 "Foco": info["desc"], 
                 "Chances": info["prob"]
             })
+    # Isso já estava no seu código
     st.table(pd.DataFrame(dados_est))
-
     st.markdown("---")
+
+    # --- MAPEAMENTO TOTAL KADOSH (ESTRATÉGIAS X MATRIZES) ---
+    st.subheader("🔥 Painel Tático: Poderio de Fogo e Sincronia")
+    st.write("Consulte o arsenal completo. Escolha seu alvo antes de processar os dados.")
+
+    dados_completos = [
+        {"Estratégia": "SNIPER", "Matrizes": "CÉLULA / 18-15-14", "Foco": "14 e 15 pts (Precisão)", "13 pts": "1/25 a 1/150", "14 pts": "1/152", "15 pts": "1/3.2M"},
+        {"Estratégia": "A MARRETA", "Matrizes": "CÉLULA / 18-15-14", "Foco": "Garantia de 14 pts*", "13 pts": "1/25", "14 pts": "1/152", "15 pts": "1/3.2M"},
+        {"Estratégia": "ESCUDO E ESPADA", "Matrizes": "CÉLULA / 18-15-14 / 19-15-14", "Foco": "Defesa de Capital", "13 pts": "1/30", "14 pts": "1/180", "15 pts": "1/204k"},
+        {"Estratégia": "EQUILÍBRIO REAL", "Matrizes": "DIAMANTE / 19-15-14 / 20-15-13", "Foco": "Lucro Multiplicado", "13 pts": "1/45", "14 pts": "1/800", "15 pts": "1/102k"},
+        {"Estratégia": "ELITE KADOSH", "Matrizes": "DIAMANTE / 19-15-14", "Foco": "Alvo 15 pts (Elite)", "13 pts": "1/40", "14 pts": "1/450", "15 pts": "1/85k"},
+        {"Estratégia": "RASTR. CICLO", "Matrizes": "DIAMANTE / 19-15-14", "Foco": "Tendência de Atraso", "13 pts": "1/35", "14 pts": "1/850", "15 pts": "1/90k"},
+        {"Estratégia": "EQUILÍBRIO TOTAL", "Matrizes": "20-15-13 / DIAMANTE / 19-15-14", "Foco": "Segurança (Não Perder)", "13 pts": "1/12", "14 pts": "1/600", "15 pts": "1/211k"},
+        {"Estratégia": "INVASÃO", "Matrizes": "20-15-13 / 19-15-14", "Foco": "Cerco de Volume", "13 pts": "1/15", "14 pts": "1/700", "15 pts": "1/130k"},
+        {"Estratégia": "MOLDE DE OURO", "Matrizes": "20-15-13 / 19-15-14", "Foco": "Geometria de Moldura", "13 pts": "1/18", "14 pts": "1/750", "15 pts": "1/130k"},
+        {"Estratégia": "PRESTIGE 20", "Matrizes": "20-15-13 / DIAMANTE / 19-15-14", "Foco": "Poderio Máximo (14 pts)", "13 pts": "1/9", "14 pts": "1/90", "15 pts": "1/75k"},
+        {"Estratégia": "SIMETRIA GEOM.", "Matrizes": "DIAMANTE / 20-15-13", "Foco": "Estética e Filtros", "13 pts": "1/40", "14 pts": "1/1.200", "15 pts": "1/81k"},
+        {"Estratégia": "CERCO ELIMIN.", "Matrizes": "Uso Individual", "Foco": "Limpeza de Dezenas", "13 pts": "1/160", "14 pts": "1/5.000", "15 pts": "1/3.2M"}
+    ]
+
+    st.table(dados_completos)
+
+    st.markdown("""
+    ### 🧠 Sequência Mestra de Cliques (Ordem Obrigatória):
+    1. **PASSO 1 [COMBO]:** Escolha a Estratégia e a Matriz (Define o tamanho do Pool).
+    2. **PASSO 2 [IA]:** Clique em 'Ativar IA' para processar o cenário.
+    3. **PASSO 3 [POOL]:** Clique em 'Pool Inteligente / Refinar Kadosh' (IA filtra as dezenas).
+    4. **PASSO 4 [JOGOS]:** Clique em 'Gerar Jogos'.
+    """)
+    st.error("⚠️ **IMPORTANTE:** Se refinar o Pool (Passo 3) antes de escolher o combo (Passo 1), o sistema usará 18 dezenas e matará a vantagem das matrizes maiores.")
     st.subheader("📐 ANÁLISE TÉCNICA DE MATRIZES (ACRÉSCIMO)")
     dados_mat = []
     for nome, info in MATRIZES_FECHAMENTO.items():
