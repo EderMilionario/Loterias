@@ -1109,37 +1109,30 @@ with abas[2]:
     dados = st.session_state.get(f'dados_api_{lot_v}')
 
     if dados:
-        # 1. Definimos as informações primeiro para o código não bugar
-        nome_lot = str(lot_v).upper()
-        n_conc = dados.get('numero')
-        v_premio = dados.get('valorEstimadoProximoConcurso', 0)
-        d_data = dados.get('dataApuracao')
-        l_local = dados.get('localSorteio')
-
-        # 2. O comando que desenha o card na tela (com o recuo de 4 espaços)
-        st.markdown(f"""
-        <div style="background-color: white; padding: 20px; border: 5px solid black; border-radius: 15px; font-family: Arial, sans-serif;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+        conteudo_html = f"""
+        <div style="background-color: white; padding: 25px; border-radius: 20px; border: 1px solid #ddd; font-family: sans-serif;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <div>
-                    <h1 style="margin: 0; color: black !important; font-size: 45px; font-weight: 900;">{nome_lot}</h1>
-                    <p style="margin: 0; color: #444; font-weight: bold; font-size: 16px;">RESULTADO ATUALIZADO</p>
+                    <h1 style="margin:0; color: background: #ffff00; font-size: 35px;">{lot_v.upper()}</h1>
+                    <p style="margin:0; color: #666; font-size: 14px;">PORTAL DE RESULTADOS</p>
                 </div>
-                <div style="background-color: #ffff00; padding: 15px; border: 4px solid black; border-radius: 10px; text-align: center; min-width: 160px;">
-                    <span style="color: black !important; font-size: 16px; font-weight: 900; display: block; text-transform: uppercase;">CONCURSO</span>
-                    <span style="color: black !important; font-size: 38px; font-weight: 900; display: block;">{n_conc}</span>
+                <div style="background: background: #ffff00; color: color: black; padding: 10px 20px; border-radius: 12px; text-align: center;">
+                    <span style="display: block; font-size: 10px;">CONCURSO</span>
+                    <span style="font-size: 22px; font-weight: bold;">{dados.get('numero')}</span>
                 </div>
             </div>
-            <div style="margin-top: 20px; background-color: #eeeeee; padding: 20px; border: 2px solid black; border-radius: 10px;">
-                <p style="margin: 0; color: black; font-weight: 900; font-size: 20px;">PRÓXIMO PRÊMIO ESTIMADO:</p>
-                <h2 style="margin: 5px 0; color: #d32f2f !important; font-size: 55px; font-weight: 900;">R$ {v_premio:,.2f}</h2>
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; border-left: 6px solid #004a8d;">
+                <p style="margin:0; color: #666; font-weight: bold;">ESTIMATIVA DE PRÊMIO</p>
+                <p style="font-size: 48px; margin: 5px 0; color: #004a8d; font-weight: bold;">R$ {dados.get('valorEstimadoProximoConcurso', 0):,.2f}</p>
             </div>
-            <div style="margin-top: 15px; display: flex; justify-content: space-between; font-size: 18px; color: black !important; font-weight: 900;">
-                <span>📅 DATA: {d_data}</span>
-                <span>📍 LOCAL: {l_local}</span>
+            <div style="margin-top: 20px; display: flex; justify-content: space-between; font-size: 14px; color: #444;">
+                <span>📅 DATA: {dados.get('dataApuracao')}</span>
+                <span>📍 LOCAL: {dados.get('localSorteio')}</span>
             </div>
         </div>
-        """, unsafe_allow_html=True)
-            st.markdown(desenho, unsafe_allow_html=True)
+        """
+        st.markdown(conteudo_html, unsafe_allow_html=True)
+        
         st.markdown("### 🏆 Detalhamento do Rateio Oficial")
         rateio = dados.get('listaRateio', [])
         if rateio:
