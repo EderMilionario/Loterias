@@ -91,20 +91,35 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo):
     return sorted(pool_refinado)
     
 
+# --- INÍCIO DA ATUALIZAÇÃO: MATRIZ COM PESO RECENTE (35 CONCURSOS) ---
 def calcular_matriz_afinidade_kadosh(mod):
-    res_db = st.session_state.ultimo_res.get(mod, {})
-    if len(res_db) < 3: return None
+    import numpy as np
+    res_historico = st.session_state.ultimo_res.get(mod, {})
+    if not res_historico:
+        return None
+    
+    chaves_ordenadas = sorted(res_historico.keys(), key=int)
     limite = 26 if mod == "Lotofácil" else 61
-    matriz = [[0 for _ in range(limite)] for _ in range(limite)]
-    for sorteio in res_db.values():
-        nums = sorted([int(n) for n in sorteio])
-        for i in range(len(nums)):
-            for j in range(i + 1, len(nums)):
-                d1, d2 = nums[i], nums[j]
-                if d1 < limite and d2 < limite:
-                    matriz[d1][d2] += 1
-                    matriz[d2][d1] += 1
-    return matriz
+    matriz_afinidade = np.zeros((limite, limite))
+    
+    # Identificamos quais são os últimos 35 concursos para dar peso extra
+    ultimos_35 = chaves_ordenadas[-35:]
+    
+    for conc in chaves_ordenadas:
+        sorteio = res_historico[conc]
+        # Define o peso: se estiver nos últimos 35, vale 3. Se for antigo, vale 1.
+        peso = 3 if conc in ultimos_35 else 1
+        
+        # Gera as combinações de afinidade (quem sai com quem)
+        for i in range(len(sorteio)):
+            for j in range(i + 1, len(sorteio)):
+                n1, n2 = sorteio[i], sorteio[j]
+                if n1 < limite and n2 < limite:
+                    matriz_afinidade[n1][n2] += peso
+                    matriz_afinidade[n2][n1] += peso
+                    
+    return matriz_afinidade
+# --- FIM DA ATUALIZAÇÃO ---
 
 
 # --- 1. CONFIGURAÇÃO E ESTÉTICA ---
