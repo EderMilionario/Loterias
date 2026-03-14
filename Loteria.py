@@ -1135,13 +1135,28 @@ with abas[2]:
         
         st.markdown("### 🏆 Detalhamento do Rateio Oficial")
         rateio = dados.get('listaRateio', [])
+        # --- NOVO BLOCO DE RESGATE (COLE AQUI) ---
+        if not rateio:
+            lot_url_reserva = lot_v.lower().replace("-", "")
+            url_reserva = f"https://loteriascaixa.softfarma.com.br/api/{lot_url_reserva}"
+            try:
+                res_res = requests.get(url_reserva, timeout=10)
+                if res_res.status_code == 200:
+                    dados_reserva = res_res.json()
+                    rateio = dados_reserva.get('listaRateioPremios', [])
+                    # Atualiza o estado global para que a ABA 3 e a Database também vejam
+                    st.session_state[f'dados_api_{lot_v}'] = dados_reserva
+            except:
+                pass
+        # --- FIM DO BLOCO DE RESGATE ---
+
         if rateio:
             import pandas as pd
             df_r = pd.DataFrame(rateio)[['descricaoFaixa', 'numeroDeGanhadores', 'valorRateio']]
             df_r.columns = ['Faixa', 'Ganhadores', 'Prêmio Individual']
             st.dataframe(df_r.style.format({'Prêmio Individual': 'R$ {:,.2f}'}), use_container_width=True, hide_index=True)
         else:
-            st.info("ℹ️ Os valores de ganhadores e rateio ainda não foram processados pela Caixa.")    
+            st.info("ℹ️ Os valores de ganhadores e rateio ainda não foram processados pela Caixa.")
 
 with abas[3]:
     mostrar_status_backup()
