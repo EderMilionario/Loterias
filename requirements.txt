@@ -1,5 +1,6 @@
 streamlit
 pandas
 fpdf
-
+scikit-learn
 streamlit-extras
+numpy
