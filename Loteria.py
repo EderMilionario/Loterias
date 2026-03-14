@@ -1109,22 +1109,35 @@ with abas[2]:
     dados = st.session_state.get(f'dados_api_{lot_v}')
 
     if dados:
-        # CARD AZUL COM ESCRITA LARANJA DESTACADA
+        # CARD PREMIUM BLUE - VERSÃO REFORÇADA
         st.markdown(f"""
-            <div style="background-color: #004a8d; padding: 25px; border-radius: 15px; border-left: 10px solid #f39200; box-shadow: 4px 4px 12px rgba(0,0,0,0.4); font-family: sans-serif;">
+            <div style="background: linear-gradient(135deg, #004a8d 0%, #001a33 100%); padding: 30px; border-radius: 20px; border: 3px solid #ff9900; box-shadow: 0px 15px 35px rgba(0,0,0,0.5); font-family: 'Arial Black', Gadget, sans-serif;">
+            
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h1 style='margin:0; color: #f39200 !important; font-weight: 900; font-size: 40px;'>{lot_v.upper()}</h1>
-                    <span style="background: #f39200; color: #004a8d !important; padding: 8px 18px; border-radius: 20px; font-weight: 900; font-size: 18px;">
+                    <h1 style='margin:0; color: #ffffff !important; font-weight: 900; font-size: 42px; text-shadow: 3px 3px 6px #000;'>
+                        {lot_v.upper()}
+                    </h1>
+                    <span style="background: #ff9900; color: #000000 !important; padding: 12px 24px; border-radius: 12px; font-weight: 900; font-size: 20px; border: 2px solid #ffffff;">
                         CONCURSO {dados.get('numero')}
                     </span>
                 </div>
-                <hr style='border: 0.5px solid rgba(245, 146, 0, 0.4); margin: 20px 0;'>
-                <p style='font-size: 18px; margin: 0; color: #ffffff !important; font-weight: bold; text-transform: uppercase;'>Próximo Prêmio Estimado:</p>
-                <p style='font-size: 52px; margin: 5px 0; color: #f39200 !important; font-weight: 900; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);'>
-                    R$ {dados.get('valorEstimadoProximoConcurso', 0):,.2f}
+
+                <hr style='border: 1px solid #ff9900; margin: 20px 0; opacity: 0.5;'>
+
+                <p style='font-size: 18px; margin: 0; color: #ffffff !important; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;'>
+                    PRÓXIMO PRÊMIO ESTIMADO
                 </p>
-                <div style="margin-top: 20px; font-size: 15px; color: #f39200 !important; background: rgba(0,0,0,0.4); padding: 12px; border-radius: 8px; font-weight: bold; border: 1px solid #f39200;">
-                    <span style="color: white;">📅 DATA:</span> {dados.get('dataApuracao')} | <span style="color: white;">📍 LOCAL:</span> {dados.get('localSorteio')}
+            
+                <p style='font-size: 62px; margin: 10px 0; color: #ff9900 !important; font-weight: 900; text-shadow: 4px 4px 10px #000; line-height: 1;'>
+                R$ {dados.get('valorEstimadoProximoConcurso', 0):,.2f}
+                </p>
+
+                <div style="margin-top: 25px; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 12px; border: 1px solid #ff9900;">
+                    <div style="display: flex; justify-content: space-around; font-size: 16px; color: #ffffff !important; font-weight: 900;">
+                        <span>📅 DATA: {dados.get('dataApuracao')}</span>
+                        <span style="color: #ff9900;">|</span>
+                        <span>📍 LOCAL: {dados.get('localSorteio')}</span>
+                    </div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
