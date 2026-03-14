@@ -1109,21 +1109,31 @@ with abas[2]:
     dados = st.session_state.get(f'dados_api_{lot_v}')
 
     if dados:
-        # DESIGN CLEAN PRESTIGE - FUNDO BRANCO E LETRAS ESCURAS (MÁXIMA LEITURA)
+        # DESIGN DE ALTA CLAREZA - TAMANHO ORIGINAL COM CONTRASTE REFORÇADO
         st.markdown(f"""
-            <div style="background-color: #ffffff; padding: 30px; border-radius: 15px; border: 3px solid #d4af37; box-shadow: 10px 10px 20px rgba(0,0,0,0.1); font-family: sans-serif;">
+            <div style="background-color: #004a8d; padding: 25px; border-radius: 15px; border-left: 10px solid #ffffff; box-shadow: 4px 4px 12px rgba(0,0,0,0.3); font-family: sans-serif;">
+                
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h1 style='margin:0; color: #000000 !important; font-weight: 900; font-size: 40px;'>{lot_v.upper()}</h1>
-                    <div style="background: #000000; color: #d4af37 !important; padding: 10px 20px; border-radius: 10px; font-weight: 900; font-size: 20px;">
+                    <h1 style='margin:0; color: #ffffff !important; font-weight: 900; font-size: 40px;'>
+                        {lot_v.upper()}
+                    </h1>
+                    
+                    <span style="background: #ffffff; color: #004a8d !important; padding: 8px 18px; border-radius: 10px; font-weight: 900; font-size: 18px; border: 2px solid #ffffff;">
                         CONCURSO {dados.get('numero')}
-                    </div>
+                    </span>
                 </div>
-                <hr style='border: 1px solid #d4af37; margin: 20px 0;'>
-                <p style='font-size: 18px; margin: 0; color: #444444 !important; font-weight: bold;'>PRÓXIMO PRÉMIO ESTIMADO:</p>
-                <p style='font-size: 60px; margin: 10px 0; color: #d4af37 !important; font-weight: 900; text-shadow: 2px 2px 0px #000;'>
+
+                <hr style='border: 0.5px solid rgba(255, 255, 255, 0.3); margin: 20px 0;'>
+
+                <p style='font-size: 18px; margin: 0; color: #ffffff !important; font-weight: bold; text-transform: uppercase;'>
+                    Próximo Prêmio Estimado:
+                </p>
+                
+                <p style='font-size: 52px; margin: 5px 0; color: #ffffff !important; font-weight: 900; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);'>
                     R$ {dados.get('valorEstimadoProximoConcurso', 0):,.2f}
                 </p>
-                <div style="margin-top: 20px; padding: 15px; background: #f4f4f4; border-radius: 10px; color: #000 !important; font-weight: bold; border-left: 5px solid #000;">
+
+                <div style="margin-top: 20px; font-size: 15px; color: #ffffff !important; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; font-weight: bold; border: 1px solid rgba(255,255,255,0.4);">
                     📅 DATA: {dados.get('dataApuracao')} | 📍 LOCAL: {dados.get('localSorteio')}
                 </div>
             </div>
