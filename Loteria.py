@@ -1109,33 +1109,43 @@ with abas[2]:
     dados = st.session_state.get(f'dados_api_{lot_v}')
 
     if dados:
-        conteudo_html = f"""
-        <div style="background-color: #ffffff; padding: 25px; border-radius: 20px; border: 3px solid #000000; font-family: Arial, sans-serif;">
+        # 1. Definimos as informações primeiro para o código não bugar
+        nome_lot = str(lot_v).upper()
+        n_conc = dados.get('numero')
+        v_premio = dados.get('valorEstimadoProximoConcurso', 0)
+        d_data = dados.get('dataApuracao')
+        l_local = dados.get('localSorteio')
+
+        # 2. Montamos o desenho (HTML) sem frescura e sem azul
+        desenho = f"""
+        <div style="background-color: white; padding: 20px; border: 5px solid black; border-radius: 15px; font-family: Arial, sans-serif;">
         
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <h1 style="margin:0; color: #000000 !important; font-size: 40px; font-weight: 900;">{lot_v.upper()}</h1>
-                    <p style="margin:0; color: #333; font-size: 14px; font-weight: bold;">RESULTADO OFICIAL</p>
+                    <h1 style="margin: 0; color: black !important; font-size: 45px; font-weight: 900;">{nome_lot}</h1>
+                    <p style="margin: 0; color: #444; font-weight: bold; font-size: 16px;">RESULTADO ATUALIZADO</p>
                 </div>
             
-                <div style="background: #ffff00; color: #000000 !important; padding: 15px 25px; border-radius: 10px; text-align: center; border: 3px solid #000000;">
-                    <span style="display: block; font-size: 14px; font-weight: 900; text-transform: uppercase;">CONCURSO</span>
-                    <span style="font-size: 30px; font-weight: 900; display: block;">{dados.get('numero')}</span>
+                <div style="background-color: #ffff00; padding: 15px; border: 4px solid black; border-radius: 10px; text-align: center; min-width: 160px;">
+                    <span style="color: black !important; font-size: 16px; font-weight: 900; display: block; text-transform: uppercase;">CONCURSO</span>
+                    <span style="color: black !important; font-size: 38px; font-weight: 900; display: block;">{n_conc}</span>
                 </div>
             </div>
 
-            <div style="background: #f0f0f0; padding: 20px; border-radius: 15px; border: 2px solid #000000;">
-                <p style="margin:0; color: #000; font-weight: 900; font-size: 18px;">ESTIMATIVA DE PRÊMIO PRÓXIMO CONCURSO:</p>
-                <p style="font-size: 55px; margin: 5px 0; color: #d32f2f !important; font-weight: 900;">R$ {dados.get('valorEstimadoProximoConcurso', 0):,.2f}</p>
+            <div style="margin-top: 20px; background-color: #eeeeee; padding: 20px; border: 2px solid black; border-radius: 10px;">
+                <p style="margin: 0; color: black; font-weight: 900; font-size: 20px;">PRÓXIMO PRÊMIO ESTIMADO:</p>
+                <h2 style="margin: 5px 0; color: #d32f2f !important; font-size: 55px; font-weight: 900;">R$ {v_premio:,.2f}</h2>
             </div>
 
-            <div style="margin-top: 20px; display: flex; justify-content: space-between; font-size: 18px; color: #000 !important; font-weight: 900;">
-                <span>📅 DATA: {dados.get('dataApuracao')}</span>
-                <span>📍 LOCAL: {dados.get('localSorteio')}</span>
+            <div style="margin-top: 15px; display: flex; justify-content: space-between; font-size: 18px; color: black !important; font-weight: 900;">
+                <span>📅 DATA: {d_data}</span>
+                <span>📍 LOCAL: {l_local}</span>
             </div>
         </div>
         """
-        st.markdown(conteudo_html, unsafe_allow_html=True)
+    
+        # 3. O comando que faz o desenho aparecer de verdade
+        st.markdown(desenho, unsafe_allow_html=True)
         st.markdown("### 🏆 Detalhamento do Rateio Oficial")
         rateio = dados.get('listaRateio', [])
         if rateio:
