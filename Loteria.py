@@ -1116,36 +1116,30 @@ with abas[2]:
         d_data = dados.get('dataApuracao')
         l_local = dados.get('localSorteio')
 
-        # 2. Montamos o desenho (HTML) sem frescura e sem azul
-        desenho = f"""
+        # 2. O comando que desenha o card na tela (com o recuo de 4 espaços)
+        st.markdown(f"""
         <div style="background-color: white; padding: 20px; border: 5px solid black; border-radius: 15px; font-family: Arial, sans-serif;">
-        
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <h1 style="margin: 0; color: black !important; font-size: 45px; font-weight: 900;">{nome_lot}</h1>
                     <p style="margin: 0; color: #444; font-weight: bold; font-size: 16px;">RESULTADO ATUALIZADO</p>
                 </div>
-            
                 <div style="background-color: #ffff00; padding: 15px; border: 4px solid black; border-radius: 10px; text-align: center; min-width: 160px;">
                     <span style="color: black !important; font-size: 16px; font-weight: 900; display: block; text-transform: uppercase;">CONCURSO</span>
                     <span style="color: black !important; font-size: 38px; font-weight: 900; display: block;">{n_conc}</span>
                 </div>
             </div>
-
             <div style="margin-top: 20px; background-color: #eeeeee; padding: 20px; border: 2px solid black; border-radius: 10px;">
                 <p style="margin: 0; color: black; font-weight: 900; font-size: 20px;">PRÓXIMO PRÊMIO ESTIMADO:</p>
                 <h2 style="margin: 5px 0; color: #d32f2f !important; font-size: 55px; font-weight: 900;">R$ {v_premio:,.2f}</h2>
             </div>
-
             <div style="margin-top: 15px; display: flex; justify-content: space-between; font-size: 18px; color: black !important; font-weight: 900;">
                 <span>📅 DATA: {d_data}</span>
                 <span>📍 LOCAL: {l_local}</span>
             </div>
         </div>
-        """
-    
-        # 3. O comando que faz o desenho aparecer de verdade
-        st.markdown(desenho, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+            st.markdown(desenho, unsafe_allow_html=True)
         st.markdown("### 🏆 Detalhamento do Rateio Oficial")
         rateio = dados.get('listaRateio', [])
         if rateio:
