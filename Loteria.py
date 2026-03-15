@@ -1031,12 +1031,20 @@ with abas[0]:
         st.rerun()
 
 with abas[1]:
-    # ... (seu código de cabeçalho e selectbox) ...
-
-    # Só mostra o botão se houver jogos na lista de salvos
+    mostrar_status_backup() 
+    st.header("🔍 Painel de Conferência")
+    
+    # 1. CRIA O SELECTBOX PRIMEIRO (Para a variável mod_f existir)
+    mod_f = st.selectbox(
+        "Selecione a Loteria para Conferir", 
+        list(st.session_state.custos.keys()), 
+        key="f_conf_definitiva"
+    )
+    
+    # 2. AGORA O BOTÃO DE PDF (Ele já conhece o mod_f aqui)
     if st.session_state.get('jogos_salvos'):
         try:
-            # Gera os bytes usando a função que olha para a chave "n"
+            # Pega os números da chave 'n' conforme seu backup 
             pdf_bytes = gerar_pdf_jogos(st.session_state.jogos_salvos, mod_f)
             
             st.download_button(
@@ -1044,11 +1052,12 @@ with abas[1]:
                 data=pdf_bytes,
                 file_name=f"jogos_{mod_f}.pdf",
                 mime="application/pdf",
-                key="btn_pdf_vfinal_resolvido"
+                key="btn_pdf_vfinal_estavel"
             )
         except Exception as e:
-            st.error(f"Erro ao gerar PDF: {e}")
+            st.error(f"Erro no PDF: {e}")
     
+    # 3. FILTRAGEM DOS JOGOS (Agora o mod_f está seguro aqui)
     jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
     res_db = st.session_state.ultimo_res.get(mod_f, {})
 
