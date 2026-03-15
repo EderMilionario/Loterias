@@ -918,13 +918,11 @@ with abas[0]:
                 for idx, qtd_l in enumerate(linhas_p):
                     cols_q[idx].metric(f"Linha {idx+1}", f"{qtd_l} dez")
         
-       # --- BLOCO DE FIXAÇÃO FIEL ---
+      # --- BLOCO DE FIXAÇÃO FIEL ---
         if mod == "Lotofácil":
-            # Adicionado key="loto" para identificar este rádio específico
-            modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True, key="loto")
+            modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True, key="fixa_loto")
         else:
-            # Adicionado key="outras" para o Streamlit saber que este é outro rádio
-            modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual"], horizontal=True, key="outras")
+            modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual"], horizontal=True, key="fixa_outras")
 
         fixas_final = []
         if modo_fixa == "Manual":
