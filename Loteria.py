@@ -903,13 +903,13 @@ with abas[0]:
            fixas_final = []
            if modo_fixa == "Manual":
                fixas_final = st.multiselect("📌 CRAVAR DEZENAS:", options=pool)
-            elif modo_fixa == "IA Automática (Score)":
-                qtd_auto = st.slider("Qtd de Cravadas:", 1, 10, 6)
-                if mod in st.session_state.analise_stats:
-                    stats = st.session_state.analise_stats[mod]
-                    melhores_ia = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
-                    fixas_final = melhores_ia[:qtd_auto]
-                    st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
+           elif modo_fixa == "IA Automática (Score)":
+               qtd_auto = st.slider("Qtd de Cravadas:", 1, 10, 6)
+               if mod in st.session_state.analise_stats:
+                   stats = st.session_state.analise_stats[mod]
+                   melhores_ia = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
+                   fixas_final = melhores_ia[:qtd_auto]
+                   st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
         
             renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
 
