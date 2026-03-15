@@ -223,37 +223,34 @@ def calcular_matriz_afinidade_kadosh(mod):
     return matriz
 
 def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_ia=None):
+    # Se os dados não existirem, não trava, apenas retorna o que já tem
     if not matriz_afinidade or not pool_atual:
         return sorted(list(pool_atual))
     
-    # Se o botão não enviar scores da IA, criamos um vazio para não dar erro
+    # Se o botão enviar a IA, usamos. Se não, fica vazio.
     if scores_ia is None:
         scores_ia = {}
 
-    # O JUIZ: IA (70%) + AFINIDADE (30%)
+    # O JUIZ (REGRA 70/30)
     def peso_juiz(d):
         d_int = int(d)
-        # 1. Pega o score da IA (Árvores)
+        # IA (Árvores)
         s_ia = scores_ia.get(d_int, 0)
-        
-        # 2. Pega a afinidade (Matriz Kadosh - últimos 35 jogos)
-        # Soma a afinidade da dezena com as outras e normaliza
-        afim_total = sum(matriz_afinidade[d_int]) / (len(matriz_afinidade) or 1)
-        
-        # 3. Trava de 40%: Se a afinidade for menor que 0.40, a dezena perde força
+        # Afinidade (Histórico 35 jogos)
+        afim_total = sum(matriz_afinidade[d_int]) / 25
+        # Trava de 40%
         estatistica_final = afim_total if afim_total > 0.40 else afim_total * 0.5
         
-        # 4. Cálculo final: IA tem peso de 70% e o histórico 30%
         return (s_ia * 0.7) + (estatistica_final * 0.3)
 
     pool_refinado = list(pool_atual)
     
-    # REMOÇÃO: Tira as dezenas com menor "Peso do Juiz" até atingir o alvo
+    # Corta o excesso baseado no novo peso
     while len(pool_refinado) > tamanho_objetivo:
         piores = sorted(pool_refinado, key=peso_juiz)
         pool_refinado.remove(piores[0])
 
-    # TROCA (Cura de Vácuo): Tenta substituir as 2 piores do pool por melhores de fora
+    # Trocas de segurança (Cura de Vácuo)
     dezenas_fora = [d for d in range(1, 26) if d not in pool_refinado]
     for _ in range(2):
         if not dezenas_fora: break
