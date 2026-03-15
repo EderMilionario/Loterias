@@ -223,25 +223,36 @@ def calcular_matriz_afinidade_kadosh(mod):
     return matriz
 
 def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo):
-    # Mantive sua verificação original
     if not matriz_afinidade or not pool_atual:
         return sorted(list(pool_atual))
     
+    # BUSCA A IA E A TENDÊNCIA (Últimos 35)
+    scores_ia = st.session_state.get('scores_predicao', {})
+    
+    # Criamos o peso do Juiz para usar nas trocas
+    def peso_juiz(d):
+        s_ia = scores_ia.get(int(d), 0)
+        afim = sum(matriz_afinidade[int(d)]) # Sua afinidade original
+        # O Juiz decide: IA (70%) + Afinidade (30%)
+        # A trava de 40% entra aqui: se a afinidade for baixa, o peso cai
+        bonus_estatistico = afim if afim > 0.40 else afim * 0.5
+        return (s_ia * 0.7) + (bonus_estatistico * 0.3)
+
     pool_refinado = list(pool_atual)
     
-    # 1. REMOVER (Sua lógica original com sum(matriz_afinidade))
+    # 1. REMOVER usando o Peso do Juiz
     while len(pool_refinado) > tamanho_objetivo:
-        piores_dezenas = sorted(pool_refinado, key=lambda d: sum(matriz_afinidade[int(d)]), reverse=False)
+        piores_dezenas = sorted(pool_refinado, key=peso_juiz, reverse=False)
         pool_refinado.remove(piores_dezenas[0])
 
-    # 2. TROCAR (Cura de vácuo sem mudar nomes de variáveis)
+    # 2. TROCAR (Cura de vácuo usando o Peso do Juiz)
     dezenas_fora = [d for d in range(1, 26) if d not in pool_refinado]
     if dezenas_fora:
-        for _ in range(2): # Limite de 2 trocas para estabilidade
-            pior_no_pool = min(pool_refinado, key=lambda d: sum(matriz_afinidade[int(d)]))
-            melhor_fora = max(dezenas_fora, key=lambda d: sum(matriz_afinidade[int(d)]))
+        for _ in range(2): 
+            pior_no_pool = min(pool_refinado, key=peso_juiz)
+            melhor_fora = max(dezenas_fora, key=peso_juiz)
             
-            if sum(matriz_afinidade[int(melhor_fora)]) > sum(matriz_afinidade[int(pior_no_pool)]):
+            if peso_juiz(melhor_fora) > peso_juiz(pior_no_pool):
                 pool_refinado.remove(pior_no_pool)
                 pool_refinado.append(melhor_fora)
                 dezenas_fora.remove(melhor_fora)
@@ -883,19 +894,28 @@ with abas[0]:
                     st.success(f"🎯 Pool Inteligente: {tamanho_alvo_pool} dezenas!")
                     st.rerun()
 
-            # BOTÃO 4: REFINAR (Filtro de Elite por Afinidade)
-            if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
-                pool_base = st.session_state.favoritas.get(mod, [])
-                if len(pool_base) < tamanho_alvo_pool:
-                    # Se o pool estiver vazio, ele gera um via IA para depois refinar
-                    pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
-                
-                matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
-                pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_objetivo=tamanho_alvo_pool)
-                st.session_state.favoritas[mod] = pool_refinado
-                st.success(f"🎯 Refinado para {tamanho_alvo_pool} dezenas!")
-                st.rerun()
+          # BOTÃO 4: REFINAR (Filtro de Elite por Afinidade + IA)
+if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
+    pool_base = st.session_state.favoritas.get(mod, [])
+    
+    # Se o pool estiver vazio ou menor que o alvo, gera um inicial via IA
+    if len(pool_base) < tamanho_alvo_pool:
+        pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
+    
+    # 1. Pega a matriz (Estatística/Kadosh com peso nos últimos 35 jogos)
+    matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
+    
+    # 2. Pega os scores da IA (Árvores de Decisão)
+    scores_ia = st.session_state.get('scores_predicao', {})
 
+    # 3. O JUIZ: Envia o pool, a matriz, o tamanho alvo e os scores da IA
+    # Certifique-se que sua função 'refinar_pool_kadosh' aceite esses 4 argumentos
+    pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, scores_ia)
+    
+    # 4. Atualiza e recarrega
+    st.session_state.favoritas[mod] = pool_refinado
+    st.success(f"🎯 Refinado para {len(pool_refinado)} dezenas com inteligência híbrida!")
+    st.rerun()  
         # Sincronização do multiselect (O default agora puxa do session_state atualizado pelos botões)
         pool = st.multiselect(
             "SELECIONE SEU POOL", 
