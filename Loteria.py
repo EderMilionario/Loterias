@@ -888,7 +888,7 @@ with abas[0]:
                 "Mega-Sena": 60,
                 "Quina": 80,
                 "Dupla-Sena": 50,
-                "Milionária": 50
+                "+Milionária": 50
             }
             max_v_bt = limites_reais.get(mod, 60)
 
