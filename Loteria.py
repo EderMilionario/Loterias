@@ -222,43 +222,51 @@ def calcular_matriz_afinidade_kadosh(mod):
                     matriz[d2][d1] += peso
     return matriz
 
-def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo):
+def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_ia=None):
+    """
+    ESSA VERSÃO ACEITA OS 4 ARGUMENTOS QUE O TEU BOTÃO ESTÁ MANDANDO.
+    O 'scores_ia=None' evita que o código quebre se a IA não for gerada.
+    """
     if not matriz_afinidade or not pool_atual:
         return sorted(list(pool_atual))
     
-    # BUSCA A IA E A TENDÊNCIA (Últimos 35)
-    scores_ia = st.session_state.get('scores_predicao', {})
-    
-    # Criamos o peso do Juiz para usar nas trocas
+    # Se o botão mandar os scores, a gente usa. Se não, cria um dicionário vazio.
+    if scores_ia is None:
+        scores_ia = {}
+
+    # O JUIZ: IA (70%) + AFINIDADE (30%)
     def peso_juiz(d):
-        s_ia = scores_ia.get(int(d), 0)
-        afim = sum(matriz_afinidade[int(d)]) # Sua afinidade original
-        # O Juiz decide: IA (70%) + Afinidade (30%)
-        # A trava de 40% entra aqui: se a afinidade for baixa, o peso cai
-        bonus_estatistico = afim if afim > 0.40 else afim * 0.5
-        return (s_ia * 0.7) + (bonus_estatistico * 0.3)
+        d_int = int(d)
+        # 1. Pega o score da IA (Árvores)
+        s_ia = scores_ia.get(d_int, 0)
+        
+        # 2. Pega a afinidade (Matriz Kadosh - últimos 35 jogos)
+        # Divide por 25 para normalizar a escala
+        afim_total = sum(matriz_afinidade[d_int]) / 25 
+        
+        # 3. Trava de 40%: Se a afinidade for menor que 0.40, a dezena perde força
+        estatistica_final = afim_total if afim_total > 0.40 else afim_total * 0.5
+        
+        return (s_ia * 0.7) + (estatistica_final * 0.3)
 
     pool_refinado = list(pool_atual)
     
-    # 1. REMOVER usando o Peso do Juiz
+    # REMOÇÃO: Tira as dezenas mais fracas até chegar no tamanho alvo
     while len(pool_refinado) > tamanho_objetivo:
-        piores_dezenas = sorted(pool_refinado, key=peso_juiz, reverse=False)
-        pool_refinado.remove(piores_dezenas[0])
+        piores = sorted(pool_refinado, key=peso_juiz)
+        pool_refinado.remove(piores[0])
 
-    # 2. TROCAR (Cura de vácuo usando o Peso do Juiz)
+    # TROCA (Cura de Vácuo): Troca as 2 piores por melhores que estão fora
     dezenas_fora = [d for d in range(1, 26) if d not in pool_refinado]
-    if dezenas_fora:
-        for _ in range(2): 
-            pior_no_pool = min(pool_refinado, key=peso_juiz)
-            melhor_fora = max(dezenas_fora, key=peso_juiz)
-            
-            if peso_juiz(melhor_fora) > peso_juiz(pior_no_pool):
-                pool_refinado.remove(pior_no_pool)
-                pool_refinado.append(melhor_fora)
-                dezenas_fora.remove(melhor_fora)
-                dezenas_fora.append(pior_no_pool)
-            else:
-                break
+    for _ in range(2):
+        if not dezenas_fora: break
+        pior_no_pool = min(pool_refinado, key=peso_juiz)
+        melhor_fora = max(dezenas_fora, key=peso_juiz)
+        
+        if peso_juiz(melhor_fora) > peso_juiz(pior_no_pool):
+            pool_refinado.remove(pior_no_pool)
+            pool_refinado.append(melhor_fora)
+            dezenas_fora.remove(melhor_fora)
             
     return sorted([int(d) for d in pool_refinado])
 
