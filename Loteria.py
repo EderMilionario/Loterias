@@ -9,6 +9,16 @@ from itertools import combinations
 from fpdf import FPDF
 import io
 
+import unicodedata
+
+def preparar_url_api(nome):
+    # 1. Tira o "+" da +Milionária
+    n = nome.replace("+", "")
+    # 2. Tira os acentos (Lotofácil -> Lotofacil, Quina -> Quina)
+    n = "".join(c for c in unicodedata.normalize('NFD', n) if unicodedata.category(c) != 'Mn')
+    # 3. Tira espaços, traços e deixa minúsculo
+    return n.lower().replace("-", "").replace(" ", "").strip()
+
 def rodar_backtesting_kadosh(df, num_concursos=30):
     ranking = {est: 0 for est in ["SNIPER", "A MARRETA", "ELITE KADOSH", "PRESTIGE 20", "EQUILÍBRIO TOTAL"]}
     
@@ -1135,27 +1145,28 @@ with abas[2]:
         
         st.markdown("### 🏆 Detalhamento do Rateio Oficial")
         
-        # CORREÇÃO AQUI: O nome certo na API é 'listaRateioPremios'
-        rateio = dados.get('listaRateioPremios', []) 
+        # Tenta pegar o que veio da sincronização (Aba 1)
+        # Lembre-se: o nome da chave na API da Caixa é 'listaRateioPremios'
+        rateio = dados.get('listaRateioPremios', [])
 
-        # --- BLOCO DE RESGATE ---
+        # SE ESTIVER VAZIO (O que está acontecendo agora), BUSCA NA RESERVA
         if not rateio:
-            lot_url_reserva = lot_v.lower().replace("-", "")
-            url_reserva = f"https://loteriascaixa.softfarma.com.br/api/{lot_url_reserva}"
+            nome_limpo = preparar_url_api(lot_v) # Aqui limpa Quina, Milionária, etc.
+            url_reserva = f"https://loteriascaixa.softfarma.com.br/api/{nome_limpo}"
+            
             try:
                 res_res = requests.get(url_reserva, timeout=10)
                 if res_res.status_code == 200:
                     dados_reserva = res_res.json()
-                    # Aqui também usamos o nome correto: listaRateioPremios
                     rateio = dados_reserva.get('listaRateioPremios', [])
+                    # Salva no estado para a Aba 3 (Database) também ler
                     st.session_state[f'dados_api_{lot_v}'] = dados_reserva
             except:
                 pass
-        # --- FIM DO BLOCO DE RESGATE ---
 
+        # EXIBIÇÃO FINAL
         if rateio:
             import pandas as pd
-            # Use as colunas exatas que a API devolve
             df_r = pd.DataFrame(rateio)[['descricaoFaixa', 'numeroDeGanhadores', 'valorRateio']]
             df_r.columns = ['Faixa', 'Ganhadores', 'Prêmio Individual']
             st.dataframe(df_r.style.format({'Prêmio Individual': 'R$ {:,.2f}'}), use_container_width=True, hide_index=True)
