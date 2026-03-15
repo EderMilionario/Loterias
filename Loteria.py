@@ -910,8 +910,7 @@ with abas[0]:
                    melhores_ia = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
                    fixas_final = melhores_ia[:qtd_auto]
                    st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
-        
-            renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
+           renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
 
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
