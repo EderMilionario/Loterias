@@ -882,18 +882,23 @@ with abas[0]:
                         st.success(f"🚀 IA configurada para {tamanho_alvo_pool} dezenas!")
                         st.rerun()
 
-            if st.button("✅ SELECIONAR TODO VOLANTE"):
-                # LIMITES REAIS DO SEU CÓDIGO
-                limites_reais = {
-                    "Lotofácil": 25,
-                    "Mega-Sena": 60,
-                    "Quina": 80,
-                    "Dupla-Sena": 50,
-                    "Milionária": 50
+            # 1. Define os limites primeiro para o sistema não se perder
+            limites_reais = {
+                "Lotofácil": 25,
+                "Mega-Sena": 60,
+                "Quina": 80,
+                "Dupla-Sena": 50,
+                "Milionária": 50
             }
             max_v_bt = limites_reais.get(mod, 60)
-            st.session_state.favoritas[mod] = list(range(1, max_v_bt + 1))
-            st.rerun()
+
+            # 2. O botão utiliza a variável definida acima
+            if st.button("✅ SELECIONAR TODO VOLANTE"):
+                st.session_state.favoritas[mod] = list(range(1, max_v_bt + 1))
+                st.rerun()
+
+            # 3. Garante que o volante (seja qual for o componente que você usa) respeite o max_v_bt
+            # Isso impede que a Milionária mostre 60 ou a Quina pare no 60.
                 
         with col_btn2:
             if mod == "Lotofácil":
