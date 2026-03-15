@@ -1096,8 +1096,17 @@ with abas[2]:
     st.markdown("## 💰 Painel Oficial de Premiações")
     lot_v = st.selectbox("Selecione a Loteria", list(st.session_state.custos.keys()), key="val_sel")
     
-    if st.button(f"🚀 SINCRONIZAR COM A CAIXA: {lot_v.upper()}", use_container_width=True):
+    if st.button(f"🚀 SINCRONIZAR RESULTADOS: {lot_v.upper()}", use_container_width=True):
         import requests
+        import unicodedata
+        
+        # Função interna para não dar erro de "não definido"
+        def limpar_p_api(nome):
+            n = nome.replace("+", "mais").lower()
+            n = "".join(c for c in unicodedata.normalize('NFD', n) if unicodedata.category(c) != 'Mn')
+            return n.replace("-", "").replace(" ", "")
+
+        # Limpa cache anterior
         for k in [f'dados_api_{lot_v}', f'api_full_{lot_v}']:
             if k in st.session_state: del st.session_state[k]
             
@@ -1108,25 +1117,36 @@ with abas[2]:
         
         try:
             with requests.Session() as s:
-                s.get("https://loterias.caixa.gov.br/", headers=headers, timeout=10, verify=False)
-                resp = s.get(url_api, headers=headers, timeout=15, verify=False)
-                if resp.status_code == 200:
-                    st.session_state[f'dados_api_{lot_v}'] = resp.json()
+                # Tenta a Caixa primeiro
+                resp = s.get(url_api, headers=headers, timeout=10, verify=False)
+                dados_obtidos = resp.json() if resp.status_code == 200 else {}
+                
+                # Se a Caixa falhar ou vier sem rateio, pula para a reserva AGORA
+                if not dados_obtidos.get('listaRateioPremios'):
+                    nome_limpo = limpar_p_api(lot_v)
+                    resp_res = requests.get(f"https://loteriascaixa.softfarma.com.br/api/{nome_limpo}", timeout=10)
+                    if resp_res.status_code == 200:
+                        dados_obtidos = resp_res.json()
+
+                if dados_obtidos:
+                    st.session_state[f'dados_api_{lot_v}'] = dados_obtidos
+                    st.success(f"Dados de {lot_v} atualizados!")
                     st.rerun()
-        except:
-            st.error("Erro na conexão com a Caixa.")
+        except Exception as e:
+            st.error(f"Erro ao buscar dados: {e}")
 
     dados = st.session_state.get(f'dados_api_{lot_v}')
 
     if dados:
+        # Seu HTML original (mantido)
         conteudo_html = f"""
         <div style="background-color: white; padding: 25px; border-radius: 20px; border: 1px solid #ddd; font-family: sans-serif;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <div>
-                    <h1 style="margin:0; color: background: #ffff00; font-size: 35px;">{lot_v.upper()}</h1>
+                    <h1 style="margin:0; color: #004a8d; font-size: 35px;">{lot_v.upper()}</h1>
                     <p style="margin:0; color: #666; font-size: 14px;">PORTAL DE RESULTADOS</p>
                 </div>
-                <div style="background: background: #ffff00; color: color: black; padding: 10px 20px; border-radius: 12px; text-align: center;">
+                <div style="background: #004a8d; color: white; padding: 10px 20px; border-radius: 12px; text-align: center;">
                     <span style="display: block; font-size: 10px;">CONCURSO</span>
                     <span style="font-size: 22px; font-weight: bold;">{dados.get('numero')}</span>
                 </div>
@@ -1144,34 +1164,15 @@ with abas[2]:
         st.markdown(conteudo_html, unsafe_allow_html=True)
         
         st.markdown("### 🏆 Detalhamento do Rateio Oficial")
-        
-        # Tenta pegar o que veio da sincronização (Aba 1)
-        # Lembre-se: o nome da chave na API da Caixa é 'listaRateioPremios'
         rateio = dados.get('listaRateioPremios', [])
 
-        # SE ESTIVER VAZIO (O que está acontecendo agora), BUSCA NA RESERVA
-        if not rateio:
-            nome_limpo = preparar_url_api(lot_v) # Aqui limpa Quina, Milionária, etc.
-            url_reserva = f"https://loteriascaixa.softfarma.com.br/api/{nome_limpo}"
-            
-            try:
-                res_res = requests.get(url_reserva, timeout=10)
-                if res_res.status_code == 200:
-                    dados_reserva = res_res.json()
-                    rateio = dados_reserva.get('listaRateioPremios', [])
-                    # Salva no estado para a Aba 3 (Database) também ler
-                    st.session_state[f'dados_api_{lot_v}'] = dados_reserva
-            except:
-                pass
-
-        # EXIBIÇÃO FINAL
         if rateio:
             import pandas as pd
             df_r = pd.DataFrame(rateio)[['descricaoFaixa', 'numeroDeGanhadores', 'valorRateio']]
             df_r.columns = ['Faixa', 'Ganhadores', 'Prêmio Individual']
             st.dataframe(df_r.style.format({'Prêmio Individual': 'R$ {:,.2f}'}), use_container_width=True, hide_index=True)
         else:
-            st.info("ℹ️ Os valores de ganhadores e rateio ainda não foram processados pela Caixa.")
+            st.info("ℹ️ Os valores de ganhadores e rateio ainda não foram processados.")
 
 with abas[3]:
     mostrar_status_backup()
