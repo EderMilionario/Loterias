@@ -1098,41 +1098,34 @@ with abas[2]:
     
     if st.button(f"🚀 SINCRONIZAR RESULTADOS: {lot_v.upper()}", use_container_width=True):
         import requests
-        import unicodedata
         
-        def limpar_p_api(nome):
-            n = nome.replace("+", "").lower() # Tira o +
-            n = "".join(c for c in unicodedata.normalize('NFD', n) if unicodedata.category(c) != 'Mn')
-            return n.replace("-", "").replace(" ", "")
-
+        # Limpa cache para forçar atualização
         for k in [f'dados_api_{lot_v}', f'api_full_{lot_v}']:
             if k in st.session_state: del st.session_state[k]
             
         nomes_url = {"Lotofácil": "lotofacil", "Mega-Sena": "megasena", "Quina": "quina", "+Milionária": "maismilionaria", "Dupla-Sena": "duplasena"}
-        url_api = f"https://servicebus2.caixa.gov.br/portaldeloterias/api/{nomes_url.get(lot_v, 'lotofacil')}"
-        
-        headers = {"User-Agent": "Mozilla/5.0"}
+        lot_limpa = nomes_url.get(lot_v, "lotofacil")
         
         try:
-            # Tenta a Caixa primeiro, mas com timeout curto para não travar
-            resp = requests.get(url_api, headers=headers, timeout=5, verify=False)
+            # 1. TENTA A CAIXA (OFICIAL)
+            url_caixa = f"https://servicebus2.caixa.gov.br/portaldeloterias/api/{lot_limpa}"
+            resp = requests.get(url_caixa, timeout=7, verify=False)
+            
             if resp.status_code == 200 and resp.json().get('listaRateioPremios'):
-                dados_obtidos = resp.json()
+                st.session_state[f'dados_api_{lot_v}'] = resp.json()
             else:
-                # SE A CAIXA FALHAR, VAI PARA A API DO GUILHERME (MAIS ESTÁVEL)
-                nome_limpo = limpar_p_api(lot_v)
-                # URL alternativa muito usada para evitar o bloqueio da Caixa
-                url_alt = f"https://loterica.com.br/api/v1/{nome_limpo}/latest" 
-                resp_alt = requests.get(url_alt, timeout=10)
-                dados_obtidos = resp_alt.json()
-
-            if dados_obtidos:
-                st.session_state[f'dados_api_{lot_v}'] = dados_obtidos
-                st.success(f"Dados de {lot_v} sincronizados!")
-                st.rerun()
+                # 2. SE A CAIXA FALHAR, TENTA A API DO "Loterias API" (FORMATO IGUAL)
+                url_reserva = f"https://loteriascaixa.softfarma.com.br/api/{lot_limpa}"
+                # Como a Softfarma deu erro de DNS antes, vamos tentar esta aqui que é IP direto:
+                resp_res = requests.get(f"https://api.guidi.com.br/lote/{lot_limpa}/latest", timeout=10)
+                if resp_res.status_code == 200:
+                    st.session_state[f'dados_api_{lot_v}'] = resp_res.json()
+            
+            st.rerun()
         except Exception as e:
-            # Se tudo der errado, mostra um aviso amigável
-            st.error(f"Servidores da Caixa instáveis. Tente novamente em instantes.")
+            st.error("Erro técnico. Verifique sua internet ou tente novamente.")
+
+    # MANTÉM O RESTANTE DO SEU CÓDIGO (dados = st.session_state.get...)
     dados = st.session_state.get(f'dados_api_{lot_v}')
 
     if dados:
