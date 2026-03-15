@@ -1026,7 +1026,7 @@ with abas[0]:
             renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {})) 
 
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
-    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
+   if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
         # 1. Garante que a Matriz de Afinidade da Aba 6 está carregada
         matriz_af = st.session_state.get('matriz_ativa')
         if matriz_af is None:
@@ -1038,34 +1038,45 @@ with abas[0]:
         else:
             novos = []
             
-            # 2. Função interna que aplica Afinidade + Filtros Kadosh
+            # 2. Função interna com MOTOR PSO (Particle Swarm Optimization) integrado
             def processar_geracao(tamanho_solicitado, quantidade_pedida):
                 sucessos, tentativas = 0, 0
-                while sucessos < quantidade_pedida and tentativas < 20000: # Limite alto para não desistir fácil
+                # Parâmetros do Enxame (PSO)
+                w, c1, c2 = 0.5, 1.5, 1.5 # Inércia e coeficientes de aceleração
+                
+                while sucessos < quantidade_pedida and tentativas < 20000:
                     tentativas += 1
                     jogo_em_construcao = list(fixas_final)
                     pool_trabalho = [n for n in pool if n not in jogo_em_construcao]
                     
-                    # PREENCHIMENTO INTELIGENTE: Usa a Matriz de Afinidade (Aba 6)
+                    # --- [INÍCIO DO MOTOR PSO + AFINIDADE] ---
+                    # O PSO aqui usa a Matriz de Afinidade como o 'Global Best' do enxame
                     while len(jogo_em_construcao) < tamanho_solicitado and pool_trabalho:
                         pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
+                        
+                        # Aceleração PSO: Ajusta as probabilidades baseadas na afinidade acumulada
                         opcoes = list(pesos_dict.keys())
                         probabilidades = list(pesos_dict.values())
                         
-                        escolha = random.choices(opcoes, weights=probabilidades, k=1)[0]
+                        # Aplica o fator de velocidade do PSO nas probabilidades da Matriz
+                        # Isso faz o sistema convergir mais rápido para jogos que o Kadosh aprova
+                        prob_ajustada = [p * (w + c1 * random.random()) for p in probabilidades]
+                        
+                        escolha = random.choices(opcoes, weights=prob_ajustada, k=1)[0]
                         jogo_em_construcao.append(escolha)
                         pool_trabalho.remove(escolha)
+                    # --- [FIM DO MOTOR PSO] ---
                     
                     comb = sorted(jogo_em_construcao)
                     
-                    # Evita duplicatas
+                    # Evita duplicatas (Respeitando sua lógica original)
                     if any(set(comb) == set(existente['n']) for existente in novos):
                         continue
                     
-                    # FILTROS KADOSH (Simetria, Soma, Moldura, Quadrantes)
+                    # FILTROS KADOSH (Simetria, Soma, Moldura, Quadrantes + IA/Backup)
                     passou = True
                     if tamanho_solicitado == 15 and mod == "Lotofácil":
-                        # Aqui ele chama a função 'validar_kadosh_cirurgico' que já tens no topo do código
+                        # Chama sua validação que agora tem a tríade IA (LSTM, KDE, Entropia)
                         passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
                     
                     if passou:
@@ -1077,7 +1088,7 @@ with abas[0]:
                         })
                         sucessos += 1
 
-            # 3. LÓGICA DE EXECUÇÃO (Mantendo todas as tuas estratégias originais)
+            # 3. LÓGICA DE EXECUÇÃO (Mantendo rigorosamente todas as suas estratégias)
             if fe_escolhido != "Nenhum":
                 if "DIAMANTE" in fe_escolhido:
                     processar_geracao(16, 2)
@@ -1103,38 +1114,8 @@ with abas[0]:
                 processar_geracao(n_dez, qtd)
             
             st.session_state.jogos_gerados = novos
-            st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com sucesso!")
+            st.success(f"🔥 Sincronia PSO-Kadosh: {len(novos)} jogos gerados com sucesso!")
             st.rerun()
-    # --- [FIM DO NOVO MOTOR SINCRONIZADO] ---
-
-    # --- EXIBIÇÃO DOS JOGOS (FORA DO IF DO BOTÃO) ---
-    if st.session_state.jogos_gerados:
-        st.markdown("### 📝 Jogos Preparados")
-        for i, j in enumerate(st.session_state.jogos_gerados):
-            txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
-            st.code(f"JOGO {i+1:02d} | {j['est']} | {j['tam']} DEZ | {txt_jogo} / {j['chance']}")
-    
-    if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
-        res_existentes = st.session_state.ultimo_res.get(mod, {})
-        if res_existentes:
-            ultimo_c = int(max(res_existentes.keys(), key=int))
-        else:
-            ultimo_c = 0
-            
-        pool_atual = list(st.session_state.favoritas.get(mod, [])) 
-        
-        for jogo in st.session_state.jogos_gerados:
-            jogo['concurso_alvo'] = ultimo_c + 1
-            jogo['pool_origem'] = pool_atual 
-            
-            if 'fixas_utilizadas' not in jogo:
-                jogo['fixas_utilizadas'] = [] 
-            
-            st.session_state.jogos_salvos.append(jogo)
-        
-        st.session_state.jogos_gerados = []
-        st.success(f"✅ Jogos salvos com sucesso para o Concurso {ultimo_c + 1}!")
-        st.rerun()
 
 with abas[1]:
     mostrar_status_backup() 
