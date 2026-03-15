@@ -223,14 +223,10 @@ def calcular_matriz_afinidade_kadosh(mod):
     return matriz
 
 def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_ia=None):
-    """
-    ESSA VERSÃO ACEITA OS 4 ARGUMENTOS QUE O TEU BOTÃO ESTÁ MANDANDO.
-    O 'scores_ia=None' evita que o código quebre se a IA não for gerada.
-    """
     if not matriz_afinidade or not pool_atual:
         return sorted(list(pool_atual))
     
-    # Se o botão mandar os scores, a gente usa. Se não, cria um dicionário vazio.
+    # Se o botão não enviar scores da IA, criamos um vazio para não dar erro
     if scores_ia is None:
         scores_ia = {}
 
@@ -241,22 +237,23 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_i
         s_ia = scores_ia.get(d_int, 0)
         
         # 2. Pega a afinidade (Matriz Kadosh - últimos 35 jogos)
-        # Divide por 25 para normalizar a escala
-        afim_total = sum(matriz_afinidade[d_int]) / 25 
+        # Soma a afinidade da dezena com as outras e normaliza
+        afim_total = sum(matriz_afinidade[d_int]) / (len(matriz_afinidade) or 1)
         
         # 3. Trava de 40%: Se a afinidade for menor que 0.40, a dezena perde força
         estatistica_final = afim_total if afim_total > 0.40 else afim_total * 0.5
         
+        # 4. Cálculo final: IA tem peso de 70% e o histórico 30%
         return (s_ia * 0.7) + (estatistica_final * 0.3)
 
     pool_refinado = list(pool_atual)
     
-    # REMOÇÃO: Tira as dezenas mais fracas até chegar no tamanho alvo
+    # REMOÇÃO: Tira as dezenas com menor "Peso do Juiz" até atingir o alvo
     while len(pool_refinado) > tamanho_objetivo:
         piores = sorted(pool_refinado, key=peso_juiz)
         pool_refinado.remove(piores[0])
 
-    # TROCA (Cura de Vácuo): Troca as 2 piores por melhores que estão fora
+    # TROCA (Cura de Vácuo): Tenta substituir as 2 piores do pool por melhores de fora
     dezenas_fora = [d for d in range(1, 26) if d not in pool_refinado]
     for _ in range(2):
         if not dezenas_fora: break
@@ -269,7 +266,6 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_i
             dezenas_fora.remove(melhor_fora)
             
     return sorted([int(d) for d in pool_refinado])
-
 
 # --- 1. CONFIGURAÇÃO E ESTÉTICA ---
 st.set_page_config(page_title="LOTERIAS - KADOSH ESTRATÉGICO", layout="wide")
