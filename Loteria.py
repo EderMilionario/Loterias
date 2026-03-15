@@ -1096,54 +1096,48 @@ with abas[2]:
     st.markdown("## 💰 Painel Oficial de Premiações")
     lot_v = st.selectbox("Selecione a Loteria", list(st.session_state.custos.keys()), key="val_sel")
     
-    if st.button(f"🚀 SINCRONIZAR RESULTADOS: {lot_v.upper()}", use_container_width=True):
+    if st.button(f"🚀 SINCRONIZAR COM A CAIXA: {lot_v.upper()}", use_container_width=True):
         import requests
-        
-        # Nomes que a maioria das APIs reserva aceita
-        nomes_url = {"Lotofácil": "lotofacil", "Mega-Sena": "megasena", "Quina": "quina", "+Milionária": "maismilionaria", "Dupla-Sena": "duplasena"}
-        lot_limpa = nomes_url.get(lot_v, "lotofacil")
+        import unicodedata
 
-        # Limpa o que tinha antes para garantir que não estamos vendo lixo
-        if f'dados_api_{lot_v}' in st.session_state:
-            del st.session_state[f'dados_api_{lot_v}']
+        def limpar_p_api(nome):
+            n = nome.replace("+", "mais").lower()
+            n = "".join(c for c in unicodedata.normalize('NFD', n) if unicodedata.category(c) != 'Mn')
+            return n.replace("-", "").replace(" ", "")
+
+        for k in [f'dados_api_{lot_v}', f'api_full_{lot_v}']:
+            if k in st.session_state: del st.session_state[k]
             
+        nomes_url = {"Lotofácil": "lotofacil", "Mega-Sena": "megasena", "Quina": "quina", "+Milionária": "maismilionaria", "Dupla-Sena": "duplasena"}
+        url_api = f"https://servicebus2.caixa.gov.br/portaldeloterias/api/{nomes_url.get(lot_v, 'lotofacil')}"
+        
+        headers = {"User-Agent": "Mozilla/5.0", "Referer": "https://loterias.caixa.gov.br/"}
+        
         try:
-            with st.spinner('Buscando dados oficiais...'):
-                # TENTA API 1 (CAIXA DIRETO)
-                url_api = f"https://servicebus2.caixa.gov.br/portaldeloterias/api/{lot_limpa}"
-                headers = {"User-Agent": "Mozilla/5.0"}
-                
-                try:
-                    resp = requests.get(url_api, headers=headers, timeout=8, verify=False)
-                    if resp.status_code == 200 and "listaRateioPremios" in resp.text:
-                        st.session_state[f'dados_api_{lot_v}'] = resp.json()
-                        st.rerun()
-                except:
-                    pass # Se falhar, pula para a reserva abaixo
-
-                # TENTA API 2 (ESTÁVEL - API DO GUILHERME/DISCORD)
-                # Esta API costuma ser o espelho mais rápido da Caixa
-                url_reserva = f"https://loteriascaixa-api.herokuapp.com/api/{lot_limpa}/latest"
-                resp_res = requests.get(url_reserva, timeout=10)
-                
-                if resp_res.status_code == 200:
-                    dados_json = resp_res.json()
-                    # Padroniza nomes se a API reserva for diferente
-                    if 'premiacoes' in dados_json and 'listaRateioPremios' not in dados_json:
-                        dados_json['listaRateioPremios'] = dados_json.pop('premiacoes')
-                    
-                    st.session_state[f'dados_api_{lot_v}'] = dados_json
-                    st.rerun()
+            with requests.Session() as s:
+                resp = s.get(url_api, headers=headers, timeout=10, verify=False)
+                if resp.status_code == 200 and "listaRateioPremios" in resp.text:
+                    st.session_state[f'dados_api_{lot_v}'] = resp.json()
                 else:
-                    st.error("Nenhum servidor respondeu. Verifique sua conexão.")
-        except Exception as e:
-            st.error(f"Erro inesperado: {e}")
+                    # BUSCA RESERVA CASO A CAIXA FALHE
+                    nome_limpo = limpar_p_api(lot_v)
+                    # Usando a API que funcionou para você agora
+                    r_alt = requests.get(f"https://loteriascaixa-api.herokuapp.com/api/{nome_limpo}/latest", timeout=10)
+                    if r_alt.status_code == 200:
+                        st.session_state[f'dados_api_{lot_v}'] = r_alt.json()
+            st.rerun()
+        except:
+            st.error("Erro na conexão. Tente novamente.")
 
-    # MANTÉM O RESTANTE DO SEU CÓDIGO (dados = st.session_state.get...)
     dados = st.session_state.get(f'dados_api_{lot_v}')
 
     if dados:
-        # Seu HTML original (mantido)
+        # --- TRADUÇÃO DE CAMPOS (MATA O 'NONE') ---
+        n_concurso = dados.get('numero') or dados.get('concurso')
+        data_res = dados.get('dataApuracao') or dados.get('data')
+        local_res = dados.get('localSorteio') or dados.get('local') or "Espaço da Sorte"
+        estimativa = dados.get('valorEstimadoProximoConcurso') or dados.get('proximo_estimativa') or 0
+
         conteudo_html = f"""
         <div style="background-color: white; padding: 25px; border-radius: 20px; border: 1px solid #ddd; font-family: sans-serif;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -1153,58 +1147,38 @@ with abas[2]:
                 </div>
                 <div style="background: #004a8d; color: white; padding: 10px 20px; border-radius: 12px; text-align: center;">
                     <span style="display: block; font-size: 10px;">CONCURSO</span>
-                    <span style="font-size: 22px; font-weight: bold;">{dados.get('numero')}</span>
+                    <span style="font-size: 22px; font-weight: bold;">{n_concurso}</span>
                 </div>
             </div>
             <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; border-left: 6px solid #004a8d;">
                 <p style="margin:0; color: #666; font-weight: bold;">ESTIMATIVA DE PRÊMIO</p>
-                <p style="font-size: 48px; margin: 5px 0; color: #004a8d; font-weight: bold;">R$ {dados.get('valorEstimadoProximoConcurso', 0):,.2f}</p>
+                <p style="font-size: 48px; margin: 5px 0; color: #004a8d; font-weight: bold;">R$ {estimativa:,.2f}</p>
             </div>
             <div style="margin-top: 20px; display: flex; justify-content: space-between; font-size: 14px; color: #444;">
-                <span>📅 DATA: {dados.get('dataApuracao')}</span>
-                <span>📍 LOCAL: {dados.get('localSorteio')}</span>
+                <span>📅 DATA: {data_res}</span>
+                <span>📍 LOCAL: {local_res}</span>
             </div>
         </div>
         """
         st.markdown(conteudo_html, unsafe_allow_html=True)
         
         st.markdown("### 🏆 Detalhamento do Rateio Oficial")
-        rateio = dados.get('listaRateioPremios', [])
+        rateio = dados.get('listaRateioPremios') or dados.get('premiacoes') or []
 
         if rateio:
             import pandas as pd
-            try:
-                df_r = pd.DataFrame(rateio)
-                
-                # MAPEAMENTO DE COLUNAS (Aceita o padrão da Caixa ou da API reserva)
-                colunas_caixa = {
-                    'descricaoFaixa': 'Faixa', 
-                    'numeroDeGanhadores': 'Ganhadores', 
-                    'valorRateio': 'Prêmio Individual'
-                }
-                colunas_reserva = {
-                    'faixa': 'Faixa', 
-                    'ganhadores': 'Ganhadores', 
-                    'valor': 'Prêmio Individual',
-                    'descricao': 'Faixa'
-                }
-                
-                # Tenta renomear o que encontrar disponível
-                if 'descricaoFaixa' in df_r.columns:
-                    df_r = df_r.rename(columns=colunas_caixa)
-                else:
-                    df_r = df_r.rename(columns=colunas_reserva)
-
-                # Seleciona apenas as que conseguimos renomear
-                cols_finais = ['Faixa', 'Ganhadores', 'Prêmio Individual']
-                df_r = df_r[[c for c in cols_finais if c in df_r.columns]]
-                
-                st.dataframe(df_r.style.format({'Prêmio Individual': 'R$ {:,.2f}'}), use_container_width=True, hide_index=True)
-            except Exception as e:
-                st.warning("Dados de rateio em formato alternativo. Verifique a base de dados.")
-                st.write(rateio) # Mostra o dado bruto para não ficar no escuro
+            df_r = pd.DataFrame(rateio)
+            # Mapa de tradução para aceitar qualquer API
+            mapa = {'descricao': 'Faixa', 'descricaoFaixa': 'Faixa', 
+                    'ganhadores': 'Ganhadores', 'numeroDeGanhadores': 'Ganhadores',
+                    'valorPremio': 'Prêmio Individual', 'valorRateio': 'Prêmio Individual'}
+            df_r = df_r.rename(columns=mapa)
+            # Mantém apenas as colunas úteis
+            df_r = df_r[[c for c in ['Faixa', 'Ganhadores', 'Prêmio Individual'] if c in df_r.columns]]
+            st.dataframe(df_r.style.format({'Prêmio Individual': 'R$ {:,.2f}'}), use_container_width=True, hide_index=True)
         else:
             st.info("ℹ️ Os valores de ganhadores e rateio ainda não foram processados.")
+
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database - Gerenciar Resultados")
