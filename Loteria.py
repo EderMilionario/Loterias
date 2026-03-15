@@ -223,38 +223,38 @@ def calcular_matriz_afinidade_kadosh(mod):
     return matriz
 
 def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_ia=None):
-    # Se não tiver dados, retorna o que tem pra não travar
+    # Se os dados não existirem, o sistema retorna o pool atual para não travar
     if not matriz_afinidade or not pool_atual:
         return sorted(list(pool_atual))
     
-    # Se o botão mandar a IA, a gente usa. Se não mandar, fica vazio {}
+    # Se o botão enviar a IA, nós usamos. Se não, fica vazio.
     if scores_ia is None:
         scores_ia = {}
 
-    # O JUIZ: IA (70%) + ESTATÍSTICA 35 JOGOS (30%)
+    # O JUIZ: IA (70%) + AFINIDADE 35 JOGOS (30%)
     def peso_juiz(d):
         d_int = int(d)
-        # 1. Score da IA
+        # 1. Score da IA (Árvores)
         s_ia = scores_ia.get(d_int, 0)
         
-        # 2. Afinidade Kadosh (Soma das conexões na matriz)
-        # Dividimos por 25 para normalizar o valor
-        afim_total = sum(matriz_afinidade[d_int]) / 25 
+        # 2. Afinidade (Últimos 35 jogos com Peso 3)
+        # Normalizamos a soma das afinidades
+        afim_total = sum(matriz_afinidade[d_int]) / 25
         
-        # 3. Trava de 40%: Se for "fria" na afinidade, o peso cai
+        # 3. Trava de 40%: Se a afinidade for baixa, a dezena perde força
         estatistica_final = afim_total if afim_total > 0.40 else afim_total * 0.5
         
-        # Cálculo Final que o botão vai usar
+        # O Peso final que o sistema vai usar para decidir
         return (s_ia * 0.7) + (estatistica_final * 0.3)
 
     pool_refinado = list(pool_atual)
     
-    # REMOÇÃO: Corta o excesso baseado no peso do Juiz
+    # REMOÇÃO: Tira as dezenas mais fracas segundo o novo Peso do Juiz
     while len(pool_refinado) > tamanho_objetivo:
         piores = sorted(pool_refinado, key=peso_juiz)
         pool_refinado.remove(piores[0])
 
-    # CURA DE VÁCUO: Tenta trocar as 2 piores por melhores que ficaram fora
+    # CURA DE VÁCUO: Trocas inteligentes para otimizar o grupo
     dezenas_fora = [d for d in range(1, 26) if d not in pool_refinado]
     for _ in range(2):
         if not dezenas_fora: break
