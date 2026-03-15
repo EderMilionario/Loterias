@@ -1100,41 +1100,39 @@ with abas[2]:
         import requests
         import unicodedata
         
-        # Função interna para não dar erro de "não definido"
         def limpar_p_api(nome):
-            n = nome.replace("+", "mais").lower()
+            n = nome.replace("+", "").lower() # Tira o +
             n = "".join(c for c in unicodedata.normalize('NFD', n) if unicodedata.category(c) != 'Mn')
             return n.replace("-", "").replace(" ", "")
 
-        # Limpa cache anterior
         for k in [f'dados_api_{lot_v}', f'api_full_{lot_v}']:
             if k in st.session_state: del st.session_state[k]
             
         nomes_url = {"Lotofácil": "lotofacil", "Mega-Sena": "megasena", "Quina": "quina", "+Milionária": "maismilionaria", "Dupla-Sena": "duplasena"}
         url_api = f"https://servicebus2.caixa.gov.br/portaldeloterias/api/{nomes_url.get(lot_v, 'lotofacil')}"
         
-        headers = {"User-Agent": "Mozilla/5.0", "Referer": "https://loterias.caixa.gov.br/"}
+        headers = {"User-Agent": "Mozilla/5.0"}
         
         try:
-            with requests.Session() as s:
-                # Tenta a Caixa primeiro
-                resp = s.get(url_api, headers=headers, timeout=10, verify=False)
-                dados_obtidos = resp.json() if resp.status_code == 200 else {}
-                
-                # Se a Caixa falhar ou vier sem rateio, pula para a reserva AGORA
-                if not dados_obtidos.get('listaRateioPremios'):
-                    nome_limpo = limpar_p_api(lot_v)
-                    resp_res = requests.get(f"https://loteriascaixa.softfarma.com.br/api/{nome_limpo}", timeout=10)
-                    if resp_res.status_code == 200:
-                        dados_obtidos = resp_res.json()
+            # Tenta a Caixa primeiro, mas com timeout curto para não travar
+            resp = requests.get(url_api, headers=headers, timeout=5, verify=False)
+            if resp.status_code == 200 and resp.json().get('listaRateioPremios'):
+                dados_obtidos = resp.json()
+            else:
+                # SE A CAIXA FALHAR, VAI PARA A API DO GUILHERME (MAIS ESTÁVEL)
+                nome_limpo = limpar_p_api(lot_v)
+                # URL alternativa muito usada para evitar o bloqueio da Caixa
+                url_alt = f"https://loterica.com.br/api/v1/{nome_limpo}/latest" 
+                resp_alt = requests.get(url_alt, timeout=10)
+                dados_obtidos = resp_alt.json()
 
-                if dados_obtidos:
-                    st.session_state[f'dados_api_{lot_v}'] = dados_obtidos
-                    st.success(f"Dados de {lot_v} atualizados!")
-                    st.rerun()
+            if dados_obtidos:
+                st.session_state[f'dados_api_{lot_v}'] = dados_obtidos
+                st.success(f"Dados de {lot_v} sincronizados!")
+                st.rerun()
         except Exception as e:
-            st.error(f"Erro ao buscar dados: {e}")
-
+            # Se tudo der errado, mostra um aviso amigável
+            st.error(f"Servidores da Caixa instáveis. Tente novamente em instantes.")
     dados = st.session_state.get(f'dados_api_{lot_v}')
 
     if dados:
