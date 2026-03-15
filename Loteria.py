@@ -784,7 +784,7 @@ with abas[0]:
     max_v = config_loterias.get(mod, 60)
         
                 # --- [INÍCIO DOS BOTÕES DE IA ABA 0] ---
-        col_btn1, col_btn2 = st.columns(2)
+    col_btn1, col_btn2 = st.columns(2)
         
         # Define o tamanho ideal do Pool baseado na Matriz selecionada
         tamanho_alvo = 18 # Padrão
