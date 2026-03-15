@@ -1034,19 +1034,28 @@ with abas[1]:
     mostrar_status_backup() 
     st.header("🔍 Painel de Conferência")
     
+    # 1. Garante que a lista existe
     if 'jogos_salvos' not in st.session_state:
         st.session_state.jogos_salvos = []
-     # Supondo que 'meus_jogos' seja a sua lista de jogos gerados
-    if meus_jogos:
-        pdf_bytes = gerar_pdf_jogos(meus_jogos, mod)
     
-        st.download_button(
-            label="📄 Baixar Jogos em PDF",
-            data=pdf_bytes,
-            file_name=f"jogos_{mod}.pdf",
-            mime="application/pdf"
-        )   
-        
+    # 2. Verifica se há jogos para gerar o PDF
+    # Use st.session_state.jogos_salvos que é onde seus jogos estão guardados
+    if st.session_state.jogos_salvos:
+        try:
+            # Aqui geramos os bytes do PDF chamando a função
+            pdf_bytes = gerar_pdf_jogos(st.session_state.jogos_salvos, mod_f if 'mod_f' in locals() else "Loteria")
+            
+            st.download_button(
+                label="📄 Baixar Jogos em PDF",
+                data=pdf_bytes,
+                file_name=f"jogos_exportados.pdf",
+                mime="application/pdf",
+                key="btn_pdf_aba1"
+            )
+        except Exception as e:
+            st.error("Instale a biblioteca: pip install fpdf2")
+
+    # 3. Segue o seu código original
     mod_f = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="f_conf")
     
     jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
