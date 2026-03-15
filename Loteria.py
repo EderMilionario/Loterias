@@ -820,7 +820,7 @@ with abas[0]:
         qtd = st.number_input("Quantidade de Jogos", 1, 300, def_qtd)
         
     with c2:
-        max_v = 25 if mod=="Lotofácil" else 80 if mod=="Quina" else 50 if mod in ["Dupla-Sena", "Milionária"] else 60
+        max_v = 25 if mod=="Lotofácil" else 80 if mod=="Quina" else 50 if mod in ["Dupla-Sena", "+Milionária"] else 80
         col_btn1, col_btn2 = st.columns(2)
         
                 # --- [INÍCIO DOS BOTÕES DE IA ABA 0] ---
@@ -939,7 +939,7 @@ with abas[0]:
                     st.rerun()
         # --- CAMPO DE SELEÇÃO (Ocupa a largura total para melhor leitura) ---
         st.markdown("---")
-        max_dezenas = 26 if mod == "Lotofácil" else 61
+        max_dezenas = 26 if mod == "Lotofácil" else 81
         pool = st.multiselect(
             f"SELECIONE SEU POOL ({mod}):", 
             range(1, max_dezenas), 
