@@ -859,13 +859,12 @@ with abas[0]:
 
         with col_btn1:
             # BOTÃO 1: IA (Ranking 1000 - Baseado em Redes Neurais/Tendência)
-            if mod == "Lotofácil":
-                if st.button("💎 ATIVAR IA (RANKING 1000)"):
-                    pool_ia = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool)
-                    if pool_ia:
-                        st.session_state.favoritas[mod] = pool_ia
-                        st.success(f"🚀 IA configurada para {tamanho_alvo_pool} dezenas!")
-                        st.rerun()
+            if st.button("💎 ATIVAR IA (RANKING 1000)"):
+                pool_ia = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool)
+                if pool_ia:
+                    st.session_state.favoritas[mod] = pool_ia
+                    st.success(f"🚀 IA configurada para {tamanho_alvo_pool} dezenas!")
+                    st.rerun()
 
             # BOTÃO 2: TODO O VOLANTE
             if st.button("✅ SELECIONAR TODO VOLANTE"):
@@ -874,29 +873,29 @@ with abas[0]:
                 st.rerun()
                 
         with col_btn2:
-            if mod == "Lotofácil":
-                # BOTÃO 3: INTELIGENTE (Baseado em Score de Frequência e Atraso)
-                if st.button("🧠 POOL INTELIGENTE"):
-                    stats_mod = st.session_state.analise_stats.get(mod, {})
-                    if stats_mod:
-                        # Ordena pelo Score e pega exatamente o tamanho necessário
-                        dezenas_ordenadas = sorted(stats_mod.keys(), key=lambda x: stats_mod[x]['score'], reverse=True)
-                        st.session_state.favoritas[mod] = sorted(dezenas_ordenadas[:tamanho_alvo_pool])
-                        st.success(f"🎯 Pool Inteligente: {tamanho_alvo_pool} dezenas!")
-                        st.rerun()
-
-                # BOTÃO 4: REFINAR (Filtro de Elite por Afinidade)
-                if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
-                    pool_base = st.session_state.favoritas.get(mod, [])
-                    if len(pool_base) < tamanho_alvo_pool:
-                        # Se o pool estiver vazio, ele gera um via IA para depois refinar
-                        pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
-                    
-                    matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
-                    pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_objetivo=tamanho_alvo_pool)
-                    st.session_state.favoritas[mod] = pool_refinado
-                    st.success(f"🎯 Refinado para {tamanho_alvo_pool} dezenas!")
+            # BOTÃO 3: INTELIGENTE (Baseado em Score de Frequência e Atraso)
+            if st.button("🧠 POOL INTELIGENTE"):
+                stats_mod = st.session_state.analise_stats.get(mod, {})
+                if stats_mod:
+                    # Ordena pelo Score e pega exatamente o tamanho necessário
+                    dezenas_ordenadas = sorted(stats_mod.keys(), key=lambda x: stats_mod[x]['score'], reverse=True)
+                    st.session_state.favoritas[mod] = sorted(dezenas_ordenadas[:tamanho_alvo_pool])
+                    st.success(f"🎯 Pool Inteligente: {tamanho_alvo_pool} dezenas!")
                     st.rerun()
+
+            # BOTÃO 4: REFINAR (Filtro de Elite por Afinidade)
+            if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
+                pool_base = st.session_state.favoritas.get(mod, [])
+                if len(pool_base) < tamanho_alvo_pool:
+                    # Se o pool estiver vazio, ele gera um via IA para depois refinar
+                    pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
+                
+                matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
+                pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_objetivo=tamanho_alvo_pool)
+                st.session_state.favoritas[mod] = pool_refinado
+                st.success(f"🎯 Refinado para {tamanho_alvo_pool} dezenas!")
+                st.rerun()
+
         # Sincronização do multiselect (O default agora puxa do session_state atualizado pelos botões)
         pool = st.multiselect(
             "SELECIONE SEU POOL", 
@@ -918,13 +917,7 @@ with abas[0]:
                 for idx, qtd_l in enumerate(linhas_p):
                     cols_q[idx].metric(f"Linha {idx+1}", f"{qtd_l} dez")
         
-       # Se for Lotofácil, usa sua linha exatamente como enviada
-        if mod == "Lotofácil":
-            modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True, key="fixa_loto")
-        # Se não for, usa a mesma linha, mas sem a opção da IA
-        else:
-            modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual"], horizontal=True, key="fixa_outras")
-
+        modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
         fixas_final = []
         if modo_fixa == "Manual":
             fixas_final = st.multiselect("📌 CRAVAR DEZENAS:", options=pool)
@@ -937,6 +930,7 @@ with abas[0]:
                 st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
         
         renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
+
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
         # 1. Garante que a Matriz de Afinidade da Aba 6 está carregada
