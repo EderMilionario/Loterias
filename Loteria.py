@@ -1094,7 +1094,7 @@ with abas[1]:
     mod_f = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="f_conf")
 
     # 3. Segue o seu código original
-    mod_f = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="f_conf")
+    mod_f = st.selectbox("Loteria para Conferir", list(st.session_state.custos.keys()), key="key_selectbox_conferencia_unica")
     
     jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
     res_db = st.session_state.ultimo_res.get(mod_f, {})
