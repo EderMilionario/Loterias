@@ -4,3 +4,5 @@ fpdf
 scikit-learn
 streamlit-extras
 numpy
+tensorflow
+scipy
