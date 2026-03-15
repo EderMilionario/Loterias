@@ -15,43 +15,48 @@ def gerar_pdf_jogos(lista_jogos, loteria_nome):
     pdf = FPDF()
     pdf.add_page()
     
-    # Cabeçalho com cor (Verde Loterias)
+    # Cabeçalho Estilizado (Verde Loterias)
     pdf.set_fill_color(33, 108, 42) 
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(190, 15, f"COMPROVANTE DE JOGOS: {loteria_nome.upper()}", ln=True, align="C", fill=True)
+    pdf.cell(190, 15, f"COMPROVANTE OFICIAL: {loteria_nome.upper()}", ln=True, align="C", fill=True)
     
-    pdf.ln(10)
+    pdf.ln(8)
     pdf.set_text_color(0, 0, 0)
     
-    # Configuração da Tabela
-    pdf.set_font("Courier", "B", 12)
+    # Cabeçalho da Tabela
+    pdf.set_font("Arial", "B", 10)
+    pdf.set_fill_color(220, 220, 220)
+    pdf.cell(30, 8, "CONCURSO", border=1, align="C", fill=True)
+    pdf.cell(160, 8, "DEZENAS SELECIONADAS", border=1, align="C", fill=True)
+    pdf.ln()
+
+    # Listagem dos Jogos
+    pdf.set_font("Courier", "B", 12) # Fonte fixa para alinhar os números
     
-    for i, dados_jogo in enumerate(lista_jogos, 1):
-        # AQUI ESTÁ O SEGREDO: Pegamos a lista de dezenas dentro do dicionário
-        # No seu sistema a chave parece ser 'jogo' ou 'dezenas'
-        dezenas = dados_jogo.get('jogo') or dados_jogo.get('dezenas') or []
+    for i, dados in enumerate(lista_jogos, 1):
+        # Tenta pegar as dezenas de várias formas para não falhar
+        dezenas = dados.get('jogo') or dados.get('dezenas') or []
+        concurso = dados.get('concurso_alvo', '----')
         
         if dezenas:
-            # Ordena e formata com zeros (01, 02...)
-            numeros_formatados = [str(n).zfill(2) for n in sorted(dezenas)]
+            num_formatados = " ".join([str(n).zfill(2) for n in sorted(dezenas)])
             
-            # Linha zebrada para beleza visual
-            fill = True if i % 2 == 0 else False
+            # Linhas zebradas para leitura fácil
+            fill = (i % 2 == 0)
             pdf.set_fill_color(245, 245, 245)
             
-            pdf.set_font("Arial", "B", 10)
-            pdf.cell(25, 10, f" JOGO {str(i).zfill(2)}:", border="B", fill=fill)
+            pdf.set_font("Arial", "", 10)
+            pdf.cell(30, 9, f"{concurso}", border="LRB", align="C", fill=fill)
             
             pdf.set_font("Courier", "B", 12)
-            # Espaçamento elegante entre as dezenas
-            texto_dezenas = "  ".join(numeros_formatados)
-            pdf.cell(165, 10, f" {texto_dezenas}", border="B", ln=True, fill=fill)
+            pdf.cell(160, 9, f" {num_formatados}", border="RB", ln=True, fill=fill)
 
-    # Rodapé com a marca do seu sistema
+    # Rodapé Profissional
     pdf.ln(5)
     pdf.set_font("Arial", "I", 8)
-    pdf.cell(190, 10, "KADOSH ESTRATÉGICO v3.0 - Sistema de Análise Preditiva", align="C")
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(190, 10, "KADOSH ESTRATÉGICO v3.0 - Sistema de Análise Preditiva e Fechamentos", align="C")
     
     return pdf.output(dest='S').encode('latin-1')
 
@@ -1059,35 +1064,31 @@ with abas[1]:
     mostrar_status_backup() 
     st.header("🔍 Painel de Conferência")
     
+    # 1. Primeiro define a lista
     if 'jogos_salvos' not in st.session_state:
         st.session_state.jogos_salvos = []
 
-    # BOTÃO DE PDF ORGANIZADO
-    if st.session_state.jogos_salvos:
-        with st.expander("📥 Exportar Jogos para Impressão", expanded=True):
-            # Usamos uma chave única para o download não dar erro
-            try:
-                # O nome da loteria vem do selectbox que você já tem abaixo
-                lot_nome = st.session_state.get('f_conf', 'Lotofácil') 
-                
-                pdf_bytes = gerar_pdf_jogos(st.session_state.jogos_salvos, lot_nome)
-                
-                st.download_button(
-                    label="📄 BAIXAR COMPROVANTE EM PDF",
-                    data=pdf_bytes,
-                    file_name=f"Comprovante_{lot_nome}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True,
-                    key="btn_download_pdf_final"
-                )
-            except Exception as e:
-                st.error(f"Erro ao gerar: {e}")
-
-    # Seu seletor de loteria (Mantenha apenas UM)
+    # 2. SELETOR VEM PRIMEIRO (Para o PDF saber qual nome usar)
     mod_f = st.selectbox("Selecione a Loteria para Conferir", 
                          list(st.session_state.custos.keys()), 
-                         key="f_conf")
-    # 3. Segue o seu código original
+                         key="f_conf_unica")
+
+    # 3. BOTÃO DE PDF (Só aparece se tiver jogo salvo)
+    if st.session_state.jogos_salvos:
+        try:
+            # Aqui ele usa o 'mod_f' que acabamos de criar acima
+            pdf_bytes = gerar_pdf_jogos(st.session_state.jogos_salvos, mod_f)
+            
+            st.download_button(
+                label="📄 BAIXAR COMPROVANTE EM PDF",
+                data=pdf_bytes,
+                file_name=f"Comprovante_{mod_f}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+                key="btn_download_pdf_final_v4"
+            )
+        except Exception as e:
+            st.error(f"Erro: Certifique-se que a função gerar_pdf_jogos está no topo do arquivo.")
     
     jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
     res_db = st.session_state.ultimo_res.get(mod_f, {})
