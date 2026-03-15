@@ -787,7 +787,7 @@ with abas[0]:
     col_btn1, col_btn2 = st.columns(2)
         
         # Define o tamanho ideal do Pool baseado na Matriz selecionada
-        tamanho_alvo = 18 # Padrão
+            tamanho_alvo = 18 # Padrão
         if "DIAMANTE" in fe_escolhido or "20-15" in fe_escolhido:
             tamanho_alvo = 20
         elif "19-15" in fe_escolhido:
