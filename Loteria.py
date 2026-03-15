@@ -918,9 +918,10 @@ with abas[0]:
                 for idx, qtd_l in enumerate(linhas_p):
                     cols_q[idx].metric(f"Linha {idx+1}", f"{qtd_l} dez")
         
-      # --- BLOCO DE FIXAÇÃO FIEL ---
+       # Se for Lotofácil, usa sua linha exatamente como enviada
         if mod == "Lotofácil":
             modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True, key="fixa_loto")
+        # Se não for, usa a mesma linha, mas sem a opção da IA
         else:
             modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual"], horizontal=True, key="fixa_outras")
 
@@ -1599,7 +1600,6 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
-
 
 
 
