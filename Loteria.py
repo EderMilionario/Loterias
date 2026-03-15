@@ -918,7 +918,11 @@ with abas[0]:
                 for idx, qtd_l in enumerate(linhas_p):
                     cols_q[idx].metric(f"Linha {idx+1}", f"{qtd_l} dez")
         
-        modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"] if mod == "Lotofácil" else ["Sem Fixas", "Manual"], horizontal=True)
+        if mod == "Lotofácil":
+            modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
+        else:
+            modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual"], horizontal=True)
+
         fixas_final = []
         if modo_fixa == "Manual":
             fixas_final = st.multiselect("📌 CRAVAR DEZENAS:", options=pool)
@@ -931,7 +935,6 @@ with abas[0]:
                 st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
         
         renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
-
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
         # 1. Garante que a Matriz de Afinidade da Aba 6 está carregada
