@@ -9,6 +9,27 @@ from itertools import combinations
 from fpdf import FPDF
 import io
 
+from fpdf import FPDF
+
+def gerar_pdf_jogos(jogos, loteria_nome):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    
+    # Cabeçalho
+    pdf.cell(190, 10, f"Meus Jogos - {loteria_nome}", ln=True, align="C")
+    pdf.ln(10)
+    
+    # Lista de Jogos
+    pdf.set_font("Arial", size=12)
+    for i, jogo in enumerate(jogos, 1):
+        # Transforma a lista de números em texto (ex: 01, 05, 10...)
+        texto_jogo = ", ".join(map(lambda x: str(x).zfill(2), sorted(jogo)))
+        pdf.cell(190, 8, f"Jogo {str(i).zfill(2)}: {texto_jogo}", ln=True)
+    
+    # Retorna o PDF como string de bytes
+    return pdf.output(dest='S').encode('latin-1')
+
 import unicodedata
 
 def preparar_url_api(nome):
@@ -1015,6 +1036,16 @@ with abas[1]:
     
     if 'jogos_salvos' not in st.session_state:
         st.session_state.jogos_salvos = []
+     # Supondo que 'meus_jogos' seja a sua lista de jogos gerados
+    if meus_jogos:
+        pdf_bytes = gerar_pdf_jogos(meus_jogos, mod)
+    
+        st.download_button(
+            label="📄 Baixar Jogos em PDF",
+            data=pdf_bytes,
+            file_name=f"jogos_{mod}.pdf",
+            mime="application/pdf"
+        )   
         
     mod_f = st.selectbox("Loteria", list(st.session_state.custos.keys()), key="f_conf")
     
