@@ -8,7 +8,7 @@ from collections import Counter
 from itertools import combinations
 from fpdf import FPDF
 import io
-
+import math
 def gerar_pdf_jogos(lista_jogos, loteria_nome):
     from fpdf import FPDF
     pdf = FPDF()
