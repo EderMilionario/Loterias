@@ -223,34 +223,38 @@ def calcular_matriz_afinidade_kadosh(mod):
     return matriz
 
 def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_ia=None):
-    # Se os dados não existirem, não trava, apenas retorna o que já tem
+    # Se não tiver dados, retorna o que tem pra não travar
     if not matriz_afinidade or not pool_atual:
         return sorted(list(pool_atual))
     
-    # Se o botão enviar a IA, usamos. Se não, fica vazio.
+    # Se o botão mandar a IA, a gente usa. Se não mandar, fica vazio {}
     if scores_ia is None:
         scores_ia = {}
 
-    # O JUIZ (REGRA 70/30)
+    # O JUIZ: IA (70%) + ESTATÍSTICA 35 JOGOS (30%)
     def peso_juiz(d):
         d_int = int(d)
-        # IA (Árvores)
+        # 1. Score da IA
         s_ia = scores_ia.get(d_int, 0)
-        # Afinidade (Histórico 35 jogos)
-        afim_total = sum(matriz_afinidade[d_int]) / 25
-        # Trava de 40%
+        
+        # 2. Afinidade Kadosh (Soma das conexões na matriz)
+        # Dividimos por 25 para normalizar o valor
+        afim_total = sum(matriz_afinidade[d_int]) / 25 
+        
+        # 3. Trava de 40%: Se for "fria" na afinidade, o peso cai
         estatistica_final = afim_total if afim_total > 0.40 else afim_total * 0.5
         
+        # Cálculo Final que o botão vai usar
         return (s_ia * 0.7) + (estatistica_final * 0.3)
 
     pool_refinado = list(pool_atual)
     
-    # Corta o excesso baseado no novo peso
+    # REMOÇÃO: Corta o excesso baseado no peso do Juiz
     while len(pool_refinado) > tamanho_objetivo:
         piores = sorted(pool_refinado, key=peso_juiz)
         pool_refinado.remove(piores[0])
 
-    # Trocas de segurança (Cura de Vácuo)
+    # CURA DE VÁCUO: Tenta trocar as 2 piores por melhores que ficaram fora
     dezenas_fora = [d for d in range(1, 26) if d not in pool_refinado]
     for _ in range(2):
         if not dezenas_fora: break
@@ -263,7 +267,6 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_i
             dezenas_fora.remove(melhor_fora)
             
     return sorted([int(d) for d in pool_refinado])
-
 # --- 1. CONFIGURAÇÃO E ESTÉTICA ---
 st.set_page_config(page_title="LOTERIAS - KADOSH ESTRATÉGICO", layout="wide")
 st.markdown("""
