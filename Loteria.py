@@ -14,30 +14,28 @@ def gerar_pdf_jogos(lista_jogos, loteria_nome):
     pdf = FPDF()
     pdf.add_page()
     
-    # Cabeçalho Cinza e Organizado
+    # Cabeçalho Cinza (Estilo Profissional)
     pdf.set_fill_color(230, 230, 230)
     pdf.set_font("Arial", "B", 14)
     pdf.cell(190, 10, f"COMPROVANTE: {loteria_nome.upper()}", border=1, ln=True, align="C", fill=True)
     pdf.ln(5)
 
-    # Títulos das colunas
+    # Títulos das Colunas
     pdf.set_font("Arial", "B", 10)
     pdf.cell(30, 8, "CONCURSO", border=1, align="C")
     pdf.cell(20, 8, "JOGO", border=1, align="C")
     pdf.cell(140, 8, "DEZENAS", border=1, align="C")
     pdf.ln()
 
-    # Processamento dos Jogos
+    # Processamento universal para qualquer lotaria
     pdf.set_font("Courier", "B", 11)
     for i, item in enumerate(lista_jogos, 1):
-        # Busca automática pelas chaves do seu backup (n e concurso_alvo)
-        dezenas = item.get('n') or item.get('jogo') or item.get('dezenas') or []
-        concurso = item.get('concurso_alvo') or "----"
+        dezenas = item.get('n', [])
+        concurso = item.get('concurso_alvo', '----')
         
         if dezenas:
-            # Ordena e formata com dois dígitos (01, 02...)
+            # Organiza os números (funciona para 6, 15 ou 20 dezenas)
             num_texto = " ".join([str(n).zfill(2) for n in sorted(dezenas)])
-            
             pdf.cell(30, 7, f"{concurso}", border=1, align="C")
             pdf.cell(20, 7, f"{i:02d}", border=1, align="C")
             pdf.cell(140, 7, f" {num_texto}", border=1, ln=True)
