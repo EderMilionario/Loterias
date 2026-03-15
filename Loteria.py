@@ -750,9 +750,12 @@ with abas[0]:
                 contagem[n] += 1
             
         stats_temp = {}
-        max_dezenas = 25 if mod == "Lotofácil" else 60
+        # Mude esta linha para aceitar a Quina (80) e as outras (50 ou 60)
+        max_dezenas = 25 if mod == "Lotofácil" else 80 if mod == "Quina" else 50 if mod in ["Dupla-Sena", "Milionária"] else 60
+
         for n in range(1, max_dezenas + 1):
             atraso_n = 0
+            # ... resto do seu código
             for c in conc_ordenados:
                 if n not in res_loto[c]: 
                     atraso_n += 1
@@ -817,7 +820,7 @@ with abas[0]:
         qtd = st.number_input("Quantidade de Jogos", 1, 300, def_qtd)
         
     with c2:
-        max_v = 25 if mod=="Lotofácil" else 60 if mod=="Mega-Sena" else 80
+        max_v = 25 if mod=="Lotofácil" else 80 if mod=="Quina" else 50 if mod in ["Dupla-Sena", "Milionária"] else 60
         col_btn1, col_btn2 = st.columns(2)
         
                 # --- [INÍCIO DOS BOTÕES DE IA ABA 0] ---
