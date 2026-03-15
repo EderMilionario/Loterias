@@ -1173,12 +1173,38 @@ with abas[2]:
 
         if rateio:
             import pandas as pd
-            df_r = pd.DataFrame(rateio)[['descricaoFaixa', 'numeroDeGanhadores', 'valorRateio']]
-            df_r.columns = ['Faixa', 'Ganhadores', 'Prêmio Individual']
-            st.dataframe(df_r.style.format({'Prêmio Individual': 'R$ {:,.2f}'}), use_container_width=True, hide_index=True)
+            try:
+                df_r = pd.DataFrame(rateio)
+                
+                # MAPEAMENTO DE COLUNAS (Aceita o padrão da Caixa ou da API reserva)
+                colunas_caixa = {
+                    'descricaoFaixa': 'Faixa', 
+                    'numeroDeGanhadores': 'Ganhadores', 
+                    'valorRateio': 'Prêmio Individual'
+                }
+                colunas_reserva = {
+                    'faixa': 'Faixa', 
+                    'ganhadores': 'Ganhadores', 
+                    'valor': 'Prêmio Individual',
+                    'descricao': 'Faixa'
+                }
+                
+                # Tenta renomear o que encontrar disponível
+                if 'descricaoFaixa' in df_r.columns:
+                    df_r = df_r.rename(columns=colunas_caixa)
+                else:
+                    df_r = df_r.rename(columns=colunas_reserva)
+
+                # Seleciona apenas as que conseguimos renomear
+                cols_finais = ['Faixa', 'Ganhadores', 'Prêmio Individual']
+                df_r = df_r[[c for c in cols_finais if c in df_r.columns]]
+                
+                st.dataframe(df_r.style.format({'Prêmio Individual': 'R$ {:,.2f}'}), use_container_width=True, hide_index=True)
+            except Exception as e:
+                st.warning("Dados de rateio em formato alternativo. Verifique a base de dados.")
+                st.write(rateio) # Mostra o dado bruto para não ficar no escuro
         else:
             st.info("ℹ️ Os valores de ganhadores e rateio ainda não foram processados.")
-
 with abas[3]:
     mostrar_status_backup()
     st.header("📥 Database - Gerenciar Resultados")
