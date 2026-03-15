@@ -1145,7 +1145,7 @@ with abas[2]:
                     <h1 style="margin:0; color: #004a8d; font-size: 35px;">{lot_v.upper()}</h1>
                     <p style="margin:0; color: #666; font-size: 14px;">PORTAL DE RESULTADOS</p>
                 </div>
-                <div style="background: #004a8d; color: white; padding: 10px 20px; border-radius: 12px; text-align: center;">
+                <div style="background: #ffff00; color: black; padding: 10px 20px; border-radius: 12px; text-align: center;">
                     <span style="display: block; font-size: 10px;">CONCURSO</span>
                     <span style="font-size: 22px; font-weight: bold;">{n_concurso}</span>
                 </div>
