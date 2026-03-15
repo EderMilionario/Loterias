@@ -1134,8 +1134,11 @@ with abas[2]:
         st.markdown(conteudo_html, unsafe_allow_html=True)
         
         st.markdown("### 🏆 Detalhamento do Rateio Oficial")
-        rateio = dados.get('listaRateio', [])
-        # --- NOVO BLOCO DE RESGATE (COLE AQUI) ---
+        
+        # CORREÇÃO AQUI: O nome certo na API é 'listaRateioPremios'
+        rateio = dados.get('listaRateioPremios', []) 
+
+        # --- BLOCO DE RESGATE ---
         if not rateio:
             lot_url_reserva = lot_v.lower().replace("-", "")
             url_reserva = f"https://loteriascaixa.softfarma.com.br/api/{lot_url_reserva}"
@@ -1143,8 +1146,8 @@ with abas[2]:
                 res_res = requests.get(url_reserva, timeout=10)
                 if res_res.status_code == 200:
                     dados_reserva = res_res.json()
+                    # Aqui também usamos o nome correto: listaRateioPremios
                     rateio = dados_reserva.get('listaRateioPremios', [])
-                    # Atualiza o estado global para que a ABA 3 e a Database também vejam
                     st.session_state[f'dados_api_{lot_v}'] = dados_reserva
             except:
                 pass
@@ -1152,6 +1155,7 @@ with abas[2]:
 
         if rateio:
             import pandas as pd
+            # Use as colunas exatas que a API devolve
             df_r = pd.DataFrame(rateio)[['descricaoFaixa', 'numeroDeGanhadores', 'valorRateio']]
             df_r.columns = ['Faixa', 'Ganhadores', 'Prêmio Individual']
             st.dataframe(df_r.style.format({'Prêmio Individual': 'R$ {:,.2f}'}), use_container_width=True, hide_index=True)
