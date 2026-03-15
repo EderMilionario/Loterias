@@ -918,7 +918,7 @@ with abas[0]:
                 for idx, qtd_l in enumerate(linhas_p):
                     cols_q[idx].metric(f"Linha {idx+1}", f"{qtd_l} dez")
         
-        # Se for Lotofácil, usa sua linha exatamente como enviada
+       # Se for Lotofácil, usa sua linha exatamente como enviada
         if mod == "Lotofácil":
             modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True, key="fixa_loto")
         # Se não for, usa a mesma linha, mas sem a opção da IA
