@@ -894,27 +894,27 @@ with abas[0]:
                     st.success(f"🎯 Pool Inteligente: {tamanho_alvo_pool} dezenas!")
                     st.rerun()
          
-         # BOTÃO 4: REFINAR (Filtro de Elite por Afinidade + IA)
-         if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
-             pool_base = st.session_state.favoritas.get(mod, [])
+            # BOTÃO 4: REFINAR (Filtro de Elite por Afinidade + IA)
+            if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
+                pool_base = st.session_state.favoritas.get(mod, [])
              
-             # Se o pool estiver vazio ou menor que o alvo, gera um inicial via IA
-             if len(pool_base) < tamanho_alvo_pool:
-                 pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
+                # Se o pool estiver vazio ou menor que o alvo, gera um inicial via IA
+                if len(pool_base) < tamanho_alvo_pool:
+                    pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
          
-         # 1. Pega a matriz (Estatística/Kadosh com peso nos últimos 35 jogos)
-         matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
+                # 1. Pega a matriz (Estatística/Kadosh com peso nos últimos 35 jogos)
+                matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
          
-         # 2. Pega os scores da IA (Árvores de Decisão)
-         scores_ia = st.session_state.get('scores_predicao', {})
+                # 2. Pega os scores da IA (Árvores de Decisão)
+                scores_ia = st.session_state.get('scores_predicao', {})
          
-         # 3. O JUIZ: Envia o pool, a matriz, o tamanho alvo e os scores da IA
-         pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, scores_ia)
+                # 3. O JUIZ: Envia o pool, a matriz, o tamanho alvo e os scores da IA
+                pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, scores_ia)
          
-         # 4. Atualiza e recarrega
-         st.session_state.favoritas[mod] = pool_refinado
-         st.success(f"🎯 Refinado para {len(pool_refinado)} dezenas com inteligência híbrida!")
-         st.rerun()
+                # 4. Atualiza e recarrega
+                st.session_state.favoritas[mod] = pool_refinado
+                st.success(f"🎯 Refinado para {len(pool_refinado)} dezenas com inteligência híbrida!")
+                st.rerun()
         # Sincronização do multiselect (O default agora puxa do session_state atualizado pelos botões)
         pool = st.multiselect(
             "SELECIONE SEU POOL", 
