@@ -85,7 +85,7 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20):
     
     # 1. Preparação dos Dados (Matriz Binária)
     chaves_ordenadas = sorted(res_historico.keys(), key=int)
-    max_num = 25 if mod_alvo == "Lotofácil" else 60
+    max_num = 25 if mod_alvo == "Lotofácil" else 80
     matriz = np.zeros((len(chaves_ordenadas), max_num))
     
     for i, conc in enumerate(chaves_ordenadas):
@@ -751,7 +751,7 @@ with abas[0]:
             
         stats_temp = {}
         # Mude esta linha para aceitar a Quina (80) e as outras (50 ou 60)
-        max_dezenas = 25 if mod == "Lotofácil" else 80 if mod == "Quina" else 50 if mod in ["Dupla-Sena", "Milionária"] else 60
+        max_dezenas = 25 if mod == "Lotofácil" else 80 if mod == "Quina" else 50 if mod in ["Dupla-Sena", "+Milionária"] else 80
 
         for n in range(1, max_dezenas + 1):
             atraso_n = 0
