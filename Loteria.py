@@ -9,55 +9,25 @@ from itertools import combinations
 from fpdf import FPDF
 import io
 
-from fpdf import FPDF
-
 def gerar_pdf_jogos(lista_jogos, loteria_nome):
+    from fpdf import FPDF
     pdf = FPDF()
     pdf.add_page()
-    
-    # Cabeçalho Estilizado (Verde Loterias)
-    pdf.set_fill_color(33, 108, 42) 
-    pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(190, 15, f"COMPROVANTE OFICIAL: {loteria_nome.upper()}", ln=True, align="C", fill=True)
+    # Título do PDF
+    pdf.cell(190, 10, f"Comprovante: {loteria_nome}", ln=True, align="C")
+    pdf.ln(10)
     
-    pdf.ln(8)
-    pdf.set_text_color(0, 0, 0)
-    
-    # Cabeçalho da Tabela
-    pdf.set_font("Arial", "B", 10)
-    pdf.set_fill_color(220, 220, 220)
-    pdf.cell(30, 8, "CONCURSO", border=1, align="C", fill=True)
-    pdf.cell(160, 8, "DEZENAS SELECIONADAS", border=1, align="C", fill=True)
-    pdf.ln()
-
-    # Listagem dos Jogos
-    pdf.set_font("Courier", "B", 12) # Fonte fixa para alinhar os números
-    
-    for i, dados in enumerate(lista_jogos, 1):
-        # Tenta pegar as dezenas de várias formas para não falhar
-        dezenas = dados.get('jogo') or dados.get('dezenas') or []
-        concurso = dados.get('concurso_alvo', '----')
+    pdf.set_font("Courier", "B", 12)
+    for i, item in enumerate(lista_jogos, 1):
+        # AQUI ESTÁ O SEGREDO: seu JSON usa "n" para os números
+        dezenas = item.get('n', [])
         
         if dezenas:
-            num_formatados = " ".join([str(n).zfill(2) for n in sorted(dezenas)])
+            # Organiza e formata (ex: 01 02 05...)
+            linha = "  ".join([str(num).zfill(2) for num in sorted(dezenas)])
+            pdf.cell(190, 8, f"Jogo {i:02d}: {linha}", ln=True)
             
-            # Linhas zebradas para leitura fácil
-            fill = (i % 2 == 0)
-            pdf.set_fill_color(245, 245, 245)
-            
-            pdf.set_font("Arial", "", 10)
-            pdf.cell(30, 9, f"{concurso}", border="LRB", align="C", fill=fill)
-            
-            pdf.set_font("Courier", "B", 12)
-            pdf.cell(160, 9, f" {num_formatados}", border="RB", ln=True, fill=fill)
-
-    # Rodapé Profissional
-    pdf.ln(5)
-    pdf.set_font("Arial", "I", 8)
-    pdf.set_text_color(100, 100, 100)
-    pdf.cell(190, 10, "KADOSH ESTRATÉGICO v3.0 - Sistema de Análise Preditiva e Fechamentos", align="C")
-    
     return pdf.output(dest='S').encode('latin-1')
 
 import unicodedata
@@ -1061,34 +1031,23 @@ with abas[0]:
         st.rerun()
 
 with abas[1]:
-    mostrar_status_backup() 
-    st.header("🔍 Painel de Conferência")
-    
-    # 1. Primeiro define a lista
-    if 'jogos_salvos' not in st.session_state:
-        st.session_state.jogos_salvos = []
+    # ... (seu código de cabeçalho e selectbox) ...
 
-    # 2. SELETOR VEM PRIMEIRO (Para o PDF saber qual nome usar)
-    mod_f = st.selectbox("Selecione a Loteria para Conferir", 
-                         list(st.session_state.custos.keys()), 
-                         key="f_conf_unica")
-
-    # 3. BOTÃO DE PDF (Só aparece se tiver jogo salvo)
-    if st.session_state.jogos_salvos:
+    # Só mostra o botão se houver jogos na lista de salvos
+    if st.session_state.get('jogos_salvos'):
         try:
-            # Aqui ele usa o 'mod_f' que acabamos de criar acima
+            # Gera os bytes usando a função que olha para a chave "n"
             pdf_bytes = gerar_pdf_jogos(st.session_state.jogos_salvos, mod_f)
             
             st.download_button(
-                label="📄 BAIXAR COMPROVANTE EM PDF",
+                label="📥 BAIXAR JOGOS (PDF)",
                 data=pdf_bytes,
-                file_name=f"Comprovante_{mod_f}.pdf",
+                file_name=f"jogos_{mod_f}.pdf",
                 mime="application/pdf",
-                use_container_width=True,
-                key="btn_download_pdf_final_v4"
+                key="btn_pdf_vfinal_resolvido"
             )
         except Exception as e:
-            st.error(f"Erro: Certifique-se que a função gerar_pdf_jogos está no topo do arquivo.")
+            st.error(f"Erro ao gerar PDF: {e}")
     
     jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
     res_db = st.session_state.ultimo_res.get(mod_f, {})
