@@ -1414,25 +1414,27 @@ with abas[4]:
                     st.session_state.ultimo_res = d.get("res", st.session_state.ultimo_res)
                     st.session_state.favoritas = d.get("favoritas", st.session_state.favoritas)
                     
-                    # CORREÇÃO DE INDENTAÇÃO AQUI:
+                    # --- [ATIVAÇÃO AUTOMÁTICA DA INTELIGÊNCIA KADOSH] ---
+                    # Esta linha faz o motor 'olhar' o backup que você acabou de subir
+                    # Ela treina a LSTM, calibra o KDE e a Entropia com os dados restaurados
+                    preparar_inteligencia_completa(d)
+                    # ---------------------------------------------------
+
                     for m in st.session_state.ultimo_res:
                         pool_ia = treinar_e_prever_ia(m)
                         if pool_ia: 
                             st.session_state.favoritas[m] = pool_ia
 
-                    st.success("✅ Sistema Restaurado!")
+                    st.success("✅ Sistema Restaurado e Inteligência Calibrada!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro: {e}")
-
 
     st.markdown("---")
     st.subheader("📊 Status da Memória")
     c1, c2 = st.columns(2)
     c1.metric("Jogos Salvos", len(st.session_state.jogos_salvos))
     c2.metric("Resultados em Banco", sum(len(v) for v in st.session_state.ultimo_res.values()))
-
-
 
 with abas[5]:
     mostrar_status_backup()
