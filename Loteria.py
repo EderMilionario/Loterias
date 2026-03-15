@@ -920,11 +920,11 @@ with abas[0]:
         
        # Se for Lotofácil, executa sua linha EXATAMENTE como você mandou
         if mod == "Lotofácil":
-            modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
+            modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True, key="fixa_loto")
         
         # Se for qualquer outra, executa a mesma linha, mas sem o item da IA
         else:
-            modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual"], horizontal=True)
+            modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual"], horizontal=True, key="fixa_geral")
 
         fixas_final = []
         if modo_fixa == "Manual":
