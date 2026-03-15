@@ -904,7 +904,6 @@ with abas[0]:
             default=st.session_state.favoritas.get(mod, [])
         )
         st.session_state.favoritas[mod] = pool
- 
 
         # --- [SUGESTÃO 3: ANÁLISE DE QUADRANTES NO POOL] ---
         if pool and mod == "Lotofácil":
@@ -917,14 +916,12 @@ with abas[0]:
                 cols_q = st.columns(5)
                 for idx, qtd_l in enumerate(linhas_p):
                     cols_q[idx].metric(f"Linha {idx+1}", f"{qtd_l} dez")
-        
-       # Se for Lotofácil, executa sua linha EXATAMENTE como você mandou
+
+        # AQUI ESTÁ A CORREÇÃO FIEL:
         if mod == "Lotofácil":
             modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True, key="fixa_loto")
-        
-        # Se for qualquer outra, executa a mesma linha, mas sem o item da IA
         else:
-            modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual"], horizontal=True, key="fixa_geral")
+            modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual"], horizontal=True, key="fixa_outras")
 
         fixas_final = []
         if modo_fixa == "Manual":
