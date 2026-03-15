@@ -13,23 +13,35 @@ def gerar_pdf_jogos(lista_jogos, loteria_nome):
     from fpdf import FPDF
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", "B", 16)
-    # Título do PDF
-    pdf.cell(190, 10, f"Comprovante: {loteria_nome}", ln=True, align="C")
-    pdf.ln(10)
     
-    pdf.set_font("Courier", "B", 12)
+    # Cabeçalho sólido
+    pdf.set_fill_color(200, 200, 200)
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(190, 10, f"COMPROVANTE: {loteria_nome.upper()}", border=1, ln=True, align="C", fill=True)
+    pdf.ln(5)
+
+    # Títulos das colunas
+    pdf.set_font("Arial", "B", 10)
+    pdf.cell(25, 8, "CONCURSO", border=1, align="C")
+    pdf.cell(20, 8, "JOGO", border=1, align="C")
+    pdf.cell(145, 8, "DEZENAS", border=1, align="C")
+    pdf.ln()
+
+    # Dados organizados
+    pdf.set_font("Courier", "B", 11) # Fonte fixa para os números não dançarem
     for i, item in enumerate(lista_jogos, 1):
-        # AQUI ESTÁ O SEGREDO: seu JSON usa "n" para os números
-        dezenas = item.get('n', [])
+        # Pega os dados conforme seu backup JSON
+        dezenas = item.get('n', []) [cite: 23]
+        concurso = item.get('concurso_alvo', '----') [cite: 23]
         
         if dezenas:
-            # Organiza e formata (ex: 01 02 05...)
-            linha = "  ".join([str(num).zfill(2) for num in sorted(dezenas)])
-            pdf.cell(190, 8, f"Jogo {i:02d}: {linha}", ln=True)
+            num_texto = " ".join([str(n).zfill(2) for n in sorted(dezenas)])
             
-    return pdf.output(dest='S').encode('latin-1')
+            pdf.cell(25, 7, f"{concurso}", border=1, align="C")
+            pdf.cell(20, 7, f"{i:02d}", border=1, align="C")
+            pdf.cell(145, 7, f" {num_texto}", border=1, ln=True)
 
+    return pdf.output(dest='S').encode('latin-1')
 import unicodedata
 
 def preparar_url_api(nome):
