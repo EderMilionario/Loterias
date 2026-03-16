@@ -1026,67 +1026,75 @@ with abas[0]:
             renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {})) 
 
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
-    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-            matriz_af = st.session_state.get('matriz_ativa')
-            if matriz_af is None:
-                matriz_af = calcular_matriz_afinidade_kadosh(mod)
-                st.session_state['matriz_ativa'] = matriz_af
+    # --- MOTOR DE GERAÇÃO PSO KADOSH ---
+        # 1. Primeiro, garantimos que a matriz está carregada na memória
+        if 'matriz_ativa' not in st.session_state:
+            st.session_state.matriz_ativa = calcular_matriz_afinidade_kadosh(mod)
+        
+        matriz_af = st.session_state.matriz_ativa
 
-            if not pool or len(pool) < n_dez:
-                st.error("⚠️ Erro: Pool insuficiente.")
-            else:
-                novos = []
+        # 2. Definição da Função de Processamento (Blindada)
+        def processar_geracao_seguro(tamanho_solicitado, quantidade_pedida, pool_alvo, matriz_alvo, fixas_alvo):
+            sucessos, tentativas = 0, 0
+            temp_jogos = []
+            while sucessos < quantidade_pedida and tentativas < 10000:
+                tentativas += 1
+                w = 0.4 if tentativas < 1000 else 0.8 
                 
-                # --- É AQUI QUE ENTRA O CÓDIGO QUE VOCÊ MANDOU ---
-                def processar_geracao(tamanho_solicitado, quantidade_pedida):
-                    sucessos, tentativas_totais = 0, 0
-                    while sucessos < quantidade_pedida and tentativas_totais < 50000:
-                        tentativas_totais += 1
-                        w = 0.4 if tentativas_totais < 1000 else 0.8 
-                        
-                        jogo_em_construcao = list(fixas_final)
-                        pool_trabalho = [n for n in pool if n not in jogo_em_construcao]
+                jogo_em_construcao = list(fixas_alvo)
+                pool_trabalho = [n for n in pool_alvo if n not in jogo_em_construcao]
+            
+                while len(jogo_em_construcao) < tamanho_solicitado and pool_trabalho:
+                    pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_alvo, pool_trabalho)
+                    opcoes = list(pesos_dict.keys())
+                    probabilidades = list(pesos_dict.values())
                     
-                        while len(jogo_em_construcao) < tamanho_solicitado and pool_trabalho:
-                            pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
-                            opcoes = list(pesos_dict.keys())
-                            probabilidades = list(pesos_dict.values())
-                            
-                            prob_ajustada = [p * (w + 1.5 * random.random()) for p in probabilidades]
-                            escolha = random.choices(opcoes, weights=prob_ajustada, k=1)[0]
-                            
-                            jogo_em_construcao.append(escolha)
-                            pool_trabalho.remove(escolha)
+                    prob_ajustada = [p * (w + 1.5 * random.random()) for p in probabilidades]
+                    escolha = random.choices(opcoes, weights=prob_ajustada, k=1)[0]
                     
-                        comb = sorted(jogo_em_construcao)
-                        if any(set(comb) == set(existente['n']) for existente in novos):
-                            continue
-                    
-                        passou = True
-                        if mod == "Lotofácil" and tamanho_solicitado == 15:
-                            passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
-                    
-                        if passou:
-                            novos.append({
-                                "mod": mod, "n": comb, "tam": tamanho_solicitado, 
-                                "fixas_utilizadas": list(fixas_final),
-                                "chance": definir_label_chance(comb, mod), 
-                                "est": f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
-                            })
-                            sucessos += 1
-                # --- FIM DO BLOCO QUE VOCÊ MANDOU ---
+                    jogo_em_construcao.append(escolha)
+                    pool_trabalho.remove(escolha)
+            
+                comb = sorted(jogo_em_construcao)
+                if any(set(comb) == set(j['n']) for j in temp_jogos):
+                    continue
+            
+                # Validação Kadosh (Somente Lotofácil 15)
+                passou = True
+                if mod == "Lotofácil" and tamanho_solicitado == 15:
+                    passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
+            
+                if passou:
+                    temp_jogos.append({
+                        "mod": mod, "n": comb, "tam": tamanho_solicitado, 
+                        "chance": "Alta", "est": f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
+                    })
+                    sucessos += 1
+            return temp_jogos
 
-                # ABAIXO DA FUNÇÃO, VOCÊ CHAMA AS ESTRATÉGIAS:
+        # 3. O Botão com a Chamada de Estratégias
+        if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
+            if not pool or len(pool) < n_dez:
+                st.error("⚠️ Erro: Selecione o Pool antes de gerar!")
+            else:
+                novos_jogos = []
+                f_utilizadas = fixas_final if 'fixas_final' in locals() else []
+                
+                # Executa conforme a estratégia selecionada
                 if fe_escolhido != "Nenhum":
                     if "DIAMANTE" in fe_escolhido:
-                        processar_geracao(16, 2)
-                        processar_geracao(15, 10)
-                    # ... (resto das suas condições de estratégia)
+                        novos_jogos.extend(processar_geracao_seguro(16, 2, pool, matriz_af, f_utilizadas))
+                        novos_jogos.extend(processar_geracao_seguro(15, 10, pool, matriz_af, f_utilizadas))
+                    elif "CÉLULA" in fe_escolhido:
+                        novos_jogos.extend(processar_geracao_seguro(16, 1, pool, matriz_af, f_utilizadas))
+                        novos_jogos.extend(processar_geracao_seguro(15, 15, pool, matriz_af, f_utilizadas))
+                    else:
+                        novos_jogos.extend(processar_geracao_seguro(15, qtd, pool, matriz_af, f_utilizadas))
                 else:
-                    processar_geracao(n_dez, qtd)
+                    novos_jogos.extend(processar_geracao_seguro(n_dez, qtd, pool, matriz_af, f_utilizadas))
 
-                st.session_state.jogos_gerados = novos
-                st.success(f"🔥 Gerados {len(novos)} jogos!")
+                st.session_state.jogos_gerados = novos_jogos
+                st.success(f"✅ {len(novos_jogos)} Jogos Gerados com Sucesso!")
                 st.rerun()
     # --- [FIM DO NOVO MOTOR SINCRONIZADO] ---
 
