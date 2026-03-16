@@ -1064,7 +1064,9 @@ with abas[0]:
         else:
             with st.spinner("🧠 Sincronizando LSTM + PSO com seu Backup..."):
                 novos = []
-                pool = st.session_state.get('pool_selecionado', [])
+               # Substitua a linha onde você define o 'pool' dentro do botão de gerar por estas duas:
+               pool_final = st.session_state.favoritas.get(mod, st.session_state.get('pool_selecionado', []))
+               candidatos = motor_pso_lstm_kadosh(pool_final, 1, tamanho_solicitado, dados_hist) 
             
                 # --- [AQUI ENTRA A INTEGRAÇÃO REAL] ---
                 # A IA analisa o backup uma vez antes de começar a gerar
