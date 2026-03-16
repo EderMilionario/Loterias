@@ -1077,25 +1077,67 @@ with abas[0]:
             if not pool or len(pool) < n_dez:
                 st.error("⚠️ Erro: Selecione o Pool antes de gerar!")
             else:
-                novos_jogos = []
-                f_utilizadas = fixas_final if 'fixas_final' in locals() else []
-                
-                # Executa conforme a estratégia selecionada
+                # CORREÇÃO CIRÚRGICA: Forçar a leitura das variáveis de estado
+                pool_global = pool 
+                matriz_global = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
+                fixas_globais = fixas_final if 'fixas_final' in locals() else []
+                novos = []
+
+                def processar_geracao(tamanho, qtd_pedida):
+                    sucessos, tentativas = 0, 0
+                    while sucessos < qtd_pedida and tentativas < 40000:
+                        tentativas += 1
+                        # PSO dinâmico para não travar o navegador
+                        w = 0.5 if tentativas < 2000 else 0.8
+                        
+                        jogo = list(fixas_globais)
+                        disponiveis = [n for n in pool_global if n not in jogo]
+                        
+                        while len(jogo) < tamanho and disponiveis:
+                            # Aqui era onde o teu código morria (falta de matriz_global)
+                            pesos = calcular_pesos_afinidade_dinamica(jogo, matriz_global, disponiveis)
+                            opcoes = list(pesos.keys())
+                            probs = [p * (w + 1.5 * random.random()) for p in pesos.values()]
+                            
+                            escolha = random.choices(opcoes, weights=probs, k=1)[0]
+                            jogo.append(escolha)
+                            disponiveis.remove(escolha)
+                        
+                        comb = sorted(jogo)
+                        if any(set(comb) == set(ex['n']) for ex in novos): continue
+                        
+                        # Filtro Kadosh
+                        passou = True
+                        if mod == "Lotofácil" and tamanho == 15:
+                            passou = validar_kadosh_cirurgico(comb, mod, tamanho)
+                        
+                        if passou:
+                            novos.append({
+                                "mod": mod, "n": comb, "tam": tamanho,
+                                "est": f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}",
+                                "chance": "Alta"
+                            })
+                            sucessos += 1
+
+                # CHAMADA DAS ESTRATÉGIAS
                 if fe_escolhido != "Nenhum":
                     if "DIAMANTE" in fe_escolhido:
-                        novos_jogos.extend(processar_geracao_seguro(16, 2, pool, matriz_af, f_utilizadas))
-                        novos_jogos.extend(processar_geracao_seguro(15, 10, pool, matriz_af, f_utilizadas))
+                        processar_geracao(16, 2)
+                        processar_geracao(15, 10)
                     elif "CÉLULA" in fe_escolhido:
-                        novos_jogos.extend(processar_geracao_seguro(16, 1, pool, matriz_af, f_utilizadas))
-                        novos_jogos.extend(processar_geracao_seguro(15, 15, pool, matriz_af, f_utilizadas))
-                    else:
-                        novos_jogos.extend(processar_geracao_seguro(15, qtd, pool, matriz_af, f_utilizadas))
+                        processar_geracao(16, 1)
+                        processar_geracao(15, 15)
+                    else: processar_geracao(15, qtd)
                 else:
-                    novos_jogos.extend(processar_geracao_seguro(n_dez, qtd, pool, matriz_af, f_utilizadas))
+                    processar_geracao(n_dez, qtd)
 
-                st.session_state.jogos_gerados = novos_jogos
-                st.success(f"✅ {len(novos_jogos)} Jogos Gerados com Sucesso!")
-                st.rerun()
+                # SALVAMENTO FINAL
+                st.session_state.jogos_gerados = novos
+                if len(novos) > 0:
+                    st.success(f"🔥 Sincronia PSO-Kadosh: {len(novos)} jogos gerados!")
+                    st.rerun()
+                else:
+                    st.error("❌ O Kadosh reprovou tudo. Aumenta o Pool!")
     # --- [FIM DO NOVO MOTOR SINCRONIZADO] ---
 
     # --- EXIBIÇÃO DOS JOGOS (FORA DO IF DO BOTÃO) ---
