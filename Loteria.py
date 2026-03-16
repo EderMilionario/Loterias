@@ -1026,118 +1026,85 @@ with abas[0]:
             renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {})) 
 
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
-    # --- MOTOR DE GERAÇÃO PSO KADOSH ---
-        # 1. Primeiro, garantimos que a matriz está carregada na memória
-        if 'matriz_ativa' not in st.session_state:
-            st.session_state.matriz_ativa = calcular_matriz_afinidade_kadosh(mod)
-        
-        matriz_af = st.session_state.matriz_ativa
+    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
+        # 1. Garante que a Matriz de Afinidade da Aba 6 está carregada
+        matriz_af = st.session_state.get('matriz_ativa')
+        if matriz_af is None:
+            matriz_af = calcular_matriz_afinidade_kadosh(mod)
+            st.session_state['matriz_ativa'] = matriz_af
 
-        # 2. Definição da Função de Processamento (Blindada)
-        def processar_geracao_seguro(tamanho_solicitado, quantidade_pedida, pool_alvo, matriz_alvo, fixas_alvo):
-            sucessos, tentativas = 0, 0
-            temp_jogos = []
-            while sucessos < quantidade_pedida and tentativas < 10000:
-                tentativas += 1
-                w = 0.4 if tentativas < 1000 else 0.8 
-                
-                jogo_em_construcao = list(fixas_alvo)
-                pool_trabalho = [n for n in pool_alvo if n not in jogo_em_construcao]
+        if not pool or len(pool) < n_dez:
+            st.error("⚠️ Erro: Seu Pool é menor que a quantidade de dezenas por bilhete.")
+        else:
+            novos = []
             
-                while len(jogo_em_construcao) < tamanho_solicitado and pool_trabalho:
-                    pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_alvo, pool_trabalho)
-                    opcoes = list(pesos_dict.keys())
-                    probabilidades = list(pesos_dict.values())
+            # 2. Função interna que aplica Afinidade + Filtros Kadosh
+            def processar_geracao(tamanho_solicitado, quantidade_pedida):
+                sucessos, tentativas = 0, 0
+                while sucessos < quantidade_pedida and tentativas < 20000: # Limite alto para não desistir fácil
+                    tentativas += 1
+                    jogo_em_construcao = list(fixas_final)
+                    pool_trabalho = [n for n in pool if n not in jogo_em_construcao]
                     
-                    prob_ajustada = [p * (w + 1.5 * random.random()) for p in probabilidades]
-                    escolha = random.choices(opcoes, weights=prob_ajustada, k=1)[0]
+                    # PREENCHIMENTO INTELIGENTE: Usa a Matriz de Afinidade (Aba 6)
+                    while len(jogo_em_construcao) < tamanho_solicitado and pool_trabalho:
+                        pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
+                        opcoes = list(pesos_dict.keys())
+                        probabilidades = list(pesos_dict.values())
+                        
+                        escolha = random.choices(opcoes, weights=probabilidades, k=1)[0]
+                        jogo_em_construcao.append(escolha)
+                        pool_trabalho.remove(escolha)
                     
-                    jogo_em_construcao.append(escolha)
-                    pool_trabalho.remove(escolha)
-            
-                comb = sorted(jogo_em_construcao)
-                if any(set(comb) == set(j['n']) for j in temp_jogos):
-                    continue
-            
-                # Validação Kadosh (Somente Lotofácil 15)
-                passou = True
-                if mod == "Lotofácil" and tamanho_solicitado == 15:
-                    passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
-            
-                if passou:
-                    temp_jogos.append({
-                        "mod": mod, "n": comb, "tam": tamanho_solicitado, 
-                        "chance": "Alta", "est": f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
-                    })
-                    sucessos += 1
-            return temp_jogos
+                    comb = sorted(jogo_em_construcao)
+                    
+                    # Evita duplicatas
+                    if any(set(comb) == set(existente['n']) for existente in novos):
+                        continue
+                    
+                    # FILTROS KADOSH (Simetria, Soma, Moldura, Quadrantes)
+                    passou = True
+                    if tamanho_solicitado == 15 and mod == "Lotofácil":
+                        # Aqui ele chama a função 'validar_kadosh_cirurgico' que já tens no topo do código
+                        passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
+                    
+                    if passou:
+                        tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
+                        novos.append({
+                            "mod": mod, "n": comb, "tam": tamanho_solicitado, 
+                            "fixas_utilizadas": list(fixas_final),
+                            "chance": definir_label_chance(comb, mod), "est": tag_est
+                        })
+                        sucessos += 1
 
-        # 3. O Botão com a Chamada de Estratégias
-        if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-            if not pool or len(pool) < n_dez:
-                st.error("⚠️ Erro: Selecione o Pool antes de gerar!")
+            # 3. LÓGICA DE EXECUÇÃO (Mantendo todas as tuas estratégias originais)
+            if fe_escolhido != "Nenhum":
+                if "DIAMANTE" in fe_escolhido:
+                    processar_geracao(16, 2)
+                    processar_geracao(15, 10)
+                elif "CÉLULA" in fe_escolhido:
+                    processar_geracao(16, 1)
+                    processar_geracao(15, 15)
+                else:
+                    processar_geracao(15, qtd)
+            elif est_escolhida == "6. A MARRETA":
+                processar_geracao(18, 1)
+                processar_geracao(16, 5)
+            elif est_escolhida == "7. SIMETRIA GEOMÉTRICA":
+                processar_geracao(16, 2)
+                processar_geracao(15, 8)
+            elif est_escolhida == "10. KADOSH PRESTIGE 20":
+                processar_geracao(15, 36)
+            elif est_escolhida != "Personalizado" and mod == "Lotofácil":
+                processar_geracao(info_est['dez'], info_est.get('qtd', 1))
+                if "qtd_15" in info_est:
+                    processar_geracao(15, info_est['qtd_15'])
             else:
-                # CORREÇÃO CIRÚRGICA: Forçar a leitura das variáveis de estado
-                pool_global = pool 
-                matriz_global = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
-                fixas_globais = fixas_final if 'fixas_final' in locals() else []
-                novos = []
-
-                def processar_geracao(tamanho, qtd_pedida):
-                    sucessos, tentativas = 0, 0
-                    while sucessos < qtd_pedida and tentativas < 40000:
-                        tentativas += 1
-                        # PSO dinâmico para não travar o navegador
-                        w = 0.5 if tentativas < 2000 else 0.8
-                        
-                        jogo = list(fixas_globais)
-                        disponiveis = [n for n in pool_global if n not in jogo]
-                        
-                        while len(jogo) < tamanho and disponiveis:
-                            # Aqui era onde o teu código morria (falta de matriz_global)
-                            pesos = calcular_pesos_afinidade_dinamica(jogo, matriz_global, disponiveis)
-                            opcoes = list(pesos.keys())
-                            probs = [p * (w + 1.5 * random.random()) for p in pesos.values()]
-                            
-                            escolha = random.choices(opcoes, weights=probs, k=1)[0]
-                            jogo.append(escolha)
-                            disponiveis.remove(escolha)
-                        
-                        comb = sorted(jogo)
-                        if any(set(comb) == set(ex['n']) for ex in novos): continue
-                        
-                        # Filtro Kadosh
-                        passou = True
-                        if mod == "Lotofácil" and tamanho == 15:
-                            passou = validar_kadosh_cirurgico(comb, mod, tamanho)
-                        
-                        if passou:
-                            novos.append({
-                                "mod": mod, "n": comb, "tam": tamanho,
-                                "est": f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}",
-                                "chance": "Alta"
-                            })
-                            sucessos += 1
-
-                # CHAMADA DAS ESTRATÉGIAS
-                if fe_escolhido != "Nenhum":
-                    if "DIAMANTE" in fe_escolhido:
-                        processar_geracao(16, 2)
-                        processar_geracao(15, 10)
-                    elif "CÉLULA" in fe_escolhido:
-                        processar_geracao(16, 1)
-                        processar_geracao(15, 15)
-                    else: processar_geracao(15, qtd)
-                else:
-                    processar_geracao(n_dez, qtd)
-
-                # SALVAMENTO FINAL
-                st.session_state.jogos_gerados = novos
-                if len(novos) > 0:
-                    st.success(f"🔥 Sincronia PSO-Kadosh: {len(novos)} jogos gerados!")
-                    st.rerun()
-                else:
-                    st.error("❌ O Kadosh reprovou tudo. Aumenta o Pool!")
+                processar_geracao(n_dez, qtd)
+            
+            st.session_state.jogos_gerados = novos
+            st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com sucesso!")
+            st.rerun()
     # --- [FIM DO NOVO MOTOR SINCRONIZADO] ---
 
     # --- EXIBIÇÃO DOS JOGOS (FORA DO IF DO BOTÃO) ---
@@ -1447,27 +1414,25 @@ with abas[4]:
                     st.session_state.ultimo_res = d.get("res", st.session_state.ultimo_res)
                     st.session_state.favoritas = d.get("favoritas", st.session_state.favoritas)
                     
-                    # --- [ATIVAÇÃO AUTOMÁTICA DA INTELIGÊNCIA KADOSH] ---
-                    # Esta linha faz o motor 'olhar' o backup que você acabou de subir
-                    # Ela treina a LSTM, calibra o KDE e a Entropia com os dados restaurados
-                    preparar_inteligencia_completa(d)
-                    # ---------------------------------------------------
-
+                    # CORREÇÃO DE INDENTAÇÃO AQUI:
                     for m in st.session_state.ultimo_res:
                         pool_ia = treinar_e_prever_ia(m)
                         if pool_ia: 
                             st.session_state.favoritas[m] = pool_ia
 
-                    st.success("✅ Sistema Restaurado e Inteligência Calibrada!")
+                    st.success("✅ Sistema Restaurado!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro: {e}")
+
 
     st.markdown("---")
     st.subheader("📊 Status da Memória")
     c1, c2 = st.columns(2)
     c1.metric("Jogos Salvos", len(st.session_state.jogos_salvos))
     c2.metric("Resultados em Banco", sum(len(v) for v in st.session_state.ultimo_res.values()))
+
+
 
 with abas[5]:
     mostrar_status_backup()
@@ -1723,6 +1688,8 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
+
 
 
 
