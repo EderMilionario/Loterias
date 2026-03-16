@@ -8,7 +8,7 @@ from collections import Counter
 from itertools import combinations
 from fpdf import FPDF
 import io
-import math
+
 def gerar_pdf_jogos(lista_jogos, loteria_nome):
     from fpdf import FPDF
     pdf = FPDF()
@@ -432,82 +432,21 @@ def jogo_ja_saiu(jogo, mod):
             return True
     return False
 
-import numpy as np
-from scipy.stats import entropy, gaussian_kde
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
-import random
-
-# --- [1. CÉREBRO PREDITIVO: APRENDE COM O BACKUP JSON] ---
-def preparar_inteligencia_completa(backup_json):
-    """Lê o histórico oficial e calibra a tríade de IA instantaneamente"""
-    if not backup_json:
-        return
-    
-    # Extrai os resultados oficiais do backup que você enviou
-    resultados = [np.array(res['n']) for res in backup_json if 'n' in res]
-    if len(resultados) < 5: return
-
-    # A. TREINO LSTM (Tendência Temporal do Histórico)
-    # Pega os últimos 20 para treinar em segundos sem travar o Streamlit
-    data = np.array(resultados[-20:]) 
-    X = data[:-1].reshape((len(data)-1, data.shape[1], 1))
-    y = data[1:]
-    
-    model = Sequential([
-        LSTM(32, input_shape=(X.shape[1], 1), activation='relu'),
-        Dense(X.shape[1])
-    ])
-    model.compile(optimizer='adam', loss='mse')
-    model.fit(X, y, epochs=5, verbose=0)
-    st.session_state.modelo_ltsm = model
-
-    # B. MAPA DE CALOR KDE (Densidade Geográfica do Histórico)
-    historico_total = np.concatenate(resultados)
-    st.session_state.kde_motor = gaussian_kde(historico_total)
-
-    # C. REINFORCEMENT LEARNING (Ajuste de Pesos por Tendência)
-    # Analisa o comportamento dos últimos resultados para ajustar os filtros
-    st.session_state.pesos_rl = {'folga': 0, 'limite': 0}
-    if np.sum(resultados[-1]) > 200: # Tendência de números altos
-        st.session_state.pesos_rl['limite'] = 1
-
-# --- [2. MOTOR VALIDAR KADOSH: COM A TRÍADE IMPLEMENTADA] ---
 def validar_kadosh_cirurgico(jogo, mod, n_dez):
-    # --- [INJEÇÃO DE INTELIGÊNCIA: NÃO APAGA NADA DO ORIGINAL] ---
-    if mod == "Lotofácil":
-        # ENTROPIA: DNA do Caos (Aprende com a física dos sorteios)
-        pk = np.bincount(jogo, minlength=26)[1:] / len(jogo)
-        ent_atual = entropy(pk, base=2)
-        if not (3.1 <= ent_atual <= 3.9): return False
-
-        # KDE: Mapa de Calor (Aprende com a posição das dezenas no histórico)
-        if 'kde_motor' in st.session_state:
-            densidade = np.mean(st.session_state.kde_motor.evaluate(jogo))
-            if densidade < 0.01: return False
-
-        # LSTM: Tendência (Previsão baseada na sequência do backup)
-        if 'modelo_ltsm' in st.session_state:
-            pred = st.session_state.modelo_ltsm.predict(np.array(jogo).reshape(1, len(jogo), 1), verbose=0)
-            if np.mean(np.abs(pred - jogo)) > 12.0: return False
-
-        # RL: Pesos Dinâmicos (Ajuste automático vindo do aprendizado)
-        ajuste = st.session_state.get('pesos_rl', {'folga': 0, 'limite': 0})
-    # --- [FIM DA CAMADA DE INTELIGÊNCIA] ---
-
     if mod != "Lotofácil": 
         return True
     
     # 1. Âncoras de Início e Fim
     if not (jogo[0] in [1, 2, 3] and jogo[-1] in [23, 24, 25]): 
         return False
-
     # --- [INÍCIO DA CALIBRAGEM DE QUADRANTES KADOSH] ---
-    q1 = [1, 2, 3, 6, 7, 8, 11, 12, 13]    
-    q2 = [4, 5, 9, 10, 14, 15]             
-    q3 = [16, 17, 21, 22]                  
-    q4 = [18, 19, 20, 23, 24, 25]          
+    # Definição Geográfica das Áreas do Volante 5x5
+    q1 = [1, 2, 3, 6, 7, 8, 11, 12, 13]    # Topo Esquerda + Centro
+    q2 = [4, 5, 9, 10, 14, 15]             # Topo Direita
+    q3 = [16, 17, 21, 22]                  # Base Esquerda
+    q4 = [18, 19, 20, 23, 24, 25]          # Base Direita + Centro Baixo
     
+    # Conta quantos números do jogo caíram em cada área
     cq1 = len([n for n in jogo if n in q1])
     cq2 = len([n for n in jogo if n in q2])
     cq3 = len([n for n in jogo if n in q3])
@@ -515,31 +454,45 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
     
     distribuicao = [cq1, cq2, cq3, cq4]
 
+    # REGRA DE OURO: Nenhum quadrante vazio e nenhum com mais de 7 dezenas
+    # Isso evita que o jogo fique "amontoado" num canto só do volante.
+    # --- [SINCRONIZAÇÃO TOTAL IA + ESTRATÉGIA] ---
+    # Pegamos o tamanho exato do Pool que está sendo usado no momento
+    # Se não houver nada definido, o padrão vira o n_dez (quantidade de dezenas do jogo)
     tamanho_pool_real = st.session_state.get('tamanho_pool_ativo', n_dez)
     
-    # DINÂMICA DE LIMITE COM AJUSTE DE REFORÇO (Vindo do Cérebro)
+    # DINÂMICA DE LIMITE: 
+    # Se o pool for pequeno (até 18), limite 7. 
+    # Se for médio (19 a 21), limite 8.
+    # Se for grande (22+ como 'A Marreta'), limite 9.
     if tamanho_pool_real <= 18:
-        limite_kadosh = 7 + ajuste.get('limite', 0)
-        folga_simetria = 4 + ajuste.get('folga', 0)
+        limite_kadosh = 7
+        folga_simetria = 4
     elif tamanho_pool_real <= 21:
-        limite_kadosh = 8 + ajuste.get('limite', 0)
-        folga_simetria = 5 + ajuste.get('folga', 0)
+        limite_kadosh = 8
+        folga_simetria = 5
     else:
-        limite_kadosh = 9 + ajuste.get('limite', 0)
-        folga_simetria = 6 + ajuste.get('folga', 0)
+        limite_kadosh = 9
+        folga_simetria = 6
 
+    # APLICAÇÃO DOS FILTROS COM OS LIMITES CALIBRADOS
     if any(q < 1 for q in distribuicao) or any(q > limite_kadosh for q in distribuicao):
         return False 
 
     if (max(distribuicao) - min(distribuicao)) > folga_simetria:
         return False
+    # --- [FIM DA SINCRONIZAÇÃO] ---
     
+    # Sincronia com o Pool para evitar loop infinito
     pool_atual = st.session_state.get('pool_favoritas', [])
     if len(pool_atual) >= 18:
+        # Filtro de equilíbrio geográfico
         distribuicao = [cq1, cq2, cq3, cq4]
         if any(q < 1 for q in distribuicao) or any(q > 7 for q in distribuicao):
             return False
-
+    # --- FIM DA ATUALIZAÇÃO ---
+ 
+    
     # 2. Salto Máximo entre dezenas
     for i in range(len(jogo)-1):
         if (jogo[i+1] - jogo[i]) > 5: 
@@ -575,7 +528,7 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
         if sequencia_max < 3 or sequencia_max > 5: 
             return False
 
-    # 6. Geometria de Volante (LINHAS E COLUNAS)
+    # 6. Geometria de Volante (LINHAS E COLUNAS - CORRIGIDO)
     linhas = [0]*5
     colunas = [0]*5
     for n in jogo:
@@ -1414,27 +1367,25 @@ with abas[4]:
                     st.session_state.ultimo_res = d.get("res", st.session_state.ultimo_res)
                     st.session_state.favoritas = d.get("favoritas", st.session_state.favoritas)
                     
-                    # --- [ATIVAÇÃO AUTOMÁTICA DA INTELIGÊNCIA KADOSH] ---
-                    # Esta linha faz o motor 'olhar' o backup que você acabou de subir
-                    # Ela treina a LSTM, calibra o KDE e a Entropia com os dados restaurados
-                    preparar_inteligencia_completa(d)
-                    # ---------------------------------------------------
-
+                    # CORREÇÃO DE INDENTAÇÃO AQUI:
                     for m in st.session_state.ultimo_res:
                         pool_ia = treinar_e_prever_ia(m)
                         if pool_ia: 
                             st.session_state.favoritas[m] = pool_ia
 
-                    st.success("✅ Sistema Restaurado e Inteligência Calibrada!")
+                    st.success("✅ Sistema Restaurado!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro: {e}")
+
 
     st.markdown("---")
     st.subheader("📊 Status da Memória")
     c1, c2 = st.columns(2)
     c1.metric("Jogos Salvos", len(st.session_state.jogos_salvos))
     c2.metric("Resultados em Banco", sum(len(v) for v in st.session_state.ultimo_res.values()))
+
+
 
 with abas[5]:
     mostrar_status_backup()
