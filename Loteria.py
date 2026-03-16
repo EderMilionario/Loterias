@@ -847,92 +847,92 @@ with abas[0]:
 
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-    # 1. Garante que a Matriz de Afinidade da Aba 6 está carregada
-    matriz_af = st.session_state.get('matriz_ativa')
-    if matriz_af is None:
-        matriz_af = calcular_matriz_afinidade_kadosh(mod)
-        st.session_state['matriz_ativa'] = matriz_af
+        # 1. Garante que a Matriz de Afinidade da Aba 6 está carregada
+        matriz_af = st.session_state.get('matriz_ativa')
+        if matriz_af is None:
+            matriz_af = calcular_matriz_afinidade_kadosh(mod)
+            st.session_state['matriz_ativa'] = matriz_af
 
-    if not pool or len(pool) < n_dez:
-        st.error("⚠️ Erro: Seu Pool é menor que a quantidade de dezenas por bilhete.")
-    else:
-        novos = []
-        
-        # 2. Função interna que aplica Afinidade + Filtros Kadosh
-        def processar_geracao(tamanho_solicitado, quantidade_pedida):
-            sucessos, tentativas = 0, 0
-            # Puxa os scores da IA (Bi-LSTM/KDE) uma única vez para performance
-            ia_scores = st.session_state.get('scores_predicao', [1.0] * 61)
-            
-            while sucessos < quantidade_pedida and tentativas < 20000:
-                tentativas += 1
-                jogo_em_construcao = list(fixas_final)
-                pool_trabalho = [n for n in pool if n not in jogo_em_construcao]
-                
-                # PREENCHIMENTO INTELIGENTE: Usa a Matriz de Afinidade (Aba 6) + PSO/IA
-                while len(jogo_em_construcao) < tamanho_solicitado and pool_trabalho:
-                    pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
-                    opcoes = list(pesos_dict.keys())
-                    
-                    # FUSÃO DE INTELIGÊNCIA: Matriz Af + IA Scores (PSO Logic)
-                    probabilidades = []
-                    for n in opcoes:
-                        p_ia = ia_scores[n-1] if n-1 < len(ia_scores) else 1.0
-                        # Equilibra a Afinidade da Matriz com a Tendência da IA
-                        probabilidades.append((pesos_dict[n] * 0.6) + (p_ia * 0.4))
-                    
-                    escolha = random.choices(opcoes, weights=probabilidades, k=1)[0]
-                    jogo_em_construcao.append(escolha)
-                    pool_trabalho.remove(escolha)
-                
-                comb = sorted(jogo_em_construcao)
-                
-                # Evita duplicatas
-                if any(set(comb) == set(existente['n']) for existente in novos):
-                    continue
-                
-                # FILTROS KADOSH (Simetria, Soma, Moldura, Quadrantes)
-                passou = True
-                if tamanho_solicitado == 15 and mod == "Lotofácil":
-                    passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
-                
-                if passou:
-                    tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
-                    novos.append({
-                        "mod": mod, "n": comb, "tam": tamanho_solicitado, 
-                        "fixas_utilizadas": list(fixas_final),
-                        "chance": definir_label_chance(comb, mod), "est": tag_est
-                    })
-                    sucessos += 1
-
-        # 3. LÓGICA DE EXECUÇÃO (Mantendo todas as tuas estratégias originais)
-        if fe_escolhido != "Nenhum":
-            if "DIAMANTE" in fe_escolhido:
-                processar_geracao(16, 2)
-                processar_geracao(15, 10)
-            elif "CÉLULA" in fe_escolhido:
-                processar_geracao(16, 1)
-                processar_geracao(15, 15)
-            else:
-                processar_geracao(15, qtd)
-        elif est_escolhida == "6. A MARRETA":
-            processar_geracao(18, 1)
-            processar_geracao(16, 5)
-        elif est_escolhida == "7. SIMETRIA GEOMÉTRICA":
-            processar_geracao(16, 2)
-            processar_geracao(15, 8)
-        elif est_escolhida == "10. KADOSH PRESTIGE 20":
-            processar_geracao(15, 36)
-        elif est_escolhida != "Personalizado" and mod == "Lotofácil":
-            processar_geracao(info_est['dez'], info_est.get('qtd', 1))
-            if "qtd_15" in info_est:
-                processar_geracao(15, info_est['qtd_15'])
+        if not pool or len(pool) < n_dez:
+            st.error("⚠️ Erro: Seu Pool é menor que a quantidade de dezenas por bilhete.")
         else:
-            processar_geracao(n_dez, qtd)
+            novos = []
         
-        st.session_state.jogos_gerados = novos
-        st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com sucesso!")
-        st.rerun()
+            # 2. Função interna que aplica Afinidade + Filtros Kadosh
+            def processar_geracao(tamanho_solicitado, quantidade_pedida):
+                sucessos, tentativas = 0, 0
+                # Puxa os scores da IA (Bi-LSTM/KDE) uma única vez para performance
+                ia_scores = st.session_state.get('scores_predicao', [1.0] * 61)
+            
+                while sucessos < quantidade_pedida and tentativas < 20000:
+                    tentativas += 1
+                    jogo_em_construcao = list(fixas_final)
+                    pool_trabalho = [n for n in pool if n not in jogo_em_construcao]
+                
+                    # PREENCHIMENTO INTELIGENTE: Usa a Matriz de Afinidade (Aba 6) + PSO/IA
+                    while len(jogo_em_construcao) < tamanho_solicitado and pool_trabalho:
+                        pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
+                        opcoes = list(pesos_dict.keys())
+                    
+                        # FUSÃO DE INTELIGÊNCIA: Matriz Af + IA Scores (PSO Logic)
+                        probabilidades = []
+                        for n in opcoes:
+                            p_ia = ia_scores[n-1] if n-1 < len(ia_scores) else 1.0
+                            # Equilibra a Afinidade da Matriz com a Tendência da IA
+                            probabilidades.append((pesos_dict[n] * 0.6) + (p_ia * 0.4))
+                    
+                            escolha = random.choices(opcoes, weights=probabilidades, k=1)[0]
+                        jogo_em_construcao.append(escolha)
+                        pool_trabalho.remove(escolha)
+                
+                    comb = sorted(jogo_em_construcao)
+                
+                    # Evita duplicatas
+                    if any(set(comb) == set(existente['n']) for existente in novos):
+                        continue
+                
+                    # FILTROS KADOSH (Simetria, Soma, Moldura, Quadrantes)
+                    passou = True
+                    if tamanho_solicitado == 15 and mod == "Lotofácil":
+                        passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
+                
+                    if passou:
+                        tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
+                        novos.append({
+                            "mod": mod, "n": comb, "tam": tamanho_solicitado, 
+                            "fixas_utilizadas": list(fixas_final),
+                            "chance": definir_label_chance(comb, mod), "est": tag_est
+                        })
+                        sucessos += 1
+
+            # 3. LÓGICA DE EXECUÇÃO (Mantendo todas as tuas estratégias originais)
+            if fe_escolhido != "Nenhum":
+                if "DIAMANTE" in fe_escolhido:
+                    processar_geracao(16, 2)
+                    processar_geracao(15, 10)
+                elif "CÉLULA" in fe_escolhido:
+                    processar_geracao(16, 1)
+                    processar_geracao(15, 15)
+                else:
+                    processar_geracao(15, qtd)
+            elif est_escolhida == "6. A MARRETA":
+                processar_geracao(18, 1)
+                processar_geracao(16, 5)
+            elif est_escolhida == "7. SIMETRIA GEOMÉTRICA":
+                processar_geracao(16, 2)
+                processar_geracao(15, 8)
+            elif est_escolhida == "10. KADOSH PRESTIGE 20":
+                processar_geracao(15, 36)
+            elif est_escolhida != "Personalizado" and mod == "Lotofácil":
+                processar_geracao(info_est['dez'], info_est.get('qtd', 1))
+                if "qtd_15" in info_est:
+                    processar_geracao(15, info_est['qtd_15'])
+            else:
+                processar_geracao(n_dez, qtd)
+        
+            st.session_state.jogos_gerados = novos
+            st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com sucesso!")
+            st.rerun()
 
 # --- EXIBIÇÃO DOS JOGOS ---
 if st.session_state.jogos_gerados:
