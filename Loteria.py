@@ -984,6 +984,7 @@ with abas[0]:
                     st.session_state.favoritas[mod] = pool_refinado
                     st.success(f"🎯 Refinado para {len(pool_refinado)} dezenas com inteligência híbrida!")
                     st.rerun()
+
         # --- CAMPO DE SELEÇÃO (Ocupa a largura total para melhor leitura) ---
         st.markdown("---")
         max_dezenas = 26 if mod == "Lotofácil" else 81
@@ -1116,7 +1117,6 @@ with abas[0]:
                 st.session_state.jogos_gerados = novos
                 st.success(f"🔥 Sincronia PSO-Kadosh: {len(novos)} jogos gerados com sucesso!")
                 st.rerun()
-
 with abas[1]:
     mostrar_status_backup() 
     st.header("🔍 Painel de Conferência")
