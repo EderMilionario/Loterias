@@ -1399,27 +1399,27 @@ with abas[4]:
         f = st.file_uploader("Restaurar sistema", type="json")
         if f is not None:
             if st.button("⚠️ CONFIRMAR RESTAURAÇÃO TOTAL", use_container_width=True):
-            try:
-                # O arquivo 'f' deve estar aberto conforme seu código original
-                d = json.load(f)
-                st.session_state.jogos_salvos = d.get("salvos", [])
-                st.session_state.premios = d.get("premios", st.session_state.premios)
-                st.session_state.ultimo_res = d.get("res", st.session_state.ultimo_res)
-                st.session_state.favoritas = d.get("favoritas", st.session_state.favoritas)
+                try:
+                    # O arquivo 'f' deve estar aberto conforme seu código original
+                    d = json.load(f)
+                    st.session_state.jogos_salvos = d.get("salvos", [])
+                    st.session_state.premios = d.get("premios", st.session_state.premios)
+                    st.session_state.ultimo_res = d.get("res", st.session_state.ultimo_res)
+                    st.session_state.favoritas = d.get("favoritas", st.session_state.favoritas)
                 
-                # --- INTEGRAÇÃO DA INTELIGÊNCIA NO BACKUP ---
-                # Varre os resultados restaurados e treina a IA para cada modalidade
-                for m in st.session_state.ultimo_res:
-                    # Chama a sua função de IA para aprender com os dados que acabaram de ser lidos
-                    pool_ia = treinar_e_prever_ia(m)
-                    if pool_ia: 
-                        # Atualiza as favoritas com as dezenas sugeridas pela IA (LSTM/PSO)
-                        st.session_state.favoritas[m] = pool_ia
+                    # --- INTEGRAÇÃO DA INTELIGÊNCIA NO BACKUP ---
+                    # Varre os resultados restaurados e treina a IA para cada modalidade
+                    for m in st.session_state.ultimo_res:
+                        # Chama a sua função de IA para aprender com os dados que acabaram de ser lidos
+                        pool_ia = treinar_e_prever_ia(m)
+                        if pool_ia: 
+                            # Atualiza as favoritas com as dezenas sugeridas pela IA (LSTM/PSO)
+                            st.session_state.favoritas[m] = pool_ia
 
-                st.success("✅ Sistema Restaurado e IA Treinada com Sucesso!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Erro na restauração/treinamento: {e}")
+                    st.success("✅ Sistema Restaurado e IA Treinada com Sucesso!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro na restauração/treinamento: {e}")
 
 
     st.markdown("---")
