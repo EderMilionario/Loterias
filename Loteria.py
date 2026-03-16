@@ -1025,7 +1025,8 @@ with abas[0]:
             # Heatmap também só faz sentido com a visualização da Lotofácil
             renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {})) 
 
-   if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
+    # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
+    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
             matriz_af = st.session_state.get('matriz_ativa')
             if matriz_af is None:
                 matriz_af = calcular_matriz_afinidade_kadosh(mod)
