@@ -975,25 +975,43 @@ with abas[0]:
             # BOTÃO 4: REFINAR (Filtro de Elite por Afinidade + IA)
             if mod == "Lotofácil":
                 if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
+                    # 0. Garante que o tamanho alvo existe (Ajuste para 18-22 como você queria)
+                    tamanho_alvo_pool = st.session_state.get('tamanho_pool_config', 20) 
+        
+                    # Pega o que já existe nos favoritos
                     pool_base = st.session_state.favoritas.get(mod, [])
-             
-                    # Se o pool estiver vazio ou menor que o alvo, gera um inicial via IA
-                    if len(pool_base) < tamanho_alvo_pool:
-                        pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
-         
-                    # 1. Pega a matriz (Estatística/Kadosh com peso nos últimos 35 jogos)
-                    matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
-         
+ 
+                    # Se estiver vazio ou curto, chama a IA para dar o pontapé inicial
+                    if not pool_base or len(pool_base) < tamanho_alvo_pool:
+                        with st.spinner("IA preparando base para refino..."):
+                            # Passando o tamanho correto para a sua função de IA
+                            pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
+        
+                    # Se a IA falhar e retornar None, cria um pool de segurança para não travar
+                    if pool_base is None:
+                        pool_base = list(range(1, 26))
+
+                    # 1. Pega a matriz (Se não existir, calcula na hora)
+                    matriz_af = st.session_state.get('matriz_ativa')
+                    if matriz_af is None:
+                        matriz_af = calcular_matriz_afinidade_kadosh(mod)
+ 
                     # 2. Pega os scores da IA (Árvores de Decisão)
                     scores_ia = st.session_state.get('scores_predicao', {})
-         
-                    # 3. O JUIZ: Envia o pool, a matriz, o tamanho alvo e os scores da IA
-                    pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, scores_ia)
-         
-                    # 4. Atualiza e recarrega
-                    st.session_state.favoritas[mod] = pool_refinado
-                    st.success(f"🎯 Refinado para {len(pool_refinado)} dezenas com inteligência híbrida!")
-                    st.rerun()
+ 
+                    # 3. O JUIZ: Só chama se o pool_base for válido
+                    try:
+                        pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, scores_ia)
+            
+                        # 4. Atualiza e recarrega
+                        if pool_refinado:
+                            st.session_state.favoritas[mod] = sorted(list(set(pool_refinado)))
+                            st.success(f"🎯 Refinado para {len(pool_refinado)} dezenas com inteligência híbrida!")
+                            st.rerun()
+                        else:
+                            st.error("❌ O Juiz Kadosh não conseguiu filtrar dezenas suficientes.")
+                    except Exception as e:
+                        st.error(f"Erro no processamento do Juiz: {e}")
         # --- CAMPO DE SELEÇÃO (Ocupa a largura total para melhor leitura) ---
         st.markdown("---")
         max_dezenas = 26 if mod == "Lotofácil" else 81
