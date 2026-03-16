@@ -1056,64 +1056,64 @@ with abas[0]:
     # --- [MOTOR SINCRONIZADO COM AS TUAS ESTRATÉGIAS] ---
     # --- [BOTÃO COM TUA LÓGICA ORIGINAL + CHAMADA DA IA QUE ESTÁ NO TOPO] ---
     if st.button("🚀 GERAR JOGOS COM INTELIGÊNCIA TOTAL"):
-        # 1. Puxa o histórico do TEU backup (ultimo_res)
-        dados_hist = st.session_state.get('ultimo_res', {}).get(mod, [])
+    # 1. BUSCA O BACKUP RESTAURADO (TUA VARIÁVEL CORRETA)
+    dados_hist = st.session_state.get('ultimo_res', {}).get(mod, [])
     
-        if not dados_hist:
-            st.error("❌ A IA está cega! O Backup ('ultimo_res') está vazio.")
-        else:
-            with st.spinner("🧠 Sincronizando LSTM + PSO com seu Backup..."):
-                novos = []
-               # Substitua a linha onde você define o 'pool' dentro do botão de gerar por estas duas:
-               pool_final = st.session_state.favoritas.get(mod, st.session_state.get('pool_selecionado', []))
-               candidatos = motor_pso_lstm_kadosh(pool_final, 1, tamanho_solicitado, dados_hist) 
+    # 2. BUSCA O POOL REFINADO (FAVORITAS) OU O MANUAL (POOL_SELECIONADO)
+    pool_final = st.session_state.favoritas.get(mod, st.session_state.get('pool_selecionado', []))
+    
+    if not dados_hist:
+        st.error("❌ O Backup está vazio! A IA não tem dados para trabalhar.")
+    elif not pool_final:
+        st.error("❌ O Pool está vazio! Selecione as dezenas ou Refine primeiro.")
+    else:
+        with st.spinner("🧠 IA EM AÇÃO: LSTM + PSO + BACKUP..."):
+            novos = []
             
-                # --- [AQUI ENTRA A INTEGRAÇÃO REAL] ---
-                # A IA analisa o backup uma vez antes de começar a gerar
-                try:
-                    # Treina a LSTM com o backup para pegar a tendência das dezenas
-                    scores_ia = treinar_e_prever_ia(mod) 
-                    st.session_state.scores_predicao = scores_ia
-                except:
-                    pass # Se a IA falhar, o PSO segue com os dados brutos
+            # ATUALIZAÇÃO: Treina a LSTM com o teu Backup antes de gerar
+            try:
+                st.session_state.scores_predicao = treinar_e_prever_ia(mod)
+            except:
+                pass 
 
-                def processar_geracao(tamanho_solicitado, quantidade_pedida):
-                    sucessos, tentativas = 0, 0
-                    while sucessos < quantidade_pedida and tentativas < 5000:
-                        tentativas += 1
+            def processar_geracao(tamanho_solicitado, quantidade_pedida):
+                sucessos, tentativas = 0, 0
+                while sucessos < quantidade_pedida and tentativas < 5000:
+                    tentativas += 1
                     
-                        # 2. O PSO entra aqui: ele usa o POOL + o HISTÓRICO do backup
-                        # para encontrar a combinação que mais se aproxima do padrão sorteado
-                        candidatos = motor_pso_lstm_kadosh(pool, 1, tamanho_solicitado, dados_hist)
+                    # ATUALIZAÇÃO: PSO rodando com o TEU Pool e o TEU Backup
+                    candidatos = motor_pso_lstm_kadosh(pool_final, 1, tamanho_solicitado, dados_hist)
                     
-                        if not candidatos: continue
-                        comb = candidatos[0]
+                    if not candidatos: continue
+                    comb = candidatos[0]
 
-                        # 3. Validação final no teu filtro Kadosh Cirúrgico
-                        if validar_kadosh_cirurgico(comb, mod, tamanho_solicitado):
-                            tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
-                            novos.append({
-                                "mod": mod, "n": comb, "tam": tamanho_solicitado, 
-                                "fixas_utilizadas": list(fixas_final) if 'fixas_final' in locals() else [],
-                                "chance": definir_label_chance(comb, mod), "est": tag_est
-                            })
-                            sucessos += 1
+                    # VALIDAÇÃO NO TEU KADOSH ORIGINAL
+                    if validar_kadosh_cirurgico(comb, mod, tamanho_solicitado):
+                        tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
+                        novos.append({
+                            "mod": mod, "n": comb, "tam": tamanho_solicitado, 
+                            "fixas_utilizadas": list(fixas_final) if 'fixas_final' in locals() else [],
+                            "chance": definir_label_chance(comb, mod), "est": tag_est
+                        })
+                        sucessos += 1
 
-                # --- MANTENDO TUAS ESTRATÉGIAS ORIGINAIS ---
-                if fe_escolhido != "Nenhum":
-                    if "DIAMANTE" in fe_escolhido:
-                        processar_geracao(16, 2); processar_geracao(15, 10)
-                    elif "CÉLULA" in fe_escolhido:
-                        processar_geracao(16, 1); processar_geracao(15, 15)
-                    else: processar_geracao(15, qtd)
-                elif est_escolhida == "6. A MARRETA":
-                    processar_geracao(18, 1); processar_geracao(16, 5)
-                else:
-                    processar_geracao(n_dez, qtd)
+            # --- ESTRATÉGIAS DO TEU CÓDIGO ---
+            if fe_escolhido != "Nenhum":
+                if "DIAMANTE" in fe_escolhido:
+                    processar_geracao(16, 2); processar_geracao(15, 10)
+                elif "CÉLULA" in fe_escolhido:
+                    processar_geracao(16, 1); processar_geracao(15, 15)
+                else: processar_geracao(15, qtd)
+            elif est_escolhida == "6. A MARRETA":
+                processar_geracao(18, 1); processar_geracao(16, 5)
+            elif est_escolhida == "10. KADOSH PRESTIGE 20":
+                processar_geracao(15, 36)
+            else:
+                processar_geracao(n_dez, qtd)
             
-                st.session_state.jogos_gerados = novos
-                st.success(f"🔥 IA INTEGRADA: {len(novos)} jogos gerados com base no Backup!")
-                st.rerun()
+            st.session_state.jogos_gerados = novos
+            st.success(f"✅ Sucesso! {len(novos)} jogos gerados com IA e Backup.")
+            st.rerun()
      
     # --- [FIM DO NOVO MOTOR SINCRONIZADO] ---
 
