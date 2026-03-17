@@ -1087,18 +1087,22 @@ with abas[0]:
             def processar_geracao(tamanho_solicitado, quantidade_pedida):
                 sucessos, tentatives = 0, 0
             
-                # --- CORREÇÃO DO ERRO DE HISTÓRICO (KeyError/TypeError) ---
-                # Garantimos que tratamos ultimo_res como lista, mesmo que venha como dicionário
+                # --- CORREÇÃO DEFINITIVA DO ERRO DE HISTÓRICO (ValueError/KeyError) ---
                 res_brutos = st.session_state.get('ultimo_res', [])
+                historico_lista = []
+            
                 if isinstance(res_brutos, dict):
-                    # Converte os valores do dicionário para uma lista ordenada
-                    historico_lista = [v for k, v in sorted(res_brutos.items(), key=lambda x: int(x[0]))]
-                else:
-                    historico_lista = res_brutos
+                    # Filtra apenas chaves que sejam números (concursos) e ignora textos como "mod", "n", etc.
+                    chaves_validas = [k for k in res_brutos.keys() if str(k).isdigit()]
+                    historico_lista = [res_brutos[k] for k in sorted(chaves_validas, key=lambda x: int(x))]
+                elif isinstance(res_brutos, list):
+                    # Se for lista, garante que pegamos apenas as dezenas de cada sorteio
+                    historico_lista = [jogo['n'] if isinstance(jogo, dict) and 'n' in jogo else jogo for jogo in res_brutos]
 
                 dezenas_ciclo = []
                 if mod == "Lotofácil" and historico_lista:
-                    ultimos = historico_lista[-3:]
+                    # Pega os últimos 3 sorteios reais para o Ciclo de Atraso
+                    ultimos = [h for h in historico_lista if isinstance(h, list)][-3:]
                     sorteadas = set([n for jogo in ultimos for n in jogo])
                     dezenas_ciclo = [d for d in range(1, 26) if d not in sorteadas]
 
@@ -1106,10 +1110,15 @@ with abas[0]:
                     tentatives += 1
                     jogo_em_construcao = list(fixas_final)
                 
-                    # --- CORREÇÃO DO POOL (Respeito à Estratégia) ---
-                    # Forçamos o pool a não ultrapassar o que a estratégia pede
-                    pool_limitado = pool[:19] if "DIAMANTE" in fe_escolhido else pool
-                    pool_trabalho = [n for n in pool_limitado if n not in jogo_em_construcao]
+                    # --- TRAVA DE SEGURANÇA MÁXIMA: RESPEITO À ESTRATÉGIA ---
+                    # Se for Diamante, o Pool NUNCA passará de 19. A IA não tem mais poder de aumentar.
+                    pool_local = list(pool)
+                    if "DIAMANTE" in fe_escolhido:
+                        pool_local = pool_local[:19]
+                    elif "CÉLULA" in fe_escolhido:
+                        pool_local = pool_local[:21]
+                
+                    pool_trabalho = [n for n in pool_local if n not in jogo_em_construcao]
                 
                     while len(jogo_em_construcao) < tamanho_solicitado and pool_trabalho:
                         pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
@@ -1121,27 +1130,25 @@ with abas[0]:
                         pool_trabalho.remove(escolha)
                 
                     comb = sorted(jogo_em_construcao)
-                    # ... (resto do código de validação continua igual)
                 
                     if any(set(comb) == set(existente['n']) for existente in novos):
                         continue
                  
-                    # [O JUIZ EM AÇÃO: VALIDAÇÃO E TROCA DINÂMICA]
+                    # [O JUIZ EM AÇÃO: VALIDAÇÃO SEM QUEBRAR O POOL]
                     passou = True
                     if mod == "Lotofácil":
                         passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
                     
-                        # Se o jogo falhar nos filtros, o Juiz tenta UMA TROCA CIRÚRGICA antes de descartar
+                        # O Juiz tenta UMA TROCA apenas se houver atraso real
                         if not passou and len(dezenas_ciclo) > 0:
-                            # Tenta trocar a dezena menos 'afim' do jogo por uma dezena do Ciclo de Atraso
-                            # Isso dá autoridade ao sistema para buscar fora do Pool se necessário
-                            dezena_fraca = comb[len(comb)//2] # Pega uma dezena central para teste
+                            # Troca apenas se a nova dezena estiver DENTRO do limite da estratégia
+                            dezena_fraca = comb[len(comb)//2]
                             nova_dezena = random.choice(dezenas_ciclo)
                         
-                            if nova_dezena not in comb:
+                            if nova_dezena not in comb and nova_dezena in pool_local:
                                 comb_ajustado = sorted([n if n != dezena_fraca else nova_dezena for n in comb])
                                 if validar_kadosh_cirurgico(comb_ajustado, mod, tamanho_solicitado):
-                                    registrar_log_kadosh(f"Ajuste Kadosh: {dezena_fraca} (Pool) → {nova_dezena} (Ciclo/Atraso) para validar Simetria.")
+                                    registrar_log_kadosh(f"Ajuste Kadosh: {dezena_fraca} -> {nova_dezena} (Validado dentro do Pool {len(pool_local)})")
                                     comb = comb_ajustado
                                     passou = True
 
@@ -1154,7 +1161,7 @@ with abas[0]:
                         })
                         sucessos += 1
 
-            # 3. LÓGICA DE EXECUÇÃO (Mantendo suas estratégias intactas)
+            # 3. LÓGICA DE EXECUÇÃO
             if fe_escolhido != "Nenhum":
                 if "DIAMANTE" in fe_escolhido:
                     processar_geracao(16, 2); processar_geracao(15, 10)
@@ -1176,33 +1183,8 @@ with abas[0]:
                 processar_geracao(n_dez, qtd)
         
             st.session_state.jogos_gerados = novos
-            st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com autoridade do Juiz!")
+            st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados respeitando o Pool!")
             st.rerun()
-
-    # --- EXIBIÇÃO E SALVAMENTO ---
-    if st.session_state.jogos_gerados:
-        exibir_painel_logs() # Chama a nova tabela de logs aqui
-        st.markdown("### 📝 Jogos Preparados")
-        for i, j in enumerate(st.session_state.jogos_gerados):
-            txt_jogo = ' '.join([f'{x:02d}' for x in j['n']])
-            st.code(f"JOGO {i+1:02d} | {j['est']} | {j['tam']} DEZ | {txt_jogo} / {j['chance']}")
-
-    if st.session_state.jogos_gerados and st.button("💾 SALVAR PARA CONFERIR"):
-        res_existentes = st.session_state.ultimo_res if isinstance(st.session_state.ultimo_res, list) else []
-        ultimo_c = len(res_existentes)
-        
-        pool_atual = list(st.session_state.get('pool_favoritas', [])) 
-    
-        for jogo in st.session_state.jogos_gerados:
-            jogo['concurso_alvo'] = ultimo_c + 1
-            jogo['pool_origem'] = pool_atual 
-            if 'fixas_utilizadas' not in jogo:
-                jogo['fixas_utilizadas'] = [] 
-            st.session_state.jogos_salvos.append(jogo)
-    
-        st.session_state.jogos_gerados = []
-        st.success(f"✅ Jogos salvos com sucesso para o Concurso {ultimo_c + 1}!")
-        st.rerun()
 with abas[1]:
     mostrar_status_backup() 
     st.header("🔍 Painel de Conferência")
