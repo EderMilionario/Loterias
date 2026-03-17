@@ -1085,23 +1085,31 @@ with abas[0]:
         
             # 2. Função interna com autoridade de JUIZ (PSO + CYCLE LAG + LOGS)
             def processar_geracao(tamanho_solicitado, quantidade_pedida):
-                sucessos, tentativas = 0, 0
+                sucessos, tentatives = 0, 0
             
-                # [AÇÃO DO JUIZ: CYCLE LAG] - Verifica dezenas atrasadas no histórico para a Lotofácil
+                # --- CORREÇÃO DO ERRO DE HISTÓRICO (KeyError/TypeError) ---
+                # Garantimos que tratamos ultimo_res como lista, mesmo que venha como dicionário
+                res_brutos = st.session_state.get('ultimo_res', [])
+                if isinstance(res_brutos, dict):
+                    # Converte os valores do dicionário para uma lista ordenada
+                    historico_lista = [v for k, v in sorted(res_brutos.items(), key=lambda x: int(x[0]))]
+                else:
+                    historico_lista = res_brutos
+
                 dezenas_ciclo = []
-                if mod == "Lotofácil" and 'ultimo_res' in st.session_state:
-                    # Identifica dezenas que não saíram nos últimos 3 sorteios
-                    ultimos = st.session_state.ultimo_res[-3:] if len(st.session_state.ultimo_res) >= 3 else []
+                if mod == "Lotofácil" and historico_lista:
+                    ultimos = historico_lista[-3:]
                     sorteadas = set([n for jogo in ultimos for n in jogo])
                     dezenas_ciclo = [d for d in range(1, 26) if d not in sorteadas]
 
-                while sucessos < quantidade_pedida and tentativas < 20000:
-                    tentativas += 1
+                while sucessos < quantidade_pedida and tentatives < 20000:
+                    tentatives += 1
                     jogo_em_construcao = list(fixas_final)
                 
-                    # [LÓGICA PSO: Otimização de Enxame]
-                    # Iniciamos com o Pool, mas o Juiz monitora a necessidade de trocas
-                    pool_trabalho = [n for n in pool if n not in jogo_em_construcao]
+                    # --- CORREÇÃO DO POOL (Respeito à Estratégia) ---
+                    # Forçamos o pool a não ultrapassar o que a estratégia pede
+                    pool_limitado = pool[:19] if "DIAMANTE" in fe_escolhido else pool
+                    pool_trabalho = [n for n in pool_limitado if n not in jogo_em_construcao]
                 
                     while len(jogo_em_construcao) < tamanho_solicitado and pool_trabalho:
                         pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
@@ -1113,6 +1121,7 @@ with abas[0]:
                         pool_trabalho.remove(escolha)
                 
                     comb = sorted(jogo_em_construcao)
+                    # ... (resto do código de validação continua igual)
                 
                     if any(set(comb) == set(existente['n']) for existente in novos):
                         continue
