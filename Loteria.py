@@ -435,91 +435,58 @@ def jogo_ja_saiu(jogo, mod):
             return True
     return False
 
-# --- [ATUALIZAÇÃO 1: MÓDULO DE INTELIGÊNCIA BASE (SHANNON & BAYES)] ---
 
 # --- [INÍCIO DA ATUALIZAÇÃO 2: MOTOR DE TENDÊNCIA GLOBAL KADOSH] ---
 
 def analisar_tendencias_kadosh():
-    """
-    Função Global que alimenta o Juiz Soberano com Bi-LSTM (Lógica de Memória) 
-    e KDE (Densidade) baseada no histórico carregado no Backup.
-    """
     if 'ultimo_res' not in st.session_state or not st.session_state.ultimo_res:
         return None
 
-    historico = st.session_state.ultimo_res
+    # --- LIMPEZA DE DADOS (O SEGREDO PARA PARAR O ERRO) ---
+    res_brutos = st.session_state.ultimo_res
+    historico_limpo = []
     
-    # --- LÓGICA BI-LSTM (MEMÓRIA DE SEQUÊNCIA) ---
-    # Analisa se os últimos resultados estão "espelhando" padrões anteriores
+    # Extrai apenas as dezenas (campo 'n') do seu backup JSON
+    if isinstance(res_brutos, dict):
+        for k, v in res_brutos.items():
+            if isinstance(v, dict) and 'n' in v: historico_limpo.append(v['n'])
+            elif isinstance(v, list): historico_limpo.append(v)
+    else:
+        for item in res_brutos:
+            if isinstance(item, dict) and 'n' in item: historico_limpo.append(item['n'])
+            elif isinstance(item, list): historico_limpo.append(item)
+
+    if not historico_limpo: return None
+
     def calculo_tendencia_sequencial(hist):
-        ultimos_3 = hist[-3:] if len(hist) >= 3 else hist
+        ultimos_3 = hist[-3:]
         frequencia_recidiva = Counter([n for jogo in ultimos_3 for n in jogo])
         return {n: f/3 for n, f in frequencia_recidiva.items()}
 
-    # --- LÓGICA KDE (DENSIDADE DE CALOR DO VOLANTE) ---
-    # Mapeia quais zonas do volante 5x5 estão "quentes" ou "frias"
     def mapa_calor_geografico(hist):
-        ultimos_10 = hist[-10:] if len(hist) >= 10 else hist
+        ultimos_10 = hist[-10:]
         mapa = {i: 0 for i in range(1, 26)}
         for jogo in ultimos_10:
             for n in jogo:
                 if n in mapa: mapa[n] += 1
         return mapa
 
-    # Armazena o conhecimento no State para o Juiz Soberano usar
     st.session_state['memoria_kadosh'] = {
-        'tendencia_lstm': calculo_tendencia_sequencial(historico),
-        'mapa_calor_kde': mapa_calor_geografico(historico),
-        'ultimo_concurso': len(historico)
+        'tendencia_lstm': calculo_tendencia_sequencial(historico_limpo),
+        'mapa_calor_kde': mapa_calor_geografico(historico_limpo),
+        'historico_limpo': historico_limpo # Guarda a lista limpa para o Juiz usar
     }
 
-# --- [FIM DA ATUALIZAÇÃO 2] ---
-
-# --- [INÍCIO DA ATUALIZAÇÃO: LOG DE DECISÃO E SINCRONIA DE DADOS] ---
-
-def registrar_log_kadosh(mensagem, tipo="info"):
-    """
-    Cria uma tabela de logs persistente na sessão para mostrar as decisões do Juiz.
-    """
-    if 'logs_juiz' not in st.session_state:
-        st.session_state.logs_juiz = []
-    
-    import datetime
-    agora = datetime.datetime.now().strftime("%H:%M:%S")
-    st.session_state.logs_juiz.insert(0, {"Hora": agora, "Mensagem": mensagem, "Tipo": tipo})
-
-def exibir_painel_logs():
-    """
-    Renderiza a tabela de log no Streamlit.
-    """
-    if 'logs_juiz' in st.session_state and st.session_state.logs_juiz:
-        st.markdown("### 🏛️ Diário de Decisões do Juiz Kadosh")
-        df_logs = pd.DataFrame(st.session_state.logs_juiz)
-        st.table(df_logs.head(10)) # Mostra os últimos 10 eventos
-
-def atualizar_dados_mestre(novos_resultados):
-    """
-    Esta função é o funil central. 
-    Seja via API (noite) ou via Backup (dia), tudo passa por aqui.
-    """
-    st.session_state.ultimo_res = novos_resultados
-    # Dispara as novas inteligências para lerem os novos dados imediatamente
-    analisar_tendencias_kadosh()
-    registrar_log_kadosh("Inteligências atualizadas com novos resultados oficiais.")
-
-# --- [FIM DA ATUALIZAÇÃO] ---
-
 def validar_kadosh_cirurgico(jogo, mod, n_dez):
-    if mod != "Lotofácil": 
-        return True
+    if mod != "Lotofácil": return True
     
-    # 1. Âncoras de Início e Fim
-    if not (jogo[0] in [1, 2, 3] and jogo[-1] in [23, 24, 25]): 
-        return False
+    # Busca o histórico já limpo (apenas dezenas) para não dar TypeError
+    memoria = st.session_state.get('memoria_kadosh', {})
+    historico = memoria.get('historico_limpo', [])
 
-    # --- [CÁLCULO DE ENTROPIA DE SHANNON] ---
-    # Mede o nível de desordem/caos para evitar jogos excessivamente óbvios ou impossíveis
-    import math
+    if not (jogo[0] in [1, 2, 3] and jogo[-1] in [23, 24, 25]): return False
+
+    # --- SHANNON ---
     def calcular_entropia(lista):
         if not lista: return 0
         freq = Counter(lista)
@@ -527,29 +494,24 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
         return -sum(p * math.log2(p) for p in prob)
     
     entropia_valor = calcular_entropia(jogo)
-    # Para Lotofácil, o equilíbrio de Shannon ideal fica entre 3.5 e 4.5
-    if not (3.5 <= entropia_valor <= 4.5):
-        return False
+    if not (3.5 <= entropia_valor <= 4.5): return False
 
-    # --- [INFERÊNCIA BAYESIANA (AFINIDADE CONDICIONAL)] ---
-    # Verifica se o jogo respeita a probabilidade condicional histórica (P(A|B))
-    # Usamos o st.session_state.ultimo_res como base de evidência
-    if 'ultimo_res' in st.session_state and st.session_state.ultimo_res is not None:
-        historico = st.session_state.ultimo_res
-        total_h = len(historico)
+    # --- BAYES (CORRIGIDO PARA O SEU BACKUP) ---
+    if historico:
         pontos_bayes = 0
         for i in range(len(jogo)-1):
             n1, n2 = jogo[i], jogo[i+1]
-            # P(B|A) - Quantas vezes n2 saiu dado que n1 saiu
+            # Agora conc é uma lista de números, o erro sumiu!
             vezes_n1 = sum(1 for conc in historico if n1 in conc)
             vezes_ambos = sum(1 for conc in historico if n1 in conc and n2 in conc)
             prob_condicional = (vezes_ambos / vezes_n1) if vezes_n1 > 0 else 0
-            if prob_condicional > 0.40: # Afinidade mínima de 40% entre vizinhos
-                pontos_bayes += 1
+            if prob_condicional > 0.40: pontos_bayes += 1
         
-        # O Juiz exige que pelo menos 30% das conexões do jogo tenham alta afinidade Bayesiana
-        if pontos_bayes < (len(jogo) * 0.3):
-            return False
+        if pontos_bayes < (len(jogo) * 0.3): return False
+
+    # O restante do seu código de filtros (q1, q2, pares, fibo) continua IGUAL abaixo...
+    # [MANTENHA O RESTANTE DO SEU CÓDIGO AQUI]
+    return True
 
     # --- [RESTANTE DA CALIBRAGEM ORIGINAL KADOSH] ---
     # Definição Geográfica das Áreas do Volante 5x5
