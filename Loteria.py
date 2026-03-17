@@ -183,6 +183,36 @@ def buscar_ultimo_resultado_api(modalidade="Lotofácil"):
         st.error(f"Erro na API ({modalidade}): {e}")
     return None, None
 
+def limpar_historico_kadosh(dados_brutos):
+    """
+    TRADUTOR UNIVERSAL: Transforma o backup JSON complexo em listas de números puras.
+    Evita erros de TypeError e ValueError nas funções de inteligência.
+    """
+    historico_limpo = []
+    
+    # Se o dado vier como dicionário (formato do seu backup JSON)
+    if isinstance(dados_brutos, dict):
+        # Pega apenas as chaves que são números de concursos e ignora campos como "mod" ou "salvos"
+        for k, v in dados_brutos.items():
+            if str(k).isdigit():
+                if isinstance(v, dict) and 'n' in v:
+                    historico_limpo.append(v['n'])
+                elif isinstance(v, list):
+                    historico_limpo.append(v)
+            elif k == "salvos" and isinstance(v, list): # Se estiver lendo os jogos salvos
+                for jogo in v:
+                    if 'n' in jogo: historico_limpo.append(jogo['n'])
+    
+    # Se o dado vier como lista simples
+    elif isinstance(dados_brutos, list):
+        for item in dados_brutos:
+            if isinstance(item, dict) and 'n' in item:
+                historico_limpo.append(item['n'])
+            elif isinstance(item, list):
+                historico_limpo.append(item)
+                
+    return historico_limpo
+
 def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, pool_disponivel):
     """Calcula bônus para dezenas no pool baseado no que já foi escolhido."""
     pesos = {n: 1.0 for n in pool_disponivel}
