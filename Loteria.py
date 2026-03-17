@@ -480,39 +480,30 @@ def analisar_tendencias_kadosh():
 def validar_kadosh_cirurgico(jogo, mod, n_dez):
     if mod != "Lotofácil": return True
     
-    # Busca o histórico já limpo (apenas dezenas) para não dar TypeError
-    memoria = st.session_state.get('memoria_kadosh', {})
-    historico = memoria.get('historico_limpo', [])
+    # PEGA O HISTÓRICO LIMPANDO O LIXO (O QUE ESTAVA TRAVANDO)
+    res_brutos = st.session_state.get('ultimo_res', [])
+    historico_limpo = []
+    if isinstance(res_brutos, dict):
+        historico_limpo = [v['n'] for k, v in res_brutos.items() if isinstance(v, dict) and 'n' in v]
+    else:
+        historico_limpo = [item['n'] for item in res_brutos if isinstance(item, dict) and 'n' in item]
 
-    if not (jogo[0] in [1, 2, 3] and jogo[-1] in [23, 24, 25]): return False
+    # Se não tem histórico, passa direto pra não travar o botão
+    if not historico_limpo: return True
 
-    # --- SHANNON ---
-    def calcular_entropia(lista):
-        if not lista: return 0
-        freq = Counter(lista)
-        prob = [f/len(lista) for f in freq.values()]
-        return -sum(p * math.log2(p) for p in prob)
+    # FILTRO BAYESIANO CORRIGIDO (Lê apenas números agora)
+    pontos_bayes = 0
+    for i in range(len(jogo)-1):
+        n1, n2 = jogo[i], jogo[i+1]
+        vezes_n1 = sum(1 for conc in historico_limpo if n1 in conc)
+        vezes_ambos = sum(1 for conc in historico_limpo if n1 in conc and n2 in conc)
+        prob_condicional = (vezes_ambos / vezes_n1) if vezes_n1 > 0 else 0
+        if prob_condicional > 0.40: pontos_bayes += 1
     
-    entropia_valor = calcular_entropia(jogo)
-    if not (3.5 <= entropia_valor <= 4.5): return False
+    if pontos_bayes < (len(jogo) * 0.3): return False
 
-    # --- BAYES (CORRIGIDO PARA O SEU BACKUP) ---
-    if historico:
-        pontos_bayes = 0
-        for i in range(len(jogo)-1):
-            n1, n2 = jogo[i], jogo[i+1]
-            # Agora conc é uma lista de números, o erro sumiu!
-            vezes_n1 = sum(1 for conc in historico if n1 in conc)
-            vezes_ambos = sum(1 for conc in historico if n1 in conc and n2 in conc)
-            prob_condicional = (vezes_ambos / vezes_n1) if vezes_n1 > 0 else 0
-            if prob_condicional > 0.40: pontos_bayes += 1
-        
-        if pontos_bayes < (len(jogo) * 0.3): return False
-
-    # O restante do seu código de filtros (q1, q2, pares, fibo) continua IGUAL abaixo...
-    # [MANTENHA O RESTANTE DO SEU CÓDIGO AQUI]
+    # ... (O resto dos seus filtros de Simetria, Pares, etc, permanecem abaixo)
     return True
-
     # --- [RESTANTE DA CALIBRAGEM ORIGINAL KADOSH] ---
     # Definição Geográfica das Áreas do Volante 5x5
     q1 = [1, 2, 3, 6, 7, 8, 11, 12, 13]    # Topo Esquerda + Centro
@@ -1079,6 +1070,10 @@ with abas[0]:
                         pool_local = pool_local[:19]
                     elif "CÉLULA" in fe_escolhido:
                         pool_local = pool_local[:21]
+                
+                    # TRAVA DE AUTORIDADE: O sistema agora obedece a estratégia, não a IA
+                    tamanho_matriz = 19 if "DIAMANTE" in fe_escolhido else (18 if "MARRETA" in est_escolhida else len(pool))
+                    pool_local = list(pool)[:tamanho_matriz]
                 
                     pool_trabalho = [n for n in pool_local if n not in jogo_em_construcao]
                 
