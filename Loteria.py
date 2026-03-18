@@ -1251,25 +1251,36 @@ with abas[1]:
             st.error(f"Aguardando dados para gerar PDF...")
     
     # 3. FILTRAGEM E CONFERÊNCIA
-    # Filtra apenas os jogos da modalidade selecionada no momento
-    jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j.get('mod') == mod_f]
-    res_db = st.session_state.ultimo_res.get(mod_f, {})
+    # --- [CORREÇÃO E BLINDAGEM DO MOTOR DE CONFERÊNCIA] ---
+
+    # 1. Inicialização de segurança para evitar AttributeError
+    if 'jogos_salvos' not in st.session_state:
+        st.session_state.jogos_salvos = []
+    if 'custos' not in st.session_state:
+        st.session_state.custos = {}
+    if 'premios' not in st.session_state:
+        st.session_state.premios = {}
+
+    # 2. Filtragem segura (Uso do or [] para garantir que itera sobre uma lista)
+    lista_mestra = st.session_state.get('jogos_salvos') or []
+    jogos_salvos_atual = [j for j in lista_mestra if isinstance(j, dict) and j.get('mod') == mod_f]
+
+    # 3. Busca de resultados (Uso do .get para evitar erro de chave inexistente)
+    res_db = st.session_state.get('ultimo_res', {}).get(mod_f, {})
 
     if not jogos_salvos_atual:
         st.info(f"✨ Nenhum jogo salvo para {mod_f}. Use o Gerador Pro para criar sua estratégia.")
     else:
         # --- PERFORMANCE DO POOL (ANÁLISE DE CERCO) ---
-        # Analisamos o último pool gerado para o concurso alvo
         ultimo_j = jogos_salvos_atual[-1]
         pool_origem = ultimo_j.get('pool_origem', [])
         alvo_p = str(ultimo_j.get('concurso_alvo', ''))
-        
+    
         if pool_origem and alvo_p in res_db:
             st.markdown(f"### 🎯 PERFORMANCE DO SEU POOL (CONCURSO {alvo_p})")
             res_alvo = res_db[alvo_p]
             acertos_p = sum(1 for d in pool_origem if d in res_alvo)
-            
-            # Visualização do Cerco (Verde = Acerto / Vermelho = Erro)
+        
             h_pool = '<div style="background: #1e272e; padding: 20px; border-radius: 15px; border: 1px solid #34495e; margin-bottom: 20px;">'
             for d in sorted(pool_origem):
                 cor_p = "background-color: #27ae60;" if d in res_alvo else "background-color: #c0392b;"
@@ -1281,36 +1292,36 @@ with abas[1]:
         st.subheader("📋 Conferência de Bilhetes")
         t_gasto, t_premio = 0.0, 0.0
 
+        # 4. Loop de Conferência com Tratamento de Erros de Dicionário
         for i, jogo in enumerate(jogos_salvos_atual):
-            dezenas_j = jogo['n']
+            dezenas_j = jogo.get('n', [])
             tam_j = jogo.get('tam', 15)
             c_alvo = str(jogo.get('concurso_alvo', ''))
             fixas_j = jogo.get('fixas_utilizadas', []) 
-            
-            # Cálculo de Custo
-            custo_j = st.session_state.custos[mod_f].get(tam_j, 0)
-            t_gasto += custo_j
-            
+        
+            # Cálculo de Custo Seguro (Busca no session_state com fallback para 0)
+            custo_j = st.session_state.custos.get(mod_f, {}).get(tam_j, 0.0)
+            t_gasto += float(custo_j)
+        
             html_dez = ""
             sorteio = res_db.get(c_alvo, [])
-            
+        
             if sorteio:
                 acertos = len(set(dezenas_j) & set(sorteio))
-                # Busca o prêmio correspondente à quantidade de acertos
-                v_premio = float(st.session_state.premios[mod_f].get(str(acertos), 0.0))
+            
+                # Busca de prêmios segura
+                premios_mod = st.session_state.premios.get(mod_f, {})
+                v_premio = float(premios_mod.get(str(acertos), 0.0))
                 t_premio += v_premio 
-                
+            
                 for d in dezenas_j:
                     is_sorteada = d in sorteio
                     is_fixa = d in fixas_j
-                    
-                    # Estilização: Verde para acerto, Underline para Fixa, Pino para Fixa Acertada
                     c_txt = "#2ecc71" if is_sorteada else "#bdc3c7"
                     decor = "text-decoration: underline; font-weight: 900;" if is_fixa else ""
                     pino = "📌" if (is_fixa and is_sorteada) else ""
-                    
                     html_dez += f'<span style="color:{c_txt}; {decor} margin-right:10px; font-size:18px; font-family: monospace;">{d:02d}{pino}</span>'
-                
+            
                 res_msg = f"🎯 {acertos} ACERTOS | 💰 R$ {v_premio:,.2f}"
             else:
                 for d in dezenas_j:
@@ -1329,10 +1340,10 @@ with abas[1]:
         c_fin1, c_fin2, c_fin3 = st.columns(3)
         c_fin1.metric("Investimento Total", f"R$ {t_gasto:,.2f}")
         c_fin2.metric("Prêmios Totais", f"R$ {t_premio:,.2f}")
-        
+    
         saldo = t_premio - t_gasto
-        cor_saldo = "normal" if saldo >= 0 else "inverse"
-        c_fin3.metric("Saldo Líquido", f"R$ {saldo:,.2f}", delta=f"{saldo:,.2f}", delta_color=cor_saldo)
+        # Correção do delta_color para o padrão do Streamlit (normal/inverse/off)
+        c_fin3.metric("Saldo Líquido", f"R$ {saldo:,.2f}", delta=f"R$ {saldo:,.2f}", delta_color="normal" if saldo >= 0 else "inverse")
 
         if st.button("🗑️ LIMPAR TODOS OS JOGOS"):
             st.session_state.jogos_salvos = []
