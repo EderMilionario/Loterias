@@ -1293,42 +1293,43 @@ with abas[1]:
         t_gasto, t_premio = 0.0, 0.0
 
         # 4. Loop de Conferência com Tratamento de Erros de Dicionário
+        # --- [INÍCIO DO BLOCO DE CONFERÊNCIA CORRIGIDO] ---
+        st.subheader("📋 Conferência de Bilhetes")
+        t_gasto, t_premio = 0.0, 0.0
+
         for i, jogo in enumerate(jogos_salvos_atual):
+            # 1. Extração segura de dados do jogo
             dezenas_j = jogo.get('n', [])
             tam_j = jogo.get('tam', 15)
             c_alvo = str(jogo.get('concurso_alvo', ''))
             fixas_j = jogo.get('fixas_utilizadas', []) 
-        
-            # Cálculo de Custo Seguro (Busca no session_state com fallback para 0)
-            # --- [CORREÇÃO DE SEGURANÇA: CÁLCULO DE CUSTO] ---
-            # Garantia total: acessamos 'custos' e mod_f com fallback para dicionário vazio
-            custos_temp = st.session_state.get('custos')
-            if custos_temp is None: custos_temp = {}
             
-            custo_mod_ref = custos_temp.get(mod_f)
-            if custo_mod_ref is None: custo_mod_ref = {}
+            # 2. CÁLCULO DE CUSTO (LINHA ONDE DAVA O ERRO 1312)
+            custo_j = 0.0
+            # Verificamos se 'custos' existe e é um dicionário válido
+            if 'custos' in st.session_state and isinstance(st.session_state.custos, dict):
+                custo_mod_ref = st.session_state.custos.get(mod_f, {})
+                if isinstance(custo_mod_ref, dict):
+                    custo_j = custo_mod_ref.get(tam_j, 0.0)
             
-            # Busca o valor final. Se não achar o tamanho do jogo (tam_j), assume 0.0
-            custos_temp.get(mod_f) or {}
             t_gasto += float(custo_j)
             
             html_dez = ""
             sorteio = res_db.get(c_alvo, [])
+            v_premio = 0.0 # Inicializa prêmio como zero
             
             if sorteio:
                 acertos = len(set(dezenas_j) & set(sorteio))
             
-                # --- [CORREÇÃO DE SEGURANÇA: BUSCA DE PRÊMIOS] ---
-                premios_temp = st.session_state.get('premios')
-                if premios_temp is None: premios_temp = {}
+                # 3. BUSCA DE PRÊMIOS SEGURA
+                if 'premios' in st.session_state and isinstance(st.session_state.premios, dict):
+                    premios_mod_ref = st.session_state.premios.get(mod_f, {})
+                    if isinstance(premios_mod_ref, dict):
+                        v_premio = float(premios_mod_ref.get(str(acertos), 0.0))
                 
-                premios_mod_ref = premios_temp.get(mod_f)
-                if premios_mod_ref is None: premios_mod_ref = {}
-                
-                # Busca prêmio pelo número de acertos (convertido para string)
-                v_premio = float(premios_mod_ref.get(str(acertos), 0.0))
                 t_premio += v_premio 
             
+                # Estilização das dezenas (Sua lógica visual)
                 for d in dezenas_j:
                     is_sorteada = d in sorteio
                     is_fixa = d in fixas_j
@@ -1343,6 +1344,7 @@ with abas[1]:
                     html_dez += f'<span style="color:#bdc3c7; margin-right:10px; font-size:18px; font-family: monospace;">{d:02d}</span>'
                 res_msg = "⏳ Sorteio não realizado ou base desatualizada"
 
+            # Renderização do Card do Jogo
             st.markdown(f"""
             <div style="border-left: 5px solid #3498db; padding: 12px; background: #2d3436; border-radius: 8px; margin-bottom: 8px;">
                 <small style="color: #636e72;">JOGO {i+1:02d} • {mod_f} • CONCURSO {c_alvo}</small><br>
@@ -1350,20 +1352,20 @@ with abas[1]:
                 <strong style="color: white;">{res_msg}</strong>
             </div>""", unsafe_allow_html=True)
 
-        # --- RESUMO FINANCEIRO ---
+        # --- RESUMO FINANCEIRO (Sincronizado com os cálculos acima) ---
         st.markdown("---")
         c_fin1, c_fin2, c_fin3 = st.columns(3)
         c_fin1.metric("Investimento Total", f"R$ {t_gasto:,.2f}")
         c_fin2.metric("Prêmios Totais", f"R$ {t_premio:,.2f}")
     
         saldo = t_premio - t_gasto
-        # O delta precisa ser string formatada
         c_fin3.metric(
             "Saldo Líquido", 
             f"R$ {saldo:,.2f}", 
             delta=f"R$ {saldo:,.2f}", 
             delta_color="normal" if saldo >= 0 else "inverse"
         )
+        # --- [FIM DO BLOCO CORRIGIDO] ---
 
         if st.button("🗑️ LIMPAR TODOS OS JOGOS"):
             st.session_state.jogos_salvos = []
