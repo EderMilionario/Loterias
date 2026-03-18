@@ -945,51 +945,51 @@ with abas[0]:
 
     c1, c2 = st.columns(2)
     with c1:
-    # --- [CORREÇÃO DE SEGURANÇA: ACESSO AOS CUSTOS] ---
-    # Buscamos o dicionário de custos de forma segura
-    custos_safe = st.session_state.get('custos', {})
-    custos_mod = custos_safe.get(mod, {})
+        # --- [CORREÇÃO DE SEGURANÇA: ACESSO AOS CUSTOS] ---
+        # Buscamos o dicionário de custos de forma segura
+        custos_safe = st.session_state.get('custos', {})
+        custos_mod = custos_safe.get(mod, {})
     
-    # Lista de opções de dezenas (ex: [15, 16, 17])
-    opcoes_dez = list(custos_mod.keys())
+        # Lista de opções de dezenas (ex: [15, 16, 17])
+        opcoes_dez = list(custos_mod.keys())
     
-    # Se o dicionário estiver vazio (primeira execução), criamos um fallback para não travar a UI
-    if not opcoes_dez:
-        opcoes_dez = [15] if mod == "Lotofácil" else [6]
+        # Se o dicionário estiver vazio (primeira execução), criamos um fallback para não travar a UI
+        if not opcoes_dez:
+            opcoes_dez = [15] if mod == "Lotofácil" else [6]
 
-    # --- [LÓGICA DE PREENCHIMENTO AUTOMÁTICO] ---
-    if info_fech:
-        if "DIAMANTE" in fe_escolhido: 
-            def_dez, def_qtd = 16, 2
-        elif "CÉLULA" in fe_escolhido: 
-            def_dez, def_qtd = 16, 1
-        else: 
-            def_dez = 15
-            def_qtd = 24 if "18-15-14" in fe_escolhido else 45
-    elif est_escolhida != "Personalizado" and mod == "Lotofácil":
-        # Usamos .get para evitar erro se a estratégia não tiver a chave "dez"
-        def_dez = info_est.get("dez", 15)
-        def_qtd = info_est.get("qtd", 10)
-    else:
-        # CORREÇÃO CRÍTICA: Pegamos a primeira chave disponível sem risco de AttributeError
+        # --- [LÓGICA DE PREENCHIMENTO AUTOMÁTICO] ---
+        if info_fech:
+            if "DIAMANTE" in fe_escolhido: 
+                def_dez, def_qtd = 16, 2
+            elif "CÉLULA" in fe_escolhido: 
+                def_dez, def_qtd = 16, 1
+            else: 
+                def_dez = 15
+                def_qtd = 24 if "18-15-14" in fe_escolhido else 45
+        elif est_escolhida != "Personalizado" and mod == "Lotofácil":
+            # Usamos .get para evitar erro se a estratégia não tiver a chave "dez"
+            def_dez = info_est.get("dez", 15)
+            def_qtd = info_est.get("qtd", 10)
+        else:
+            # CORREÇÃO CRÍTICA: Pegamos a primeira chave disponível sem risco de AttributeError
+            try:
+                def_dez = opcoes_dez[0]
+            except (IndexError, KeyError):
+                def_dez = 15 if mod == "Lotofácil" else 6
+            def_qtd = 10
+
+        # --- [VALIDAÇÃO DO ÍNDICE PARA O SELECTBOX] ---
+        # Evita erro de "ValueError" caso o def_dez sugerido não exista nas opções permitidas
         try:
-            def_dez = opcoes_dez[0]
-        except (IndexError, KeyError):
-            def_dez = 15 if mod == "Lotofácil" else 6
-        def_qtd = 10
+            idx_padrao = opcoes_dez.index(def_dez)
+        except (ValueError, IndexError):
+            idx_padrao = 0
 
-    # --- [VALIDAÇÃO DO ÍNDICE PARA O SELECTBOX] ---
-    # Evita erro de "ValueError" caso o def_dez sugerido não exista nas opções permitidas
-    try:
-        idx_padrao = opcoes_dez.index(def_dez)
-    except (ValueError, IndexError):
-        idx_padrao = 0
-
-    # --- [COMPONENTES DE INTERFACE] ---
-    n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao)
+       # --- [COMPONENTES DE INTERFACE] ---
+        n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao)
     
-    # Garante que def_qtd seja sempre um número inteiro para o input
-    qtd = st.number_input("Quantidade de Jogos", 1, 300, int(def_qtd))
+        # Garante que def_qtd seja sempre um número inteiro para o input
+        qtd = st.number_input("Quantidade de Jogos", 1, 300, int(def_qtd))
     with c2:
          # 1. Configuração de Limites por Modalidade
          limites_reais = {
