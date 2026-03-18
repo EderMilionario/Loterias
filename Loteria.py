@@ -1150,119 +1150,124 @@ with abas[0]:
     # --- [INÍCIO DA ATUALIZAÇÃO 4: MOTOR SOBERANO COM IDENTIFICAÇÃO VISUAL] ---
 
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-        # 1. PEGA O TAMANHO REAL DA ESTRATÉGIA (Corte do Pool)
-        tamanho_alvo = n_dez
-        if "MARRETA" in est_escolhida: tamanho_alvo = 18
-        elif "PRESTIGE" in est_escolhida: tamanho_alvo = 20
-    
-        # 2. SINCRONIZA O POOL (Usa a lógica da IA para cortar a matriz no tamanho certo)
-        pool_completo = st.session_state.get('pool', [])
+        # 1. BUSCA OS DADOS DA ESTRATÉGIA SELECIONADA (Evita NameError)
+        conf = ESTRATEGIA_MAPA.get(escolha, {"dez": 15, "qtd": 10})
+        tamanho_alvo = conf['dez']
+        quantidade_pedida = conf['qtd']
+        est_atual = escolha
+
+        # Ajuste manual para casos específicos de nome de estratégia
+        if "MARRETA" in est_atual: tamanho_alvo = 18
+        elif "PRESTIGE" in est_atual: tamanho_alvo = 20
+
+        # 2. SINCRONIZA O POOL (Busca nas variáveis REAIS do seu sistema)
+        # Tenta primeiro o pool refinado pela IA, depois a matriz bruta
+        pool_completo = st.session_state.get('pool_refinado', [])
         if not pool_completo:
-            pool_completo = dezenas_sugeridas # Backup caso o pool esteja vazio
+            pool_completo = st.session_state.get('matriz_afinidade', [])
     
+        # Se ainda estiver vazio, usa as dezenas de 1 a 25 como última instância
+        if not pool_completo:
+            pool_completo = list(range(1, 26))
+
+        # Realiza o corte conforme a estratégia
         pool_cortado = pool_completo[:tamanho_alvo]
-        st.session_state.pool = pool_cortado # Trava o pool no tamanho da estratégia
-    
-        # 3. LEITURA DE BACKUP (LÓGICA DA IA)
+        st.session_state.pool = pool_cortado 
+
+        # 3. LEITURA DE BACKUP (DEZENAS EM ATRASO - LÓGICA DA IA)
         res_hist = st.session_state.get('ultimo_res', {}).get(mod, {})
         dezenas_ciclo = []
         if res_hist:
-            chaves = sorted(res_hist.keys(), key=int)
-            ultimos_3 = [res_hist[c] for c in chaves[-3:]]
-            sorteadas_recentes = set(n for jogo in ultimos_3 for n in jogo)
-            dezenas_ciclo = [d for d in range(1, 26) if d not in sorteadas_recentes]
+            chaves = sorted(res_hist.keys(), key=lambda x: int(x) if str(x).isdigit() else 0)
+            if chaves:
+                ultimos_3 = [res_hist[c] for c in chaves[-3:]]
+                sorteadas_recentes = set(n for jogo in ultimos_3 for n in jogo)
+                dezenas_ciclo = [d for d in range(1, 26) if d not in sorteadas_recentes]
 
         # 4. FUNÇÃO DE PROCESSAMENTO COM JUIZ E SUBSTITUIÇÃO
         def processar_geracao(tamanho_solicitado, quantidade_pedida):
             sucessos, tentativas = 0, 0
             lista_jogos = []
-        
+    
             while sucessos < quantidade_pedida and tentativas < 5000:
                 tentativas += 1
-                # Sorteia do pool já cortado
+                # Sorteia do pool já cortado e sincronizado
                 comb = sorted(random.sample(pool_cortado, tamanho_solicitado))
-            
-                # Chama o Juiz (Bloco 3)
+        
+                # Chama o Juiz Kadosh Original do seu código
                 passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
                 foi_trocado = False
                 dezena_saiu, dezena_entrou = None, None
 
-                # INTERVENÇÃO DO JUIZ: Se o jogo for ruim, ele tenta 1 troca pelo backup
+                # INTERVENÇÃO DO JUIZ: Se o jogo falhar nos filtros, tenta 1 troca pelo backup
                 if not passou and dezenas_ciclo:
                     vaga_idx = len(comb) // 2
                     dezena_saiu = comb[vaga_idx]
-                    dezena_entrou = random.choice([d for d in dezenas_ciclo if d not in comb])
+                    opcoes_troca = [d for d in dezenas_ciclo if d not in comb]
                 
-                    novo_jogo = sorted([n if n != dezena_saiu else dezena_entrou for n in comb])
-                    if validar_kadosh_cirurgico(novo_jogo, mod, tamanho_solicitado):
-                        comb = novo_jogo
-                        passou = True
-                        foi_trocado = True
+                    if opcoes_troca:
+                        dezena_entrou = random.choice(opcoes_troca)
+                        novo_jogo = sorted([n if n != dezena_saiu else dezena_entrou for n in comb])
+                    
+                        if validar_kadosh_cirurgico(novo_jogo, mod, tamanho_solicitado):
+                            comb = novo_jogo
+                            passou = True
+                            foi_trocado = True
 
                 if passou:
-                    # Registra o Log com o motivo e a quantidade
                     if foi_trocado:
-                        registrar_log_kadosh(f"🔄 Troca Cirúrgica: Saiu {dezena_saiu:02d} -> Entrou {dezena_entrou:02d} (Motivo: Simetria/Bayes)", "troca")
-                
+                        registrar_log_kadosh(f"🔄 Troca Cirúrgica: Saiu {dezena_saiu:02d} -> Entrou {dezena_entrou:02d} (Motivo: Simetria/Filtros)", "troca")
+            
                     lista_jogos.append({
                         "n": comb, 
                         "trocado": dezena_entrou if foi_trocado else None,
                         "tam": tamanho_solicitado,
-                        "est": est_escolhida,
+                        "est": est_atual,
                         "chance": definir_label_chance(comb, mod)
                     })
                     sucessos += 1
             return lista_jogos
 
-        # Executa a geração
-        st.session_state.jogos_gerados = processar_geracao(tamanho_alvo, qtd)
+        # Executa a geração e salva no estado da sessão
+        st.session_state.jogos_gerados = processar_geracao(tamanho_alvo, quantidade_pedida)
     
         if not st.session_state.jogos_gerados:
-            registrar_log_kadosh("Pool íntegro: Nenhuma troca necessária ou possível para estes critérios.", "info")
+            registrar_log_kadosh("Aviso: O motor não conseguiu gerar jogos válidos com o pool atual.", "error")
     
         st.rerun()
 
-    # --- [VISUALIZAÇÃO COM CORES DIFERENTES] ---
+    # --- [VISUALIZAÇÃO DOS BILHETES] ---
     if st.session_state.get('jogos_gerados'):
         exibir_painel_logs()
         st.markdown("### 📝 Bilhetes Gerados (Destaque para Substituições)")
-    
+
         for i, jogo in enumerate(st.session_state.jogos_gerados):
             html_jogo = ""
             for n in jogo['n']:
-                # Se a dezena foi a que o Juiz colocou, pinta de AMARELO/DOURADO
+                # Pinta de DOURADO a dezena inserida pelo "Juiz" via PSO
                 if n == jogo['trocado']:
                     html_jogo += f'<span style="color: #FFD700; font-weight: bold; border: 1px solid #FFD700; padding: 2px 5px; margin: 2px; border-radius: 5px;">{n:02d}</span> '
                 else:
                     html_jogo += f'<span style="color: white; margin: 2px;">{n:02d}</span> '
-        
+    
             st.markdown(f"**JOGO {i+1:02d} | {jogo['tam']} DEZ:** {html_jogo} | ✨ {jogo['chance']}", unsafe_allow_html=True)
 
-# --- [FIM DA ATUALIZAÇÃO 4] ---
-    
-    # --- [BOTÃO DE SALVAMENTO: ENVIO PARA ABA 1] ---
-    if st.session_state.get('jogos_gerados'):
+        # --- [BOTÃO DE SALVAMENTO PARA ABA 1] ---
         if st.button("💾 Salvar e Enviar Jogos para Aba 1"):
             jogos_para_salvar = []
-        
             for j in st.session_state.jogos_gerados:
-                # Mantém a estrutura que a tua Aba 1 já lê
-                dados_jogo = {
+                jogos_para_salvar.append({
                     "modalidade": mod,
                     "dezenas": j['n'],
                     "tamanho": j['tam'],
                     "estratégia": j['est'],
                     "chance": j['chance'],
-                    "substituida": j['trocado'] # Passa a informação da cor diferente
-                }
-                jogos_para_salvar.append(dados_jogo)
+                    "substituida": j['trocado']
+                })
         
-            # Sincroniza com a variável global que a tua Aba 1 consome
             st.session_state.jogos_aba1 = jogos_para_salvar
-        
-            # Log de confirmação do envio
-            registrar_log_kadosh(f"Sucesso: {len(jogos_para_salvar)} jogos enviados para conferência na Aba 1.", "success")
-            st.success(f"✅ {len(jogos_para_salvar)} Jogos prontos na Aba 1!")
+            registrar_log_kadosh(f"Sucesso: {len(jogos_para_salvar)} jogos enviados para a Aba 1.", "success")
+            st.success(f"✅ {len(jogos_para_salvar)} Jogos enviados!")
 
 with abas[1]:
     mostrar_status_backup() 
