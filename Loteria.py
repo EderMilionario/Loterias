@@ -29,29 +29,52 @@ def registrar_log_kadosh(mensagem, tipo="info"):
     if len(st.session_state.logs_juiz) > 50:
         st.session_state.logs_juiz.pop()
 
-# --- [INÍCIO DO MAPA REAL: PROTEÇÃO GLOBAL CONTRA NAMEERROR] ---
-# Definido fora de qualquer função para que todas as abas o enxerguem.
-ESTRATEGIA_MAPA = {
-    # ESTRATÉGIAS
-    "SNIPER": {"dez": 15, "qtd": 10},
-    "ESCUDO E ESPADA": {"dez": 15, "qtd": 12},
-    "EQUILÍBRIO REAL": {"dez": 15, "qtd": 15},
-    "ELITE KADOSH": {"dez": 18, "qtd": 8},
-    "INVASÃO": {"dez": 15, "qtd": 20},
-    "MARRETA": {"dez": 20, "qtd": 5},
-    "SIMETRIA GEOMETRICA": {"dez": 15, "qtd": 10},
-    "RASTREAMENTO DE CICLO": {"dez": 15, "qtd": 15},
-    "CERCO POR ELIMINAÇAO": {"dez": 15, "qtd": 25},
-    "KADOSH PRESTIGE 2.0": {"dez": 20, "qtd": 10},
+# --- [INÍCIO DA ATUALIZAÇÃO 1: FUNDAÇÃO DE ELITE E LOGS] ---
 
-    # MATRIZES (VALORES AJUSTADOS AO SEU POOL E REGRAS)
-    "FECHAMENTO 18-14-15 (REDUÇÃO PROFISSIONAL)": {"dez": 15, "qtd": 12, "pool": 18},
-    "FECHAMENTO 19-15-14 (INTERMEDIARIO)": {"dez": 15, "qtd": 18, "pool": 19},
-    "FECHAMENTO 20-15-13 (COBERTURA AMPLA)": {"dez": 15, "qtd": 25, "pool": 20},
-    "MATRIZ DIAMANTE (2x16 + 10x15)": {"dez": 15, "qtd": 12, "pool": 19},
-    "MATRIZ CELULA (1x16 + 15x15)": {"dez": 15, "qtd": 16, "pool": 18}
-}
-# --- [FIM DO MAPA] ---
+# 1. MAPEAMENTO UNIFICADO (Correção de Quantidades e Estruturas)
+# Aqui garantimos que cada estratégia e matriz tenha seu alvo de DEZENAS, JOGOS e tamanho de POOL.
+if 'ESTRATEGIA_MAPA' not in locals():
+    ESTRATEGIA_MAPA = {
+        # ESTRATÉGIAS (Foco em quantidade de jogos fixa)
+        "1. SNIPER": {"dez": 15, "qtd": 10, "pool_alvo": 18},
+        "2. ESCUDO E ESPADA": {"dez": 15, "qtd": 12, "pool_alvo": 18},
+        "3. EQUILÍBRIO REAL": {"dez": 15, "qtd": 15, "pool_alvo": 19},
+        "4. ELITE KADOSH": {"dez": 18, "qtd": 8, "pool_alvo": 21},
+        "5. INVASÃO": {"dez": 15, "qtd": 20, "pool_alvo": 20},
+        "6. MARRETA": {"dez": 20, "qtd": 5, "pool_alvo": 22},
+        "7. SIMETRIA GEOMETRICA": {"dez": 15, "qtd": 10, "pool_alvo": 18},
+        "8. RASTREAMENTO DE CICLO": {"dez": 15, "qtd": 15, "pool_alvo": 19},
+        "9. CERCO POR ELIMINAÇAO": {"dez": 15, "qtd": 25, "pool_alvo": 20},
+        "10. KADOSH PRESTIGE 2.0": {"dez": 20, "qtd": 10, "pool_alvo": 23},
+
+        # MATRIZES (Ajustadas para respeitar o fechamento e o Pool específico)
+        "MATRIZ: FECHAMENTO 18-14-15": {"dez": 15, "qtd": 12, "pool_alvo": 18},
+        "MATRIZ: FECHAMENTO 19-15-14": {"dez": 15, "qtd": 18, "pool_alvo": 19},
+        "MATRIZ: FECHAMENTO 20-15-13": {"dez": 15, "qtd": 25, "pool_alvo": 20},
+        "MATRIZ: DIAMANTE (POOL 19)": {"dez": 15, "qtd": 12, "pool_alvo": 19},
+        "MATRIZ: CELULA (POOL 18)": {"dez": 15, "qtd": 16, "pool_alvo": 18}
+    }
+
+# 2. INICIALIZAÇÃO DO ESTADO CRÍTICO (Para evitar erros de Variável não definida)
+def inicializar_estado_kadosh():
+    # Lista de chaves necessárias para o Juiz e para a Aba 1
+    chaves_necessarias = {
+        'pool_selecionado': [],      # O que você clicou
+        'pool_final_juiz': [],       # O que a IA decidiu (após trocas)
+        'substituicoes_juiz': {},    # Dicionário: {dezena_nova: {"saiu": dezena_velha, "motivo": "..."}}
+        'jogos_gerados': [],         # Armazena os jogos da rodada
+        'aba_conferencia': [],       # Dados que vão para a Aba 1
+        'logs_juiz': []              # Histórico de decisões
+    }
+    
+    for chave, valor_padrao in chaves_necessarias.items():
+        if chave not in st.session_state:
+            st.session_state[chave] = valor_padrao
+
+# Chamada da inicialização
+inicializar_estado_kadosh()
+
+# --- [FIM DA ATUALIZAÇÃO 1] ---
 
 def atualizar_dados_mestre(novos_resultados, modalidade="Lotofácil"):
     """
@@ -1128,23 +1151,27 @@ with abas[0]:
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
 
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-        # 1. Definição da Estratégia e Parâmetros
-        # Usa o mapa de estratégias para definir a quantidade e dezenas
-        conf = ESTRATEGIA_MAPA.get(est_escolhida, {"dez": 15, "qtd": 10})
-        dezenas_por_jogo = n_dez # Usa o seletor manual ou automático da UI
-        quantidade_pedida = qtd
+        # 1. Sincronização Absoluta com o Mapa
+        # Prioriza o que está no ESTRATEGIA_MAPA para evitar erros de quantidade
+        conf = ESTRATEGIA_MAPA.get(est_escolhida, {"dez": 15, "qtd": 10, "pool_alvo": 18})
+        
+        # FORÇA as quantidades do mapa (Resolve seu problema de não gerar a quantidade certa)
+        dezenas_por_jogo = conf['dez']
+        quantidade_pedida = conf['qtd']
+        tamanho_alvo_pool = conf.get('pool_alvo', 18)
 
         # 2. Sincronização do Pool
-        # Prioridade: Pool da sessão -> Favoritas -> Padrão 1-25
         pool_completo = st.session_state.favoritas.get(mod, [])
         if not pool_completo:
             pool_completo = list(range(1, 26))
             
-        # O pool respeita o tamanho alvo definido na Parte 8 (18, 19, 20 ou 22)
+        # O pool respeita o tamanho alvo definido no Mapa
         pool_cortado = pool_completo[:tamanho_alvo_pool]
         st.session_state['pool_ativo_geracao'] = pool_cortado
+        # Guardamos o pool original para o Juiz comparar depois
+        pool_original_antes_da_ia = list(pool_cortado)
 
-        # 3. Identificação de Dezenas de Ciclo (Atrasadas para Troca Cirúrgica)
+        # 3. Identificação de Dezenas de Ciclo (Base para a justificativa da IA)
         res_hist = st.session_state.ultimo_res.get(mod, {})
         dezenas_ciclo = []
         if res_hist and mod == "Lotofácil":
@@ -1154,8 +1181,8 @@ with abas[0]:
                 sorteadas_recentes = set(n for jogo in ultimos_3 for n in jogo)
                 dezenas_ciclo = [d for d in range(1, 26) if d not in sorteadas_recentes]
 
-        # 4. Função Interna de Processamento com Intervenção da IA
-        def processar_geracao(tam_solicitado, qtd_pedida):
+        # 4. Processamento com Intervenção Transparente do Juiz
+        def processar_geracao_cirurgica(tam_solicitado, qtd_pedida):
             sucessos, tentativas = 0, 0
             lista_jogos = []
             
@@ -1163,12 +1190,10 @@ with abas[0]:
                 tentativas += 1
                 comb = sorted(random.sample(pool_cortado, tam_solicitado))
                 
-                # Validação pelo Juiz Kadosh
                 passou = validar_kadosh_cirurgico(comb, mod, tam_solicitado)
-                foi_trocado = False
-                dezena_saiu, dezena_entrou = None, None
+                troca_info = None
 
-                # INTERVENÇÃO: Se falhar, tenta 1 troca cirúrgica usando dezenas de ciclo
+                # INTERVENÇÃO DO JUIZ MAIOR: Substituição se necessário
                 if not passou and dezenas_ciclo and mod == "Lotofácil":
                     vaga_idx = random.randint(0, len(comb)-1)
                     dezena_saiu = comb[vaga_idx]
@@ -1181,48 +1206,82 @@ with abas[0]:
                         if validar_kadosh_cirurgico(novo_jogo, mod, tam_solicitado):
                             comb = novo_jogo
                             passou = True
-                            foi_trocado = True
+                            # REGISTRA O MOTIVO DA SUBSTITUIÇÃO
+                            troca_info = {
+                                "saiu": dezena_saiu, 
+                                "entrou": dezena_entrou,
+                                "motivo": f"A dezena {dezena_saiu:02d} causava desequilíbrio. O Juiz inseriu a {dezena_entrou:02d} por ser tendência de Ciclo de Atraso."
+                            }
 
                 if passou:
                     lista_jogos.append({
                         "n": comb, 
-                        "trocado": dezena_entrou if foi_trocado else None,
+                        "detalhe_troca": troca_info,
                         "tam": tam_solicitado,
                         "est": est_escolhida,
-                        "chance": "ALTA" if not foi_trocado else "RECALIBRADA"
+                        "pool_usado": pool_original_antes_da_ia,
+                        "chance": "ELITE" if not troca_info else "AJUSTADA PELA IA"
                     })
                     sucessos += 1
             return lista_jogos
 
         # Executa e salva
-        st.session_state.jogos_gerados = processar_geracao(dezenas_por_jogo, quantidade_pedida)
+        st.session_state.jogos_gerados = processar_geracao_cirurgica(dezenas_por_jogo, quantidade_pedida)
         
         if not st.session_state.jogos_gerados:
-            st.error("⚠️ O motor não conseguiu validar jogos com este Pool. Tente refinar ou aumentar o Pool.")
+            st.error("⚠️ O motor não conseguiu validar jogos. Verifique se o seu Pool é muito restrito.")
         else:
-            st.success(f"✅ {len(st.session_state.jogos_gerados)} Jogos gerados com sucesso!")
+            registrar_log_kadosh(f"Gerados {len(st.session_state.jogos_gerados)} jogos para {est_escolhida}", "success")
+            st.success(f"✅ Matriz aplicada: {len(st.session_state.jogos_gerados)} jogos gerados!")
         st.rerun()
 
-    # --- [VISUALIZAÇÃO DOS BILHETES] ---
+    # --- [VISUALIZAÇÃO DOS BILHETES - DESIGN CLARO E CIRÚRGICO] ---
     if st.session_state.get('jogos_gerados'):
-        st.markdown("### 📝 Bilhetes Gerados")
-        st.caption("Dezenas em **Dourado** foram inseridas pela IA para equilibrar o jogo.")
-
+        st.markdown("### 📝 Bilhetes de Elite")
+        
         for i, jogo in enumerate(st.session_state.jogos_gerados):
-            html_jogo = ""
-            for n in jogo['n']:
-                if n == jogo['trocado']:
-                    # Destaque Dourado para dezenas trocadas
-                    html_jogo += f'<span style="color: #f1c40f; font-weight: bold; border: 1px solid #f1c40f; padding: 2px 6px; margin: 2px; border-radius: 4px;">{n:02d}</span> '
-                else:
-                    html_jogo += f'<span style="background: #2d3436; color: white; padding: 2px 6px; margin: 2px; border-radius: 4px;">{n:02d}</span> '
-            
-            st.markdown(f"**{i+1:02d}** ⮕ {html_jogo} | <small>{jogo['chance']}</small>", unsafe_allow_html=True)
+            # Container do Card com fundo claro para visibilidade
+            with st.container():
+                html_jogo = ""
+                for n in jogo['n']:
+                    # Se a dezena foi a que entrou pela troca da IA
+                    is_trocada = jogo['detalhe_troca'] and n == jogo['detalhe_troca']['entrou']
+                    
+                    if is_trocada:
+                        # Cor Ciano/Azul para destacar a troca
+                        html_jogo += f'<span style="background: #00d2ff; color: black; font-weight: bold; padding: 5px 10px; margin: 3px; border-radius: 50%; display: inline-block; border: 2px solid #000;">{n:02d}</span>'
+                    else:
+                        # Cor Padrão Luxo
+                        html_jogo += f'<span style="background: #f0f2f6; color: #1a1a1a; font-weight: bold; padding: 5px 10px; margin: 3px; border-radius: 50%; display: inline-block; border: 1px solid #d1d1d1;">{n:02d}</span>'
+                
+                # Renderiza o Card
+                st.markdown(f"""
+                <div style="background: white; padding: 15px; border-radius: 15px; border-left: 10px solid #d4af37; box-shadow: 2px 2px 10px rgba(0,0,0,0.1); margin-bottom: 15px;">
+                    <div style="color: #1a1a1a; font-size: 18px; margin-bottom: 10px;"><b>JOGO #{i+1:02d}</b> <small style="color: grey;">({jogo['est']})</small></div>
+                    {html_jogo}
+                    <div style="margin-top: 10px; font-size: 12px; color: #2c3e50;">
+                        <b>Status:</b> {jogo['chance']} | <b>Dezenas:</b> {jogo['tam']}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
-        # Botão para persistência
-        if st.button("💾 Salvar Jogos na Sessão"):
-            st.session_state.jogos_salvos.extend(st.session_state.jogos_gerados)
-            st.toast("Jogos salvos para conferência!")
+                # Se houve troca, mostra o motivo abaixo do card
+                if jogo['detalhe_troca']:
+                    st.info(f"⚖️ **Intervenção do Juiz:** {jogo['detalhe_troca']['motivo']}")
+
+        # Botão para Enviar para Aba 1 (Conferência)
+        if st.button("💾 ENVIAR PARA CONFERÊNCIA (ABA 1)"):
+            if 'aba_conferencia' not in st.session_state:
+                st.session_state.aba_conferencia = []
+            
+            # Adiciona os jogos e o pool usado para conferir depois
+            dados_conferencia = {
+                "data": datetime.datetime.now().strftime("%d/%m/%Y %H:%M"),
+                "jogos": st.session_state.jogos_gerados,
+                "pool_final": st.session_state['pool_ativo_geracao']
+            }
+            st.session_state.aba_conferencia.append(dados_conferencia)
+            st.success("🎯 Jogos enviados com sucesso! Vá para a Aba 1 para conferir os resultados.")
 with abas[1]:
     mostrar_status_backup() 
     st.header("🔍 Painel de Conferência")
@@ -1234,12 +1293,10 @@ with abas[1]:
         key="f_conf_definitiva"
     )
     
-    # 2. EXPORTAÇÃO (PDF)
+    # 2. EXPORTAÇÃO (PDF) - Mantida sua lógica original
     if st.session_state.get('jogos_salvos'):
         try:
-            # Gera o PDF com base nos jogos que estão na memória de backup
             pdf_bytes = gerar_pdf_jogos(st.session_state.jogos_salvos, mod_f)
-            
             st.download_button(
                 label="📥 BAIXAR JOGOS (PDF)",
                 data=pdf_bytes,
@@ -1250,114 +1307,113 @@ with abas[1]:
         except Exception as e:
             st.error(f"Aguardando dados para gerar PDF...")
     
-    # 3. FILTRAGEM E CONFERÊNCIA
-    # --- [CORREÇÃO E BLINDAGEM DO MOTOR DE CONFERÊNCIA] ---
-
-    # 1. Inicialização de segurança para evitar AttributeError
+    # 3. INICIALIZAÇÃO DE SEGURANÇA
     if 'jogos_salvos' not in st.session_state:
         st.session_state.jogos_salvos = []
-    if 'custos' not in st.session_state:
-        st.session_state.custos = {}
-    if 'premios' not in st.session_state:
-        st.session_state.premios = {}
-
-    # 2. Filtragem segura (Uso do or [] para garantir que itera sobre uma lista)
+    
+    # Filtragem segura: captura jogos da modalidade selecionada
+    # IMPORTANTE: Usei 'mod' ou 'modalidade' para garantir compatibilidade
     lista_mestra = st.session_state.get('jogos_salvos') or []
-    jogos_salvos_atual = [j for j in lista_mestra if isinstance(j, dict) and j.get('mod') == mod_f]
+    jogos_salvos_atual = [j for j in lista_mestra if isinstance(j, dict) and (j.get('mod') == mod_f or j.get('est') in ESTRATEGIA_MAPA)]
 
-    # 3. Busca de resultados (Uso do .get para evitar erro de chave inexistente)
+    # Busca de resultados
     res_db = st.session_state.get('ultimo_res', {}).get(mod_f, {})
 
     if not jogos_salvos_atual:
         st.info(f"✨ Nenhum jogo salvo para {mod_f}. Use o Gerador Pro para criar sua estratégia.")
     else:
         # --- PERFORMANCE DO POOL (ANÁLISE DE CERCO) ---
+        # Pegamos o pool do último jogo gerado para análise
         ultimo_j = jogos_salvos_atual[-1]
-        pool_origem = ultimo_j.get('pool_origem', [])
-        alvo_p = str(ultimo_j.get('concurso_alvo', ''))
-    
-        if pool_origem and alvo_p in res_db:
-            st.markdown(f"### 🎯 PERFORMANCE DO SEU POOL (CONCURSO {alvo_p})")
-            res_alvo = res_db[alvo_p]
-            acertos_p = sum(1 for d in pool_origem if d in res_alvo)
+        pool_origem = ultimo_j.get('pool_usado', []) # Usando a chave nova que criamos no bloco anterior
         
-            h_pool = '<div style="background: #1e272e; padding: 20px; border-radius: 15px; border: 1px solid #34495e; margin-bottom: 20px;">'
-            for d in sorted(pool_origem):
-                cor_p = "background-color: #27ae60;" if d in res_alvo else "background-color: #c0392b;"
-                h_pool += f'<span style="display: inline-block; width: 32px; height: 32px; line-height: 32px; text-align: center; border-radius: 50%; margin: 4px; font-weight: bold; color: white; {cor_p}">{d:02d}</span>'
-            h_pool += f'<br><br><b style="color: #f1c40f;">📊 EFICIÊNCIA DO CERCO: {acertos_p} de {len(res_alvo)} dezenas sorteadas.</b></div>'
-            st.markdown(h_pool, unsafe_allow_html=True)
+        if pool_origem:
+            st.markdown(f"### 🎯 PERFORMANCE DO SEU POOL")
+            # Tenta pegar o último resultado disponível para comparar o pool
+            if res_db:
+                ultimo_concurso = str(max([int(c) for c in res_db.keys() if c.isdigit()] + [0]))
+                res_alvo = res_db.get(ultimo_concurso, [])
+                
+                if res_alvo:
+                    acertos_p = sum(1 for d in pool_origem if d in res_alvo)
+                    h_pool = '<div style="background: #f8f9fa; padding: 20px; border-radius: 15px; border: 2px solid #d4af37; margin-bottom: 20px;">'
+                    h_pool += f'<b style="color: #1a1a1a;">Pool Utilizado (Conc. {ultimo_concurso}):</b><br><br>'
+                    for d in sorted(pool_origem):
+                        # Se a dezena do pool foi sorteada: Verde, senão: Cinza
+                        cor_p = "background-color: #27ae60; color: white;" if d in res_alvo else "background-color: #dfe6e9; color: #636e72;"
+                        h_pool += f'<span style="display: inline-block; width: 30px; height: 30px; line-height: 30px; text-align: center; border-radius: 50%; margin: 3px; font-weight: bold; {cor_p}">{d:02d}</span>'
+                    h_pool += f'<br><br><b style="color: #2c3e50;">📊 EFICIÊNCIA DO CERCO: {acertos_p} de {len(res_alvo)} dezenas.</b></div>'
+                    st.markdown(h_pool, unsafe_allow_html=True)
 
         st.markdown("---")
-        st.subheader("📋 Conferência de Bilhetes")
-        t_gasto, t_premio = 0.0, 0.0
-
-        # 4. Loop de Conferência com Tratamento de Erros de Dicionário
-        # --- [INÍCIO DO BLOCO DE CONFERÊNCIA CORRIGIDO] ---
         st.subheader("📋 Conferência de Bilhetes")
         t_gasto, t_premio = 0.0, 0.0
 
         for i, jogo in enumerate(jogos_salvos_atual):
-            # 1. Extração segura de dados do jogo
             dezenas_j = jogo.get('n', [])
             tam_j = jogo.get('tam', 15)
+            # Tentamos buscar o concurso alvo do jogo ou o último disponível
             c_alvo = str(jogo.get('concurso_alvo', ''))
-            fixas_j = jogo.get('fixas_utilizadas', []) 
+            if not c_alvo or c_alvo not in res_db:
+                c_alvo = str(max([int(c) for c in res_db.keys() if c.isdigit()] + [0]))
             
-            # 2. CÁLCULO DE CUSTO (LINHA ONDE DAVA O ERRO 1312)
+            # CÁLCULO DE CUSTO
             custo_j = 0.0
-            # Verificamos se 'custos' existe e é um dicionário válido
-            if 'custos' in st.session_state and isinstance(st.session_state.custos, dict):
-                custo_mod_ref = st.session_state.custos.get(mod_f, {})
-                if isinstance(custo_mod_ref, dict):
-                    custo_j = custo_mod_ref.get(tam_j, 0.0)
-            
+            custo_mod_ref = st.session_state.custos.get(mod_f, {})
+            if isinstance(custo_mod_ref, dict):
+                custo_j = custo_mod_ref.get(tam_j, 0.0)
             t_gasto += float(custo_j)
             
-            html_dez = ""
             sorteio = res_db.get(c_alvo, [])
-            v_premio = 0.0 # Inicializa prêmio como zero
+            v_premio = 0.0
+            acertos = 0
             
+            html_dez = ""
             if sorteio:
                 acertos = len(set(dezenas_j) & set(sorteio))
-            
-                # 3. BUSCA DE PRÊMIOS SEGURA
-                if 'premios' in st.session_state and isinstance(st.session_state.premios, dict):
-                    premios_mod_ref = st.session_state.premios.get(mod_f, {})
-                    if isinstance(premios_mod_ref, dict):
-                        v_premio = float(premios_mod_ref.get(str(acertos), 0.0))
-                
+                # Busca de prêmios
+                premios_mod_ref = st.session_state.premios.get(mod_f, {})
+                if isinstance(premios_mod_ref, dict):
+                    v_premio = float(premios_mod_ref.get(str(acertos), 0.0))
                 t_premio += v_premio 
-            
-                # Estilização das dezenas (Sua lógica visual)
+
                 for d in dezenas_j:
                     is_sorteada = d in sorteio
-                    is_fixa = d in fixas_j
-                    c_txt = "#2ecc71" if is_sorteada else "#bdc3c7"
-                    decor = "text-decoration: underline; font-weight: 900;" if is_fixa else ""
-                    pino = "📌" if (is_fixa and is_sorteada) else ""
-                    html_dez += f'<span style="color:{c_txt}; {decor} margin-right:10px; font-size:18px; font-family: monospace;">{d:02d}{pino}</span>'
-            
-                res_msg = f"🎯 {acertos} ACERTOS | 💰 R$ {v_premio:,.2f}"
+                    # Identifica se foi a dezena trocada pelo Juiz
+                    is_ia = jogo.get('detalhe_troca') and d == jogo['detalhe_troca']['entrou']
+                    
+                    # Estilização
+                    bg = "#27ae60" if is_sorteada else "#f1f2f6"
+                    txt = "white" if is_sorteada else "#2d3436"
+                    border = "2px solid #00d2ff" if is_ia else "1px solid #dfe6e9"
+                    
+                    html_dez += f'<span style="background:{bg}; color:{txt}; border:{border}; padding: 4px 8px; border-radius: 5px; margin-right: 5px; font-weight: bold; font-family: monospace;">{d:02d}</span>'
+                
+                res_msg = f"<span style='color: #27ae60;'>🎯 {acertos} ACERTOS</span> | <span style='color: #1a1a1a;'>💰 R$ {v_premio:,.2f}</span>"
             else:
                 for d in dezenas_j:
-                    html_dez += f'<span style="color:#bdc3c7; margin-right:10px; font-size:18px; font-family: monospace;">{d:02d}</span>'
-                res_msg = "⏳ Sorteio não realizado ou base desatualizada"
+                    html_dez += f'<span style="background:#f1f2f6; color:#2d3436; border: 1px solid #dfe6e9; padding: 4px 8px; border-radius: 5px; margin-right: 5px; font-family: monospace;">{d:02d}</span>'
+                res_msg = "<span style='color: #636e72;'>⏳ Aguardando Sorteio...</span>"
 
-            # Renderização do Card do Jogo
+            # CARD DO JOGO (VISUAL LUXO E CLARO)
             st.markdown(f"""
-            <div style="border-left: 5px solid #3498db; padding: 12px; background: #2d3436; border-radius: 8px; margin-bottom: 8px;">
-                <small style="color: #636e72;">JOGO {i+1:02d} • {mod_f} • CONCURSO {c_alvo}</small><br>
-                <div style="margin: 8px 0;">{html_dez}</div>
-                <strong style="color: white;">{res_msg}</strong>
+            <div style="border-left: 8px solid #d4af37; padding: 15px; background: white; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); color: #1a1a1a;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <small style="color: #636e72;"><b>JOGO {i+1:02d}</b> • {mod_f} • CONCURSO {c_alvo}</small>
+                    <small style="color: #d4af37;">{jogo.get('est', 'PERSONALIZADO')}</small>
+                </div>
+                <div style="margin: 12px 0;">{html_dez}</div>
+                <div style="border-top: 1px solid #eee; padding-top: 8px;">
+                    <strong>{res_msg}</strong>
+                </div>
             </div>""", unsafe_allow_html=True)
 
-        # --- RESUMO FINANCEIRO (Sincronizado com os cálculos acima) ---
+        # RESUMO FINANCEIRO
         st.markdown("---")
         c_fin1, c_fin2, c_fin3 = st.columns(3)
         c_fin1.metric("Investimento Total", f"R$ {t_gasto:,.2f}")
         c_fin2.metric("Prêmios Totais", f"R$ {t_premio:,.2f}")
-    
+        
         saldo = t_premio - t_gasto
         c_fin3.metric(
             "Saldo Líquido", 
@@ -1365,7 +1421,6 @@ with abas[1]:
             delta=f"R$ {saldo:,.2f}", 
             delta_color="normal" if saldo >= 0 else "inverse"
         )
-        # --- [FIM DO BLOCO CORRIGIDO] ---
 
         if st.button("🗑️ LIMPAR TODOS OS JOGOS"):
             st.session_state.jogos_salvos = []
