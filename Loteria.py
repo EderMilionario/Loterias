@@ -848,35 +848,55 @@ with abas[0]:
     mostrar_status_backup()
     
     # Seletor de Modalidade com reset inteligente
-    mod = st.selectbox("Modalidade", list(st.session_state.custos.keys()), key="mod_selector")
+    # --- [CORREÇÃO DE SEGURANÇA: INICIALIZAÇÃO] ---
+    # Garante que as chaves básicas existam para não travar o selectbox
+    if 'custos' not in st.session_state:
+        st.session_state.custos = {"Lotofácil": 3.0} # Valor padrão de segurança
+
+    if 'ultimo_res' not in st.session_state:
+        st.session_state.ultimo_res = {}
+
+    if 'analise_stats' not in st.session_state:
+        st.session_state.analise_stats = {}
+
+    # --- [SELEÇÃO DE MODALIDADE] ---
+    # Usamos .get() e list() de forma segura
+    lista_loterias = list(st.session_state.get('custos', {"Lotofácil": 3.0}).keys())
+    mod = st.selectbox("Modalidade", lista_loterias, key="mod_selector")
     
     if 'ultima_mod_selecionada' not in st.session_state:
         st.session_state.ultima_mod_selecionada = mod
-        
+    
     if st.session_state.ultima_mod_selecionada != mod:
         st.session_state.jogos_gerados = []
         st.session_state.ultima_mod_selecionada = mod
         st.rerun()
 
     # --- [ATIVAÇÃO DO MOTOR DE CÁLCULO] ---
-    res_loto = st.session_state.ultimo_res.get(mod, {})
+    # Buscamos de forma segura para não dar erro se o dicionário estiver vazio
+    res_loto = st.session_state.get('ultimo_res', {}).get(mod, {})
     
     # Só processa se houver histórico no banco
     if res_loto and len(res_loto) >= 1:
+        # Garantimos que os IDs dos concursos sejam tratados como inteiros para ordenar certo
         conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
         contagem = Counter()
         amostra = conc_ordenados[:50] # Analisa tendência dos últimos 50 sorteios
-        
+    
         for c in amostra:
             for n in res_loto[c]: 
                 contagem[n] += 1
-            
+        
         stats_temp = {}
         # Definição do limite de dezenas por volante
-        if mod == "Lotofácil": max_dezenas = 25
-        elif mod == "Quina" or mod == "Mega-Sena": max_dezenas = 80
-        elif mod in ["Dupla-Sena", "+Milionária"]: max_dezenas = 50
-        else: max_dezenas = 80
+        if mod == "Lotofácil": 
+            max_dezenas = 25
+        elif mod in ["Quina", "Mega-Sena"]: 
+            max_dezenas = 80 if mod == "Quina" else 60
+        elif mod in ["Dupla-Sena", "+Milionária"]: 
+            max_dezenas = 50
+        else: 
+            max_dezenas = 80
 
         for n in range(1, max_dezenas + 1):
             atraso_n = 0
@@ -887,7 +907,8 @@ with abas[0]:
                     break
             # O Score Kadosh equilibra quem sai muito com quem está "maduro" para sair
             stats_temp[n] = {'score': contagem[n] + (atraso_n * 0.8)}
-        
+    
+        # Salva no estado da sessão de forma segura
         st.session_state.analise_stats[mod] = stats_temp
     else:
         st.info("💡 Sistema aguardando carregamento de dados (Backup ou Manual).")
