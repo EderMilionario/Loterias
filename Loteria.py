@@ -12,6 +12,7 @@ from itertools import combinations
 from fpdf import FPDF
 import io
 
+
 def registrar_log_kadosh(mensagem, tipo="info"):
     """
     Cria uma tabela de logs persistente. 
@@ -27,6 +28,29 @@ def registrar_log_kadosh(mensagem, tipo="info"):
     st.session_state.logs_juiz.insert(0, {"Hora": agora, "Mensagem": f"{prefixo} {mensagem}", "Tipo": tipo})
     if len(st.session_state.logs_juiz) > 50:
         st.session_state.logs_juiz.pop()
+
+# --- [INÍCIO DA DEFINIÇÃO DE ESTRATÉGIAS E MATRIZES] ---
+ESTRATEGIA_MAPA = {
+    # 10 ESTRATÉGIAS PRINCIPAIS
+    "SNIPER": {"dez": 15, "qtd": 10},
+    "A MARRETA": {"dez": 20, "qtd": 5},
+    "ELITE KADOSH": {"dez": 18, "qtd": 8},
+    "PRESTIGE 20": {"dez": 20, "qtd": 10},
+    "EQUILÍBRIO TOTAL": {"dez": 15, "qtd": 12},
+    "FORÇA BRUTA": {"dez": 15, "qtd": 50},
+    "ESTATÍSTICO PRO": {"dez": 15, "qtd": 15},
+    "FILTRO MESTRE": {"dez": 15, "qtd": 20},
+    "PADRÃO OURO": {"dez": 15, "qtd": 7},
+    "SURPRESINHA KADOSH": {"dez": 15, "qtd": 5},
+
+    # 5 MATRIZES DE FECHAMENTO (Baseadas no seu backup e lógica de pool)
+    "FECHAMENTO 20-15-13 (Cobertura Ampla)": {"dez": 15, "qtd": 15},
+    "MATRIZ 18-15-14 (Garantido)": {"dez": 15, "qtd": 12},
+    "FECHAMENTO 22-15-12": {"dez": 15, "qtd": 20},
+    "MATRIZ REDUZIDA 17-15-15": {"dez": 15, "qtd": 8},
+    "COMBINAÇÃO DIAMANTE": {"dez": 15, "qtd": 30}
+}
+# --- [FIM DA DEFINIÇÃO] ---
 
 def atualizar_dados_mestre(novos_resultados, modalidade="Lotofácil"):
     """
@@ -1151,14 +1175,14 @@ with abas[0]:
 
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
         # 1. BUSCA OS DADOS DA ESTRATÉGIA SELECIONADA (Evita NameError)
+        # --- [INÍCIO DA CORREÇÃO DE LOGICA] ---
+        # Busca a configuração da estratégia. Se não achar (segurança), usa o padrão de 15 dezenas.
         conf = ESTRATEGIA_MAPA.get(escolha, {"dez": 15, "qtd": 10})
-        tamanho_alvo = conf['dez']
-        quantidade_pedida = conf['qtd']
-        est_atual = escolha
 
-        # Ajuste manual para casos específicos de nome de estratégia
-        if "MARRETA" in est_atual: tamanho_alvo = 18
-        elif "PRESTIGE" in est_atual: tamanho_alvo = 20
+        # Extração automática de dezenas e quantidade para o motor do sistema
+        dezenas_por_jogo = conf["dez"]
+        quantidade_jogos = conf["qtd"]
+        # --- [FIM DA CORREÇÃO DE LOGICA] ---
 
         # 2. SINCRONIZA O POOL (Busca nas variáveis REAIS do seu sistema)
         # Tenta primeiro o pool refinado pela IA, depois a matriz bruta
