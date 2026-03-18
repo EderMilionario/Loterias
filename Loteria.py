@@ -1068,62 +1068,62 @@ with abas[0]:
          # --- SELEÇÃO MANUAL E VISUALIZAÇÃO ---
          st.markdown("---")
         
-        # --- [CORREÇÃO CRÍTICA: BLINDAGEM DO POOL] ---
-        # 1. Garante que o dicionário de favoritas exista
-        if 'favoritas' not in st.session_state:
-            st.session_state.favoritas = {}
+         # --- [CORREÇÃO CRÍTICA: BLINDAGEM DO POOL] ---
+         # 1. Garante que o dicionário de favoritas exista
+         if 'favoritas' not in st.session_state:
+             st.session_state.favoritas = {}
         
-        # 2. Busca o que já estava selecionado (ou lista vazia se for a primeira vez)
-        # O 'or []' impede o erro de AttributeError no parâmetro 'default'
-        pool_default = st.session_state.favoritas.get(mod, []) or []
+         # 2. Busca o que já estava selecionado (ou lista vazia se for a primeira vez)
+         # O 'or []' impede o erro de AttributeError no parâmetro 'default'
+         pool_default = st.session_state.favoritas.get(mod, []) or []
         
-        # 3. O multiselect agora está protegido
-        pool = st.multiselect(
-            f"SELECIONE SEU POOL ({mod}):", 
-            range(1, max_v_bt + 1), 
-            default=pool_default
-        )
-        st.session_state.favoritas[mod] = pool 
+         # 3. O multiselect agora está protegido
+         pool = st.multiselect(
+             f"SELECIONE SEU POOL ({mod}):", 
+             range(1, max_v_bt + 1), 
+             default=pool_default
+         )
+         st.session_state.favoritas[mod] = pool 
 
-        # Análise Geográfica do Pool
-        if pool and mod == "Lotofácil":
-            linhas_p = [0]*5
-            for n in pool: 
-                linhas_p[(n-1)//5] += 1
+         # Análise Geográfica do Pool
+         if pool and mod == "Lotofácil":
+             linhas_p = [0]*5
+             for n in pool: 
+                 linhas_p[(n-1)//5] += 1
             
-            if any(l == 0 for l in linhas_p):
-                st.warning("⚠️ Atenção: Seu Pool possui linhas vazias! Isso reduz a eficácia do Filtro Kadosh.")
+             if any(l == 0 for l in linhas_p):
+                 st.warning("⚠️ Atenção: Seu Pool possui linhas vazias! Isso reduz a eficácia do Filtro Kadosh.")
             
-            with st.expander("📊 Distribuição Geográfica do Pool"):
-                cols_q = st.columns(5)
-                for idx, qtd_l in enumerate(linhas_p):
-                    cols_q[idx].metric(f"L{idx+1}", f"{qtd_l} dez")
+             with st.expander("📊 Distribuição Geográfica do Pool"):
+                 cols_q = st.columns(5)
+                 for idx, qtd_l in enumerate(linhas_p):
+                     cols_q[idx].metric(f"L{idx+1}", f"{qtd_l} dez")
         
-        # Fixação de Dezenas (Cravadas)
-        if mod == "Lotofácil":
-            st.markdown("---")
-            modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
+         # Fixação de Dezenas (Cravadas)
+         if mod == "Lotofácil":
+             st.markdown("---")
+             modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
     
-            fixas_final = []
-            if modo_fixa == "Manual":
-                # Proteção: multiselect de fixas só aparece se houver dezenas no pool
-                fixas_final = st.multiselect("📌 CRAVAR DEZENAS (FIXAS):", options=pool)
-            elif modo_fixa == "IA Automática (Score)":
-                qtd_auto = st.slider("Qtd de Cravadas:", 1, 10, 6)
-                # Verifica se a análise de stats existe para não quebrar
-                if mod in st.session_state.get('analise_stats', {}):
-                    stats = st.session_state.analise_stats[mod]
-                    # Ordena as dezenas do Pool pelo Score da IA
-                    melhores_ia = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
-                    fixas_final = melhores_ia[:qtd_auto]
-                    if fixas_final:
-                        st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
-                    else:
-                        st.info("💡 Selecione dezenas no Pool para a IA analisar.")
+             fixas_final = []
+             if modo_fixa == "Manual":
+                 # Proteção: multiselect de fixas só aparece se houver dezenas no pool
+                 fixas_final = st.multiselect("📌 CRAVAR DEZENAS (FIXAS):", options=pool)
+             elif modo_fixa == "IA Automática (Score)":
+                 qtd_auto = st.slider("Qtd de Cravadas:", 1, 10, 6)
+                 # Verifica se a análise de stats existe para não quebrar
+                 if mod in st.session_state.get('analise_stats', {}):
+                     stats = st.session_state.analise_stats[mod]
+                     # Ordena as dezenas do Pool pelo Score da IA
+                     melhores_ia = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
+                     fixas_final = melhores_ia[:qtd_auto]
+                     if fixas_final:
+                         st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
+                     else:
+                         st.info("💡 Selecione dezenas no Pool para a IA analisar.")
     
-            # Renderiza o Heatmap passando os resultados de forma segura
-            ult_res_map = st.session_state.get('ultimo_res', {}).get(mod, {})
-            renderizar_heatmap(mod, ult_res_map)
+             # Renderiza o Heatmap passando os resultados de forma segura
+             ult_res_map = st.session_state.get('ultimo_res', {}).get(mod, {})
+             renderizar_heatmap(mod, ult_res_map)
 
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
 
