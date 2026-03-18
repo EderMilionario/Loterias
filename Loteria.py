@@ -29,9 +29,9 @@ def registrar_log_kadosh(mensagem, tipo="info"):
     if len(st.session_state.logs_juiz) > 50:
         st.session_state.logs_juiz.pop()
 
-# --- [INÍCIO DA DEFINIÇÃO DAS ESTRATÉGIAS E MATRIZES REAIS] ---
+# --- [INÍCIO DO MAPA REAL: COPIE EXATAMENTE ESTES NOMES E VALORES] ---
 ESTRATEGIA_MAPA = {
-    # 10 ESTRATÉGIAS QUE VOCÊ LISTOU
+    # ESTRATÉGIAS
     "SNIPER": {"dez": 15, "qtd": 10},
     "ESCUDO E ESPADA": {"dez": 15, "qtd": 12},
     "EQUILÍBRIO REAL": {"dez": 15, "qtd": 15},
@@ -43,14 +43,14 @@ ESTRATEGIA_MAPA = {
     "CERCO POR ELIMINAÇAO": {"dez": 15, "qtd": 25},
     "KADOSH PRESTIGE 2.0": {"dez": 20, "qtd": 10},
 
-    # SUAS 5 MATRIZES E POOLS ESPECÍFICOS
+    # MATRIZES (VALORES AJUSTADOS AO SEU POOL E REGRAS)
     "FECHAMENTO 18-14-15 (REDUÇÃO PROFISSIONAL)": {"dez": 15, "qtd": 12, "pool": 18},
     "FECHAMENTO 19-15-14 (INTERMEDIARIO)": {"dez": 15, "qtd": 18, "pool": 19},
     "FECHAMENTO 20-15-13 (COBERTURA AMPLA)": {"dez": 15, "qtd": 25, "pool": 20},
     "MATRIZ DIAMANTE (2x16 + 10x15)": {"dez": 15, "qtd": 12, "pool": 19},
     "MATRIZ CELULA (1x16 + 15x15)": {"dez": 15, "qtd": 16, "pool": 18}
 }
-# --- [FIM DA DEFINIÇÃO] ---
+# --- [FIM DO MAPA] ---
 def atualizar_dados_mestre(novos_resultados, modalidade="Lotofácil"):
     """
     FUNIL CENTRAL: Agora lê o backup como o dicionário que a IA exige. [cite: 3, 19]
@@ -1175,14 +1175,16 @@ with abas[0]:
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
         # 1. BUSCA OS DADOS DA ESTRATÉGIA SELECIONADA (Evita NameError)
         # --- [INÍCIO DA CORREÇÃO DE LOGICA] ---
-        # --- [CORREÇÃO DA LINHA 1180] ---
-        conf = ESTRATEGIA_MAPA.get(escolha, {"dez": 15, "qtd": 10})
+        # --- [CORREÇÃO DA LINHA 1179] ---
+        conf = ESTRATEGIA_MAPA.get(escolha, {"dez": 15, "qtd": 10, "pool": 15})
+        dezenas_por_jogo = conf["dez"]
+        quantidade_jogos = conf["qtd"]
+        # --- [FIM DA CORREÇÃO] ---
 
         # Aqui o sistema entende o pool que você quer
-        dezenas_por_jogo = conf.get("dez", 15)
-        quantidade_jogos = conf.get("qtd", 10)
+        # dezenas_por_jogo = conf.get("dez", 15)  <-- Linhas substituídas pela correção acima
+        # quantidade_jogos = conf.get("qtd", 10)
         pool_minimo = conf.get("pool", 15) # Garante que matrizes de 18 ou 19 usem o pool correto
-        # --- [FIM DA CORREÇÃO] ---
 
         # 2. SINCRONIZA O POOL (Busca nas variáveis REAIS do seu sistema)
         # Tenta primeiro o pool refinado pela IA, depois a matriz bruta
