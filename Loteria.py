@@ -32,11 +32,10 @@ def exibir_painel_logs():
     """
     Renderiza a tabela de log no Streamlit para visualização da harmonia do sistema.
     """
-    if 'logs_juiz' in st.session_state and st.session_state.logs_juiz: [cite: 21]
-        st.markdown("### 🏛️ Diário de Decisões do Juiz Kadosh") [cite: 21]
-        df_logs = pd.DataFrame(st.session_state.logs_juiz) [cite: 21]
-        st.table(df_logs.head(10)) # Mostra os últimos 10 eventos de elite [cite: 21]
-
+    if 'logs_juiz' in st.session_state and st.session_state.logs_juiz:
+        st.markdown("### 🏛️ Diário de Decisões do Juiz Kadosh")
+        df_logs = pd.DataFrame(st.session_state.logs_juiz)
+        st.table(df_logs.head(10))
 def atualizar_dados_mestre(novos_resultados):
     """
     Funil Central: Conecta o seu Backup JSON com as novas Inteligências.
