@@ -21,12 +21,15 @@ def registrar_log_kadosh(mensagem, tipo="info"):
     Cria uma tabela de logs persistente na sessão para mostrar as decisões do Juiz Superior.
     """
     if 'logs_juiz' not in st.session_state:
-        st.session_state.logs_juiz = [] [cite: 20]
+        st.session_state.logs_juiz = []
     
     import datetime
-    agora = datetime.datetime.now().strftime("%H:%M:%S") [cite: 20]
-    # Insere sempre no topo para você ver a última decisão primeiro
-    st.session_state.logs_juiz.insert(0, {"Hora": agora, "Mensagem": mensagem, "Tipo": tipo}) [cite: 20]
+    agora = datetime.datetime.now().strftime("%H:%M:%S")
+    # Garante que a lista não cresça infinitamente para não travar o navegador
+    if len(st.session_state.logs_juiz) > 100:
+        st.session_state.logs_juiz.pop()
+        
+    st.session_state.logs_juiz.insert(0, {"Hora": agora, "Mensagem": mensagem, "Tipo": tipo})
 
 def exibir_painel_logs():
     """
@@ -34,16 +37,29 @@ def exibir_painel_logs():
     """
     if 'logs_juiz' in st.session_state and st.session_state.logs_juiz:
         st.markdown("### 🏛️ Diário de Decisões do Juiz Kadosh")
+        import pandas as pd
         df_logs = pd.DataFrame(st.session_state.logs_juiz)
         st.table(df_logs.head(10))
+
 def atualizar_dados_mestre(novos_resultados):
     """
     Funil Central: Conecta o seu Backup JSON com as novas Inteligências.
+    LÓGICA SOBERANA: Limpa o backup ANTES de injetar na sessão.
     """
-    st.session_state.ultimo_res = novos_resultados [cite: 22]
-    # Aciona o Motor de Tendência assim que o backup é lido
-    analisar_tendencias_kadosh() [cite: 22]
-    registrar_log_kadosh("Inteligências atualizadas com novos resultados oficiais.") [cite: 22]
+    if isinstance(novos_resultados, list):
+        # FILTRO DE SEGURANÇA: Só deixa passar o que for lista de dezenas (mínimo 15)
+        # Isso impede que o erro 'n1 in conc' aconteça depois
+        dados_limpos = [res for res in novos_resultados if isinstance(res, list) and len(res) >= 15]
+        
+        if dados_limpos:
+            st.session_state.ultimo_res = dados_limpos
+            # Aciona o Motor de Tendência e o Juiz com dados já garantidos
+            analisar_tendencias_kadosh() 
+            registrar_log_kadosh(f"Backup Sincronizado: {len(dados_limpos)} jogos oficiais carregados.", "success")
+        else:
+            registrar_log_kadosh("Erro: Backup vazio ou em formato inválido.", "error")
+    else:
+        registrar_log_kadosh("Erro crítico: Dados do backup não são uma lista.", "error")
 
 # --- [FIM DA ATUALIZAÇÃO 2] ---
 
@@ -54,34 +70,49 @@ def analisar_tendencias_kadosh():
     Função Global que alimenta o Juiz Soberano com Bi-LSTM (Lógica de Memória) 
     e KDE (Densidade) baseada no histórico carregado no Backup. 
     """
+    # Verifica se a gaveta existe e se tem algo dentro
     if 'ultimo_res' not in st.session_state or not st.session_state.ultimo_res:
         return None
 
-    historico = st.session_state.ultimo_res [cite: 1]
+    from collections import Counter
+    historico = st.session_state.ultimo_res
     
     # --- LÓGICA BI-LSTM (MEMÓRIA DE SEQUÊNCIA) ---
-    # Analisa se os últimos resultados estão espelhando padrões anteriores [cite: 1, 2]
     def calculo_tendencia_sequencial(hist):
-        ultimos_3 = hist[-3:] if len(hist) >= 3 else hist [cite: 2]
-        frequencia_recidiva = Counter([n for jogo in ultimos_3 for n in jogo]) [cite: 2]
-        return {n: f/3 for n, f in frequencia_recidiva.items()} [cite: 2]
+        # Pega os 3 últimos, mas garante que são listas válidas
+        ultimos_3 = [j for j in hist[-3:] if isinstance(j, list)]
+        
+        # Extrai apenas números, ignorando qualquer lixo que venha no JSON
+        lista_numeros = []
+        for jogo in ultimos_3:
+            lista_numeros.extend([n for n in jogo if isinstance(n, (int, float))])
+            
+        frequencia_recidiva = Counter(lista_numeros)
+        divisor = len(ultimos_3) if len(ultimos_3) > 0 else 1
+        return {n: f/divisor for n, f in frequencia_recidiva.items()}
 
     # --- LÓGICA KDE (DENSIDADE DE CALOR DO VOLANTE) ---
-    # Mapeia quais zonas do volante 5x5 estão "quentes" ou "frias" [cite: 2]
     def mapa_calor_geografico(hist):
-        ultimos_10 = hist[-10:] if len(hist) >= 10 else hist [cite: 2, 3]
-        mapa = {i: 0 for i in range(1, 26)} [cite: 3]
+        # Pega os últimos 10, garantindo que são listas
+        ultimos_10 = [j for j in hist[-10:] if isinstance(j, list)]
+        mapa = {i: 0 for i in range(1, 26)}
+        
         for jogo in ultimos_10:
             for n in jogo:
-                if n in mapa: mapa[n] += 1 [cite: 3]
-        return mapa [cite: 3]
+                # Só soma se for um número de 1 a 25. Se for lixo, ignora.
+                if isinstance(n, (int, float)) and 1 <= n <= 25:
+                    mapa[int(n)] += 1
+        return mapa
 
-   # Armazena o conhecimento no State para o Juiz Soberano usar
-    st.session_state['memoria_kadosh'] = {
-        'tendencia_lstm': calculo_tendencia_sequencial(historico),
-        'mapa_calor_kde': mapa_calor_geografico(historico),
-        'ultimo_concurso': len(historico)
-    }
+    # Armazena o conhecimento blindado no State para o Juiz Soberano usar
+    try:
+        st.session_state['memoria_kadosh'] = {
+            'tendencia_lstm': calculo_tendencia_sequencial(historico),
+            'mapa_calor_kde': mapa_calor_geografico(historico),
+            'ultimo_concurso': len(historico)
+        }
+    except Exception as e:
+        registrar_log_kadosh(f"Erro no Motor de Tendência: {str(e)}", "error")
 # --- [FIM DA ATUALIZAÇÃO 3] ---
 
 # --- [INÍCIO DA ATUALIZAÇÃO 4: MÓDULO DE INTELIGÊNCIA BASE (SHANNON & BAYES)] ---
@@ -92,87 +123,98 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
     baseada em 7 camadas de filtros Kadosh.
     """
     if mod != "Lotofácil": 
-        return True [cite: 5]
-    
+        return True 
+
     # 1. Âncoras de Início e Fim (Simetria de borda)
     if not (jogo[0] in [1, 2, 3] and jogo[-1] in [23, 24, 25]): 
-        return False [cite: 5]
+        return False 
 
     # --- [CÁLCULO DE ENTROPIA DE SHANNON] ---
     import math
+    from collections import Counter
     def calcular_entropia(lista):
         if not lista: return 0
         freq = Counter(lista)
-        prob = [f/len(lista) for f in freq.values()]
+        total = len(lista)
+        prob = [f/total for f in freq.values()]
         return -sum(p * math.log2(p) for p in prob)
     
     entropia_valor = calcular_entropia(jogo)
-    # Equilíbrio ideal para Lotofácil: nem óbvio demais, nem impossível [cite: 6]
+    # Equilíbrio ideal para Lotofácil: nem óbvio demais, nem impossível
     if not (3.5 <= entropia_valor <= 4.5):
-        return False [cite: 6, 7]
+        return False 
 
-    # --- [INFERÊNCIA BAYESIANA (AFINIDADE CONDICIONAL)] ---
-    if 'ultimo_res' in st.session_state and st.session_state.ultimo_res is not None:
-        historico = st.session_state.ultimo_res
-        pontos_bayes = 0
-        for i in range(len(jogo)-1):
-            n1, n2 = jogo[i], jogo[i+1]
-            # P(B|A) - Probabilidade de n2 sair dado que n1 saiu [cite: 8]
-            vezes_n1 = sum(1 for conc in historico if n1 in conc)
-            vezes_ambos = sum(1 for conc in historico if n1 in conc and n2 in conc)
-            prob_condicional = (vezes_ambos / vezes_n1) if vezes_n1 > 0 else 0 [cite: 8, 9]
-            if prob_condicional > 0.40: 
-                pontos_bayes += 1
+    # --- [INFERÊNCIA BAYESIANA (AFINIDADE CONDICIONAL) - CORRIGIDA] ---
+    historico_bruto = st.session_state.get('ultimo_res', [])
+    
+    if isinstance(historico_bruto, list) and len(historico_bruto) > 0:
+        # LIMPEZA SOBERANA: Garante que 'conc' seja sempre uma LISTA de números
+        historico = [j for j in historico_bruto if isinstance(j, list)]
         
-        # Exige que o jogo tenha conexões históricas fortes em pelo menos 30% das dezenas [cite: 9]
-        if pontos_bayes < (len(jogo) * 0.3):
-            return False
+        if historico:
+            pontos_bayes = 0
+            for i in range(len(jogo)-1):
+                n1, n2 = jogo[i], jogo[i+1]
+                
+                # P(B|A) - Probabilidade de n2 sair dado que n1 saiu
+                # O 'in conc' agora está protegido porque 'conc' é garantidamente uma lista
+                vezes_n1 = sum(1 for conc in historico if n1 in conc)
+                vezes_ambos = sum(1 for conc in historico if n1 in conc and n2 in conc)
+                
+                prob_condicional = (vezes_ambos / vezes_n1) if vezes_n1 > 0 else 0 
+                if prob_condicional > 0.40: 
+                    pontos_bayes += 1
+            
+            # Exige que o jogo tenha conexões históricas fortes em pelo menos 30% das dezenas
+            if pontos_bayes < (len(jogo) * 0.3):
+                return False
 
     # --- [CALIBRAGEM GEOGRÁFICA E FILTROS TÉCNICOS] ---
-    q1, q2 = [1, 2, 3, 6, 7, 8, 11, 12, 13], [4, 5, 9, 10, 14, 15] [cite: 10]
-    q3, q4 = [16, 17, 21, 22], [18, 19, 20, 23, 24, 25] [cite: 10, 11]
+    q1, q2 = [1, 2, 3, 6, 7, 8, 11, 12, 13], [4, 5, 9, 10, 14, 15] 
+    q3, q4 = [16, 17, 21, 22], [18, 19, 20, 23, 24, 25] 
     
     distribuicao = [
         len([n for n in jogo if n in q1]), len([n for n in jogo if n in q2]),
         len([n for n in jogo if n in q3]), len([n for n in jogo if n in q4])
-    ] [cite: 11]
+    ] 
     
-    tamanho_pool_real = st.session_state.get('tamanho_pool_ativo', n_dez) [cite: 12]
+    # Busca o tamanho do pool real ou usa o padrão n_dez
+    tamanho_pool_real = st.session_state.get('tamanho_pool_ativo', n_dez) 
     
-    # Ajuste dinâmico de limites conforme o tamanho da matriz [cite: 12]
+    # Ajuste dinâmico de limites conforme o tamanho da matriz
     if tamanho_pool_real <= 18:
         limite_kadosh, folga_simetria = 7, 4
     elif tamanho_pool_real <= 21:
         limite_kadosh, folga_simetria = 8, 5
     else:
-        limite_kadosh, folga_simetria = 9, 6 [cite: 12]
+        limite_kadosh, folga_simetria = 9, 6 
 
     if any(q < 1 for q in distribuicao) or any(q > limite_kadosh for q in distribuicao):
-        return False [cite: 13]
+        return False 
     if (max(distribuicao) - min(distribuicao)) > folga_simetria:
-        return False [cite: 13]
+        return False 
     
-    # Salto Máximo, Pares, Fibonacci, Primos e Moldura [cite: 13, 14, 18]
+    # Salto Máximo
     for i in range(len(jogo)-1):
-        if (jogo[i+1] - jogo[i]) > 5: return False [cite: 13]
+        if (jogo[i+1] - jogo[i]) > 5: return False 
 
-    pares = len([n for n in jogo if n % 2 == 0])
+    # Filtros Matemáticos (Pares, Fibonacci, Primos, Soma)
     diff_n = n_dez - 15
-    if not ( (7 + int(diff_n*0.4)) <= pares <= (9 + int(diff_n*0.6)) ): return False [cite: 14]
+    pares = len([n for n in jogo if n % 2 == 0])
+    if not ( (7 + int(diff_n*0.4)) <= pares <= (9 + int(diff_n*0.6)) ): return False 
 
     fibo_ref = [1, 2, 3, 5, 8, 13, 21]
     fibo_count = len([n for n in jogo if n in fibo_ref])
-    if not (3 <= fibo_count <= 5 + int(diff_n*0.5)): return False [cite: 14]
+    if not (3 <= fibo_count <= 5 + int(diff_n*0.5)): return False 
 
-    # Filtros de Soma e Moldura (Simetria de Jogo) [cite: 18, 19]
     soma = sum(jogo)
     primos_list = [2,3,5,7,11,13,17,19,23]
-    moldura_list = [1,2,3,4,5,6,10,11,15,16,20,21,22,23,24,25]
-    
-    if not ( (165 + (diff_n * 12)) <= soma <= (215 + (diff_n * 14)) ): return False [cite: 18, 19]
-    if not ( (4 + int(diff_n * 0.5)) <= len([n for n in jogo if n in primos_list]) <= (7 + int(diff_n * 0.8)) ): return False [cite: 18]
+    if not ( (165 + (diff_n * 12)) <= soma <= (215 + (diff_n * 14)) ): return False 
+    if not ( (4 + int(diff_n * 0.5)) <= len([n for n in jogo if n in primos_list]) <= (7 + int(diff_n * 0.8)) ): return False 
 
-    if jogo_ja_saiu(jogo, mod): return False [cite: 19]
+    # Checa se o jogo já saiu (Evita repetição histórica exata)
+    if 'jogo_ja_saiu' in globals():
+        if jogo_ja_saiu(jogo, mod): return False 
         
     return True
 
