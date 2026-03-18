@@ -1254,7 +1254,7 @@ with abas[0]:
                 else:
                     html_jogo += f'<span style="color: white; margin: 2px;">{n:02d}</span> '
         
-             st.markdown(f"**JOGO {i+1:02d} | {jogo['tam']} DEZ:** {html_jogo} | ✨ {jogo['chance']}", unsafe_allow_html=True)
+            st.markdown(f"**JOGO {i+1:02d} | {jogo['tam']} DEZ:** {html_jogo} | ✨ {jogo['chance']}", unsafe_allow_html=True)
 
         # --- [BOTÃO DE SALVAMENTO: ENVIO PARA ABA 1] ---
         if st.button("💾 CONFIRMAR E ENVIAR PARA ABA 1"):
