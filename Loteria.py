@@ -76,13 +76,12 @@ def analisar_tendencias_kadosh():
                 if n in mapa: mapa[n] += 1 [cite: 3]
         return mapa [cite: 3]
 
-    # Armazena o conhecimento no State para o Juiz Soberano usar [cite: 3]
+   # Armazena o conhecimento no State para o Juiz Soberano usar
     st.session_state['memoria_kadosh'] = {
-        'tendencia_lstm': calculo_tendencia_sequencial(historico), [cite: 4]
-        'mapa_calor_kde': mapa_calor_geografico(historico), [cite: 4]
-        'ultimo_concurso': len(historico) [cite: 4]
+        'tendencia_lstm': calculo_tendencia_sequencial(historico),
+        'mapa_calor_kde': mapa_calor_geografico(historico),
+        'ultimo_concurso': len(historico)
     }
-
 # --- [FIM DA ATUALIZAÇÃO 3] ---
 
 # --- [INÍCIO DA ATUALIZAÇÃO 4: MÓDULO DE INTELIGÊNCIA BASE (SHANNON & BAYES)] ---
