@@ -1300,18 +1300,33 @@ with abas[1]:
             fixas_j = jogo.get('fixas_utilizadas', []) 
         
             # Cálculo de Custo Seguro (Busca no session_state com fallback para 0)
-            custo_j = st.session_state.custos.get(mod_f, {}).get(tam_j, 0.0)
+            # --- [CORREÇÃO DE SEGURANÇA: CÁLCULO DE CUSTO] ---
+            # Garantia total: acessamos 'custos' e mod_f com fallback para dicionário vazio
+            custos_temp = st.session_state.get('custos')
+            if custos_temp is None: custos_temp = {}
+            
+            custo_mod_ref = custos_temp.get(mod_f)
+            if custo_mod_ref is None: custo_mod_ref = {}
+            
+            # Busca o valor final. Se não achar o tamanho do jogo (tam_j), assume 0.0
+            custo_j = custo_mod_ref.get(tam_j, 0.0)
             t_gasto += float(custo_j)
-        
+            
             html_dez = ""
             sorteio = res_db.get(c_alvo, [])
-        
+            
             if sorteio:
                 acertos = len(set(dezenas_j) & set(sorteio))
             
-                # Busca de prêmios segura
-                premios_mod = st.session_state.premios.get(mod_f, {})
-                v_premio = float(premios_mod.get(str(acertos), 0.0))
+                # --- [CORREÇÃO DE SEGURANÇA: BUSCA DE PRÊMIOS] ---
+                premios_temp = st.session_state.get('premios')
+                if premios_temp is None: premios_temp = {}
+                
+                premios_mod_ref = premios_temp.get(mod_f)
+                if premios_mod_ref is None: premios_mod_ref = {}
+                
+                # Busca prêmio pelo número de acertos (convertido para string)
+                v_premio = float(premios_mod_ref.get(str(acertos), 0.0))
                 t_premio += v_premio 
             
                 for d in dezenas_j:
@@ -1342,8 +1357,13 @@ with abas[1]:
         c_fin2.metric("Prêmios Totais", f"R$ {t_premio:,.2f}")
     
         saldo = t_premio - t_gasto
-        # Correção do delta_color para o padrão do Streamlit (normal/inverse/off)
-        c_fin3.metric("Saldo Líquido", f"R$ {saldo:,.2f}", delta=f"R$ {saldo:,.2f}", delta_color="normal" if saldo >= 0 else "inverse")
+        # O delta precisa ser string formatada
+        c_fin3.metric(
+            "Saldo Líquido", 
+            f"R$ {saldo:,.2f}", 
+            delta=f"R$ {saldo:,.2f}", 
+            delta_color="normal" if saldo >= 0 else "inverse"
+        )
 
         if st.button("🗑️ LIMPAR TODOS OS JOGOS"):
             st.session_state.jogos_salvos = []
