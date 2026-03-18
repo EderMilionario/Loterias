@@ -25,11 +25,16 @@ def registrar_log_kadosh(mensagem, tipo="info"):
     
     import datetime
     agora = datetime.datetime.now().strftime("%H:%M:%S")
+    
     # Garante que a lista não cresça infinitamente para não travar o navegador
     if len(st.session_state.logs_juiz) > 100:
         st.session_state.logs_juiz.pop()
         
-    st.session_state.logs_juiz.insert(0, {"Hora": agora, "Mensagem": mensagem, "Tipo": tipo})
+    # Cores para o log ficar claro na sua cara (opcional, mas ajuda)
+    icones = {"info": "ℹ️", "success": "✅", "warning": "⚖️", "error": "❌"}
+    prefixo = icones.get(tipo, "🔹")
+    
+    st.session_state.logs_juiz.insert(0, {"Hora": agora, "Mensagem": f"{prefixo} {mensagem}", "Tipo": tipo})
 
 def exibir_painel_logs():
     """
@@ -39,7 +44,8 @@ def exibir_painel_logs():
         st.markdown("### 🏛️ Diário de Decisões do Juiz Kadosh")
         import pandas as pd
         df_logs = pd.DataFrame(st.session_state.logs_juiz)
-        st.table(df_logs.head(10))
+        # Exibe as 15 últimas decisões para você ver as trocas de dezenas
+        st.table(df_logs.head(15))
 
 def atualizar_dados_mestre(novos_resultados):
     """
@@ -48,19 +54,22 @@ def atualizar_dados_mestre(novos_resultados):
     """
     if isinstance(novos_resultados, list):
         # FILTRO DE SEGURANÇA: Só deixa passar o que for lista de dezenas (mínimo 15)
-        # Isso impede que o erro 'n1 in conc' aconteça depois
         dados_limpos = [res for res in novos_resultados if isinstance(res, list) and len(res) >= 15]
         
         if dados_limpos:
             st.session_state.ultimo_res = dados_limpos
+            
+            # --- [GARANTIA KADOSH: LIMPA MEMÓRIA ANTIGA] ---
+            if 'memoria_kadosh' in st.session_state:
+                del st.session_state['memoria_kadosh']
+            
             # Aciona o Motor de Tendência e o Juiz com dados já garantidos
             analisar_tendencias_kadosh() 
-            registrar_log_kadosh(f"Backup Sincronizado: {len(dados_limpos)} jogos oficiais carregados.", "success")
+            registrar_log_kadosh(f"Backup Sincronizado: {len(dados_limpos)} jogos oficiais. Juiz pronto para intervir no Pool.", "success")
         else:
             registrar_log_kadosh("Erro: Backup vazio ou em formato inválido.", "error")
     else:
         registrar_log_kadosh("Erro crítico: Dados do backup não são uma lista.", "error")
-
 # --- [FIM DA ATUALIZAÇÃO 2] ---
 
 # --- [INÍCIO DA ATUALIZAÇÃO 3: MOTOR DE TENDÊNCIA GLOBAL KADOSH] ---
@@ -1134,7 +1143,10 @@ with abas[0]:
                         if nova_dezena not in comb:
                             comb_ajustado = sorted([n if n != dezena_fraca else nova_dezena for n in comb])
                             if validar_kadosh_cirurgico(comb_ajustado, mod, tamanho_solicitado):
-                                registrar_log_kadosh(f"Ajuste Kadosh: {dezena_fraca} (Pool) → {nova_dezena} (Ciclo) para validar Simetria.")
+                                # --- AQUI ESTÁ A INFORMAÇÃO DETALHADA QUE VOCÊ QUERIA ---
+                                registrar_log_kadosh(f"⚖️ TROCA NO POOL: Saiu {dezena_fraca:02d} -> Entrou {nova_dezena:02d} (Backup) | Motivo: Simetria/Bayes", "warning")
+                                
+                                # --- AQUI O JOGO É ATUALIZADO NO LUGAR DO ANTERIOR ---
                                 comb = comb_ajustado
                                 passou = True
 
