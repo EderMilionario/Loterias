@@ -944,55 +944,55 @@ with abas[0]:
     st.markdown("---")
 
     c1, c2 = st.columns(2)
-   with c1:
-        # --- [CORREÇÃO DEFINITIVA: BLINDAGEM CONTRA ATTRIBUTEERROR] ---
+    with c1:
+         # --- [CORREÇÃO DEFINITIVA: BLINDAGEM CONTRA ATTRIBUTEERROR] ---
         
-        # 1. Recupera o dicionário global de custos de forma segura
-        custos_global = st.session_state.get('custos')
-        if custos_global is None:
-            custos_global = {}
+         # 1. Recupera o dicionário global de custos de forma segura
+         custos_global = st.session_state.get('custos')
+         if custos_global is None:
+             custos_global = {}
 
-        # 2. Recupera os custos da modalidade atual
-        # O segredo está aqui: se o retorno for None, o 'or {}' força a ser um dicionário
-        custos_mod = custos_global.get(mod) or {}
+         # 2. Recupera os custos da modalidade atual
+         # O segredo está aqui: se o retorno for None, o 'or {}' força a ser um dicionário
+         custos_mod = custos_global.get(mod) or {}
 
-        # 3. Agora extraímos as chaves. Se não houver chaves, aplicamos o fallback manual
-        # Isso elimina o erro 'AttributeError: NoneType has no attribute keys'
-        if isinstance(custos_mod, dict) and len(custos_mod) > 0:
-            opcoes_dez = list(custos_mod.keys())
-        else:
-            opcoes_dez = [15] if mod == "Lotofácil" else [6]
+         # 3. Agora extraímos as chaves. Se não houver chaves, aplicamos o fallback manual
+         # Isso elimina o erro 'AttributeError: NoneType has no attribute keys'
+         if isinstance(custos_mod, dict) and len(custos_mod) > 0:
+             opcoes_dez = list(custos_mod.keys())
+         else:
+             opcoes_dez = [15] if mod == "Lotofácil" else [6]
 
-        # --- [LÓGICA DE PREENCHIMENTO AUTOMÁTICO] ---
-        if info_fech:
-            if "DIAMANTE" in fe_escolhido: 
-                def_dez, def_qtd = 16, 2
-            elif "CÉLULA" in fe_escolhido: 
-                def_dez, def_qtd = 16, 1
-            else: 
-                def_dez = 15
-                def_qtd = 24 if "18-15-14" in fe_escolhido else 45
-        elif est_escolhida != "Personalizado" and mod == "Lotofácil":
-            # Uso do .get preventivo para o dicionário da estratégia
-            def_dez = info_est.get("dez", 15)
-            def_qtd = info_est.get("qtd", 10)
-        else:
-            # Seleção segura do valor padrão
-            def_dez = opcoes_dez[0]
-            def_qtd = 10
+         # --- [LÓGICA DE PREENCHIMENTO AUTOMÁTICO] ---
+         if info_fech:
+             if "DIAMANTE" in fe_escolhido: 
+                 def_dez, def_qtd = 16, 2
+             elif "CÉLULA" in fe_escolhido: 
+                 def_dez, def_qtd = 16, 1
+             else: 
+                 def_dez = 15
+                 def_qtd = 24 if "18-15-14" in fe_escolhido else 45
+         elif est_escolhida != "Personalizado" and mod == "Lotofácil":
+             # Uso do .get preventivo para o dicionário da estratégia
+             def_dez = info_est.get("dez", 15)
+             def_qtd = info_est.get("qtd", 10)
+         else:
+             # Seleção segura do valor padrão
+             def_dez = opcoes_dez[0]
+             def_qtd = 10
 
-        # --- [VALIDAÇÃO DO ÍNDICE] ---
-        # Garante que o selectbox não trave se o valor padrão não estiver na lista
-        try:
-            idx_padrao = opcoes_dez.index(def_dez)
-        except (ValueError, IndexError):
-            idx_padrao = 0
+         # --- [VALIDAÇÃO DO ÍNDICE] ---
+         # Garante que o selectbox não trave se o valor padrão não estiver na lista
+         try:
+             idx_padrao = opcoes_dez.index(def_dez)
+         except (ValueError, IndexError):
+             idx_padrao = 0
 
-        # --- [COMPONENTES DE INTERFACE] ---
-        n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao)
+         # --- [COMPONENTES DE INTERFACE] ---
+         n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao)
         
-        # Conversão forçada para int para evitar erro de float no number_input
-        qtd = st.number_input("Quantidade de Jogos", 1, 300, int(def_qtd))
+         # Conversão forçada para int para evitar erro de float no number_input
+         qtd = st.number_input("Quantidade de Jogos", 1, 300, int(def_qtd))
     with c2:
          # 1. Configuração de Limites por Modalidade
          limites_reais = {
