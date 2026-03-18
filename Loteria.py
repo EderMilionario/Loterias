@@ -790,10 +790,15 @@ if not st.session_state.get('auth', False):
             else: 
                 st.error("Senha incorreta!")
     st.stop()
+
 def mostrar_status_backup():
     # Verifica se as chaves existem no session_state para evitar erros de primeira execução
+    # Usamos .get() com fallback para garantir que sempre retorne um valor (lista ou dicionário)
     total_jogos = len(st.session_state.get('jogos_salvos', []))
-    total_res = sum(len(v) for v in st.session_state.get('ultimo_res', {}).values())
+    
+    # Adicionado tratamento para garantir que ultimo_res seja um dicionário antes de somar
+    ultimo_res_dict = st.session_state.get('ultimo_res', {})
+    total_res = sum(len(v) for v in ultimo_res_dict.values()) if ultimo_res_dict else 0
     
     st.markdown(f'''
         <div class="status-backup">
@@ -805,10 +810,22 @@ def mostrar_status_backup():
 
 st.title("📊 GESTÃO ESTRATÉGICA LOTERIAS")
 
-# --- CONEXÃO DO RADAR DE TOPO ---
-# Busca a base da Lotofácil para exibir o status de sincronização no cabeçalho
-res_loto_topo = st.session_state.ultimo_res.get("Lotofácil", {})
-ultimo_c_topo = max(res_loto_topo.keys(), key=int) if res_loto_topo else "Vazio"
+# --- CONEXÃO DO RADAR DE TOPO (CORREÇÃO CRÍTICA AQUI) ---
+# Em vez de st.session_state.ultimo_res, usamos st.session_state.get('ultimo_res', {})
+# Isso evita o erro "AttributeError" se a variável não existir no início.
+
+base_res = st.session_state.get('ultimo_res', {})
+res_loto_topo = base_res.get("Lotofácil", {})
+
+# Tentativa segura de pegar o último concurso
+try:
+    if res_loto_topo:
+        # Garante que as chaves sejam tratadas como inteiros para achar o maior real
+        ultimo_c_topo = max(res_loto_topo.keys(), key=int)
+    else:
+        ultimo_c_topo = "Vazio"
+except Exception:
+    ultimo_c_topo = "Aguardando Sinc..."
 
 st.info(f"📡 **RADAR KADOSH:** Base sincronizada até o Concurso **{ultimo_c_topo}**")
 
