@@ -1309,7 +1309,7 @@ with abas[1]:
             if custo_mod_ref is None: custo_mod_ref = {}
             
             # Busca o valor final. Se não achar o tamanho do jogo (tam_j), assume 0.0
-            custo_j = custo_mod_ref.get(tam_j, 0.0)
+            custos_temp.get(mod_f) or {}
             t_gasto += float(custo_j)
             
             html_dez = ""
