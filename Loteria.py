@@ -1022,7 +1022,7 @@ with abas[0]:
             renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {})) 
 
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
-    # --- [INÍCIO DA ATUALIZAÇÃO 5: NOVO MOTOR SOBERANO KADOSH] ---
+    # --- [INÍCIO DA ATUALIZAÇÃO 5: NOVO MOTOR SOBERANO KADOSH CORRIGIDO] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
         # 1. Garante que a Matriz de Afinidade está carregada para o PSO
         matriz_af = st.session_state.get('matriz_ativa')
@@ -1037,44 +1037,58 @@ with abas[0]:
         
             # 2. Função interna com autoridade de JUIZ (PSO + CYCLE LAG + LOGS)
             def processar_geracao(tamanho_solicitado, quantidade_pedida):
-                sucessos, tentativas = 0, 0
-            
-                # [AÇÃO DO JUIZ: CYCLE LAG] - Identifica dezenas atrasadas no seu backup
+                # --- [O JUIZ LÊ O BACKUP POR CONTA PRÓPRIA - LÓGICA SOBERANA] ---
                 dezenas_ciclo = []
-                if mod == "Lotofácil" and 'ultimo_res' in st.session_state:
-                    ultimos = st.session_state.ultimo_res[-3:] if len(st.session_state.ultimo_res) >= 3 else []
-                    sorteadas = set([n for jogo in ultimos for n in jogo])
-                    dezenas_ciclo = [d for d in range(1, 26) if d not in sorteadas]
+                if mod == "Lotofácil":
+                    backup_dados = st.session_state.get('ultimo_res', [])
+                    if isinstance(backup_dados, list) and len(backup_dados) > 0:
+                        try:
+                            # Extrai e limpa os dados do backup (Igual sua IA original faz)
+                            historico_limpo = []
+                            for j_bruto in backup_dados:
+                                if isinstance(j_bruto, list) and len(j_bruto) >= 15:
+                                    historico_limpo.append(j_bruto[:15])
+                        
+                            # Se tiver histórico, o Juiz decide as dezenas em atraso (últimos 3 jogos)
+                            if len(historico_limpo) >= 3:
+                                ultimos_3 = historico_limpo[-3:]
+                                sorteadas_recentes = set(n for jogo in ultimos_3 for n in jogo)
+                                dezenas_ciclo = [d for d in range(1, 26) if d not in sorteadas_recentes]
+                                registrar_log_kadosh(f"Juiz Kadosh: {len(dezenas_ciclo)} dezenas de atraso lidas do Backup.")
+                        except:
+                            dezenas_ciclo = []
+                # --- [FIM DA LEITURA INDEPENDENTE] ---
 
+                sucessos, tentativas = 0, 0
                 while sucessos < quantidade_pedida and tentativas < 20000:
                     tentativas += 1
                     jogo_em_construcao = list(fixas_final) # Respeita suas fixas
-                
+            
                     # [LÓGICA PSO: Otimização de Enxame]
                     pool_trabalho = [n for n in pool if n not in jogo_em_construcao]
-                
+            
                     while len(jogo_em_construcao) < tamanho_solicitado and pool_trabalho:
                         pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
                         opcoes = list(pesos_dict.keys())
                         probabilidades = list(pesos_dict.values())
-                    
+                
                         escolha = random.choices(opcoes, weights=probabilidades, k=1)[0]
                         jogo_em_construcao.append(escolha)
                         pool_trabalho.remove(escolha)
-                
+            
                     comb = sorted(jogo_em_construcao)
-                
+            
                     if any(set(comb) == set(existente['n']) for existente in novos):
                         continue
-                
+            
                     # [O JUIZ EM AÇÃO: VALIDAÇÃO E TROCA DINÂMICA]
                     passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
-                    
+                
                     if not passou and mod == "Lotofácil" and len(dezenas_ciclo) > 0:
                         # O Juiz expulsa a dezena central e testa uma do Ciclo de Atraso (PSO)
                         dezena_fraca = comb[len(comb)//2] 
                         nova_dezena = random.choice(dezenas_ciclo)
-                    
+                
                         if nova_dezena not in comb:
                             comb_ajustado = sorted([n if n != dezena_fraca else nova_dezena for n in comb])
                             if validar_kadosh_cirurgico(comb_ajustado, mod, tamanho_solicitado):
@@ -1084,7 +1098,6 @@ with abas[0]:
 
                     if passou:
                         tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
-                        # Mantém a simetria com sua Aba 1 usando as chaves: n, mod, tam, est
                         novos.append({
                             "mod": mod, "n": comb, "tam": tamanho_solicitado, 
                             "fixas_utilizadas": list(fixas_final),
@@ -1092,7 +1105,7 @@ with abas[0]:
                         })
                         sucessos += 1
 
-            # 3. Execução respeitando as suas Matrizes e Estratégias (Diamante, Marreta, etc.)
+            # 3. Execução das Estratégias
             if fe_escolhido != "Nenhum":
                 if "DIAMANTE" in fe_escolhido:
                     processar_geracao(16, 2); processar_geracao(15, 10)
@@ -1106,10 +1119,11 @@ with abas[0]:
                 processar_geracao(15, 36)
             else:
                 processar_geracao(n_dez, qtd)
-        
+    
             st.session_state.jogos_gerados = novos
             st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com autoridade do Juiz!")
             st.rerun()
+    # --- [FIM DA ATUALIZAÇÃO 5] ---
     # --- [INÍCIO DA ATUALIZAÇÃO 6: EXIBIÇÃO E SALVAMENTO PARA ABA 1] ---
 
     # 1. Mostra os Jogos e os Logs do Juiz na tela
