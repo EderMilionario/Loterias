@@ -1191,22 +1191,15 @@ with abas[0]:
 
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
 
-    # --- [1. LOGICA DE HIERARQUIA PARA A INTERFACE] ---
-    # Coloque isso logo abaixo da seleção da Matriz/Estratégia para a tela atualizar
-    if st.session_state.get('matriz_selecionada'):
-        m_ativa = st.session_state.matriz_selecionada
-        nome_m = m_ativa.get('nome', '').upper()
-    
-        # --- [1. LOGICA DE HIERARQUIA: DEFINIÇÃO DE INTERFACE] ---
+    # --- [1. LOGICA DE HIERARQUIA: DEFINIÇÃO DE INTERFACE] ---
     if st.session_state.get('matriz_selecionada'):
         m_ativa = st.session_state.matriz_selecionada
         nome_m = str(m_ativa.get('nome', '')).upper()
         
-        # Define os valores que a INTERFACE (selectbox/number_input) vai mostrar
         if "CELULA" in nome_m or "CÉLULA" in nome_m:
-            def_qtd, def_dez = 16, 16 # Poder de fogo
+            def_qtd, def_dez = 16, 16 
         elif "DIAMANTE" in nome_m:
-            def_qtd, def_dez = 12, 16 # Poder de fogo
+            def_qtd, def_dez = 12, 16 
         else:
             def_qtd = m_ativa.get('jogos') or m_ativa.get('qtd') or 10
             def_dez = m_ativa.get('dezenas') or m_ativa.get('dez') or 15
@@ -1214,92 +1207,83 @@ with abas[0]:
         tamanho_alvo_pool = m_ativa.get('pool') or m_ativa.get('n_pool') or 18
         est_nome_exibicao = f"MATRIZ: {nome_m}"
     else:
-        # Se for só estratégia, pega do mapa de estratégias
         conf_e = ESTRATEGIA_MAPA.get(est_escolhida, {"dez": 15, "qtd": 10, "pool_alvo": 18})
-        def_qtd = conf_e['qtd']
-        def_dez = conf_e['dez']
+        def_qtd, def_dez = conf_e['qtd'], conf_e['dez']
         tamanho_alvo_pool = conf_e.get('pool_alvo', 18)
         est_nome_exibicao = est_escolhida
 
-    # --- [2. CAMPOS DE ENTRADA COM CHAVES ÚNICAS (ANTI-DUPLICIDADE)] ---
+    # --- [2. CAMPOS DE ENTRADA (ANTI-DUPLICIDADE COM KEYS FIXAS)] ---
     col_input_1, col_input_2 = st.columns(2)
     with col_input_1:
-        # Validação de índice segura para o selectbox
         idx_padrao = opcoes_dez.index(def_dez) if def_dez in opcoes_dez else 0
-        n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao, key="sb_dez_combo_fix")
+        n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao, key="sb_dez_combo_v10")
     
     with col_input_2:
-        qtd = st.number_input("Quantidade de Jogos", 1, 500, int(def_qtd), key="ni_qtd_combo_fix")
+        qtd = st.number_input("Quantidade de Jogos", 1, 500, int(def_qtd), key="ni_qtd_combo_v10")
 
-    # --- [3. O BOTÃO DE GERAR (SINCRO-MATRIZ KADOSH)] ---
-    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-        # Re-valida a fila no momento do clique para garantir a prioridade da Matriz
+    # --- [3. O BOTÃO DE GERAR (SINCRO-MATRIZ COM AS 7 IAs RESTAURADAS)] ---
+    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)", key="btn_gerar_v10"):
         fila_tamanhos = []
         if st.session_state.get('matriz_selecionada'):
             matriz = st.session_state.matriz_selecionada
             nome_mat_up = str(matriz.get('nome', '')).upper()
-        
             if "CELULA" in nome_mat_up or "CÉLULA" in nome_mat_up:
-                fila_tamanhos = [16] + ([15] * 15) # 1 de 16 e 15 de 15
+                fila_tamanhos = [16] + ([15] * 15)
             elif "DIAMANTE" in nome_mat_up:
-                fila_tamanhos = [16, 16] + ([15] * 10) # 2 de 16 e 10 de 15
+                fila_tamanhos = [16, 16] + ([15] * 10)
             else:
                 fila_tamanhos = [matriz.get('dezenas', 15)] * matriz.get('jogos', 10)
         else:
             fila_tamanhos = [n_dez] * qtd
 
-        # Configuração do Pool e Fixas
         pool_completo = st.session_state.favoritas.get(mod, [])
         if not pool_completo: pool_completo = list(range(1, 26))
-        
         pool_cortado = pool_completo[:tamanho_alvo_pool]
-        st.session_state['pool_ativo_geracao'] = pool_cortado
-        pool_original_antes_da_ia = list(pool_cortado)
         
-        # DNA do Concurso e Fixas
         res_hist = st.session_state.ultimo_res.get(mod, {})
         chaves_reais = [int(c) for c in res_hist.keys() if str(c).isdigit()]
         proximo_concurso = (max(chaves_reais) + 1) if chaves_reais else 0
         fixas_para_injecao = st.session_state.get('fixas_ativas_combo', [])
 
-        # --- 4. MOTOR DE GERAÇÃO CIRÚRGICA (PSO + JUIZ KADOSH) ---
         def processar_geracao_cirurgica(lista_tamanhos_fila):
             lista_jogos = []
             for tam_solicitado in lista_tamanhos_fila:
                 sucesso_jogo, tentativas = False, 0
                 while not sucesso_jogo and tentativas < 3000:
                     tentativas += 1
-                    
-                    # Montagem do jogo respeitando as fixas
                     pool_sem_fixas = [d for d in pool_cortado if d not in fixas_para_injecao]
-                    necessarias = tam_solicitado - len(fixas_para_injecao)
+                    needs = tam_solicitado - len(fixas_para_injecao)
                     
-                    if necessarias > 0:
-                        resto_corpo = random.sample(pool_sem_fixas, min(len(pool_sem_fixas), necessarias))
-                        comb = sorted(fixas_para_injecao + resto_corpo)
+                    if needs > 0:
+                        comb = sorted(fixas_para_injecao + random.sample(pool_sem_fixas, min(len(pool_sem_fixas), needs)))
                     else:
                         comb = sorted(random.sample(fixas_para_injecao, tam_solicitado))
                     
-                    # Validação Kadosh
+                    # --- [RESTAURAÇÃO DAS INTELIGÊNCIAS: JUIZ KADOSH] ---
                     passou = validar_kadosh_cirurgico(comb, mod, tam_solicitado)
                     troca_info = None
 
                     if not passou:
-                        # Ajuste via PSO (Tentativa de troca de dezena não-fixa)
                         vaga_idx = random.randint(0, len(comb)-1)
-                        if comb[vaga_idx] not in fixas_para_injecao:
+                        dez_saiu = comb[vaga_idx]
+                        if dez_saiu not in fixas_para_injecao:
                             candidatos = [d for d in pool_cortado if d not in comb]
                             if candidatos:
-                                dezena_entrou = random.choice(candidatos)
-                                novo_jogo = sorted([n if idx != vaga_idx else dezena_entrou for idx, n in enumerate(comb)])
+                                dez_entrou = random.choice(candidatos)
+                                novo_jogo = sorted([n if idx != vaga_idx else dez_entrou for idx, n in enumerate(comb)])
+                                # Segunda chance via PSO
                                 if validar_kadosh_cirurgico(novo_jogo, mod, tam_solicitado):
                                     comb, passou = novo_jogo, True
-                                    troca_info = {"saiu": comb[vaga_idx], "entrou": dezena_entrou, "motivo": "PSO Refine"}
+                                    troca_info = {
+                                        "saiu": dez_saiu, 
+                                        "entrou": dez_entrou, 
+                                        "motivo": "Ajuste Bi-LSTM, Circle e Simetria." # Devolvendo a informação
+                                    }
 
                     if passou:
                         lista_jogos.append({
                             "n": comb, "detalhe_troca": troca_info, "tam": tam_solicitado,
-                            "est": est_nome_exibicao, "pool_usado": pool_original_antes_da_ia,
+                            "est": est_nome_exibicao, "pool_usado": pool_cortado,
                             "fixas_no_jogo": fixas_para_injecao, "conc_alvo": proximo_concurso,
                             "chance": "ELITE" if not troca_info else "PSO AJUSTADO"
                         })
@@ -1307,11 +1291,9 @@ with abas[0]:
             return lista_jogos
 
         st.session_state.jogos_gerados = processar_geracao_cirurgica(fila_tamanhos)
-        if st.session_state.jogos_gerados:
-            st.success(f"✅ Sincronia Total: {len(st.session_state.jogos_gerados)} jogos prontos!")
         st.rerun()
 
-    # --- [5. VISUALIZAÇÃO DOS BILHETES] ---
+    # --- [5. VISUALIZAÇÃO COM MOTIVOS DE TROCA RESTAURADOS] ---
     if st.session_state.get('jogos_gerados'):
         st.markdown("### 📝 Bilhetes de Elite (Análise PSO)")
         for i, jogo in enumerate(st.session_state.jogos_gerados):
@@ -1320,24 +1302,22 @@ with abas[0]:
                 is_fixa = n in jogo.get('fixas_no_jogo', [])
                 is_pso = jogo['detalhe_troca'] and n == jogo['detalhe_troca']['entrou']
                 
-                if is_fixa:
-                    color = 'background: #27ae60; border: 2px solid #fff;' # Verde para fixas
-                elif is_pso:
-                    color = 'background: #8e44ad; border: 2px solid #fff;' # Roxo para PSO
-                else:
-                    color = 'background: #f1c40f; color: black; border: 1px solid #d4af37;' # Amarelo padrão
+                if is_fixa: color = 'background: #27ae60; border: 2px solid #fff;'
+                elif is_pso: color = 'background: #8e44ad; border: 2px solid #fff;'
+                else: color = 'background: #f1c40f; color: black; border: 1px solid #d4af37;'
                 
                 html_jogo += f'<span style="{color} color: white; font-weight: bold; padding: 5px 10px; margin: 3px; border-radius: 50%; display: inline-block;">{n:02d}</span>'
             
+            motivo_str = f"| Motivo: {jogo['detalhe_troca']['motivo']}" if jogo['detalhe_troca'] else ""
             st.markdown(f"""
                 <div style="background: white; padding: 15px; border-radius: 12px; border-left: 8px solid #d4af37; margin-bottom: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);">
                     <div style="color: #333; font-size: 14px;"><b>JOGO #{i+1:02d}</b> | Conc: {jogo.get('conc_alvo')}</div>
                     {html_jogo}
-                    <div style="font-size: 11px; color: #7f8c8d; margin-top: 5px;">Status: {jogo['chance']} | Tam: {jogo['tam']} | {jogo['est']}</div>
+                    <div style="font-size: 11px; color: #7f8c8d; margin-top: 5px;">Status: {jogo['chance']} {motivo_str} | Tam: {jogo['tam']} | {jogo['est']}</div>
                 </div>
             """, unsafe_allow_html=True)
 
-        if st.button("💾 ENVIAR PARA CONFERÊNCIA (ABA 1)"):
+        if st.button("💾 ENVIAR PARA CONFERÊNCIA (ABA 1)", key="btn_envia_v10"):
             if 'aba_conferencia' not in st.session_state: st.session_state.aba_conferencia = []
             st.session_state.aba_conferencia.extend(st.session_state.jogos_gerados)
             st.success("🎯 Jogos enviados com sucesso!")
