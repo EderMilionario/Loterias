@@ -1037,45 +1037,45 @@ with abas[0]:
         # --- [BOTÕES DE COMANDO IA] ---
         col_btn1, col_btn2 = st.columns(2)
 
-         with col_btn1:
-             if mod == "Lotofácil":
-                 # BOTÃO 1: IA Neural Ranking 1000
-                 if st.button("💎 ATIVAR IA (RANKING 1000)"):
-                     with st.spinner("Treinando Redes Neurais..."):
-                         pool_ia = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool)
-                         if pool_ia:
-                             st.session_state.favoritas[mod] = pool_ia
-                             st.success(f"🚀 IA configurada para {tamanho_alvo_pool} dezenas!")
-                             st.rerun()
+        with col_btn1:
+            if mod == "Lotofácil":
+                # BOTÃO 1: IA Neural Ranking 1000
+                if st.button("💎 ATIVAR IA (RANKING 1000)"):
+                    with st.spinner("Treinando Redes Neurais..."):
+                        pool_ia = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool)
+                        if pool_ia:
+                            st.session_state.favoritas[mod] = pool_ia
+                            st.success(f"🚀 IA configurada para {tamanho_alvo_pool} dezenas!")
+                            st.rerun()
 
              if st.button("✅ SELECIONAR TODO VOLANTE"):
                  st.session_state.favoritas[mod] = list(range(1, max_v_bt + 1))
                  st.rerun()
                 
-         with col_btn2:
-             if mod == "Lotofácil":
-                 # BOTÃO 3: Pool Inteligente (Freq + Atraso)
-                 if st.button("🧠 POOL INTELIGENTE"):
-                     stats_mod = st.session_state.analise_stats.get(mod, {})
-                     if stats_mod:
-                         dezenas_ordenadas = sorted(stats_mod.keys(), key=lambda x: stats_mod[x]['score'], reverse=True)
-                         st.session_state.favoritas[mod] = sorted(dezenas_ordenadas[:tamanho_alvo_pool])
-                         st.success(f"🎯 Pool Inteligente: {tamanho_alvo_pool} dezenas!")
-                         st.rerun()
+        with col_btn2:
+            if mod == "Lotofácil":
+                # BOTÃO 3: Pool Inteligente (Freq + Atraso)
+                if st.button("🧠 POOL INTELIGENTE"):
+                    stats_mod = st.session_state.analise_stats.get(mod, {})
+                    if stats_mod:
+                        dezenas_ordenadas = sorted(stats_mod.keys(), key=lambda x: stats_mod[x]['score'], reverse=True)
+                        st.session_state.favoritas[mod] = sorted(dezenas_ordenadas[:tamanho_alvo_pool])
+                        st.success(f"🎯 Pool Inteligente: {tamanho_alvo_pool} dezenas!")
+                        st.rerun()
          
-                 # BOTÃO 4: Refinar (Híbrido Afinidade + IA)
-                 if st.button("💎 REFINAR POOL (ELITE)"):
-                     pool_base = st.session_state.favoritas.get(mod, [])
-                     if len(pool_base) < tamanho_alvo_pool:
-                         pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
+                # BOTÃO 4: Refinar (Híbrido Afinidade + IA)
+                if st.button("💎 REFINAR POOL (ELITE)"):
+                    pool_base = st.session_state.favoritas.get(mod, [])
+                    if len(pool_base) < tamanho_alvo_pool:
+                        pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
          
-                     matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
-                     scores_ia = st.session_state.get('scores_predicao', {})
+                    matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
+                    scores_ia = st.session_state.get('scores_predicao', {})
          
-                     pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, scores_ia)
-                     st.session_state.favoritas[mod] = pool_refinado
-                     st.success(f"🎯 Refinado com Inteligência Híbrida!")
-                     st.rerun()
+                    pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, scores_ia)
+                    st.session_state.favoritas[mod] = pool_refinado
+                    st.success(f"🎯 Refinado com Inteligência Híbrida!")
+                    st.rerun()
 
          # --- SELEÇÃO MANUAL E VISUALIZAÇÃO ---
          st.markdown("---")
