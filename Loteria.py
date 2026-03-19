@@ -973,51 +973,45 @@ with abas[0]:
 
     c1, c2 = st.columns(2)
     with c1:
-        # --- [CORREÇÃO: RECUPERAÇÃO DE CUSTOS SEGURA] ---
-        # Garantimos que custos_mod seja SEMPRE um dicionário, nunca None.
-        custos_global = st.session_state.get('custos', {})
-        if not custos_global:
-            # Se o state sumir, forçamos o padrão Lotofácil para o app não travar
-            custos_mod = {15: 3.0, 16: 48.0}
-        else:
-            # Busca a modalidade atual. Se não existir, usa o padrão de 15 dezenas.
-            custos_mod = custos_global.get(mod, {15: 3.0})
+       # --- [CORREÇÃO: RECUPERAÇÃO DE CUSTOS SEGURA] ---
+       custos_global = st.session_state.get('custos', {})
+       if not custos_global:
+           custos_mod = {15: 3.0, 16: 48.0}
+       else:
+           custos_mod = custos_global.get(mod, {15: 3.0})
 
-        # Extrai as chaves (ex: [15, 16]) para o selectbox
-        opcoes_dez = list(custos_mod.keys())
+           opcoes_dez = list(custos_mod.keys())
 
-        # --- [PRIORIDADE DE QUANTIDADE] ---
-        if st.session_state.get('matriz_selecionada'):
-            m_v = st.session_state.matriz_selecionada
-            # Se for Diamante ou Célula, força o poder de fogo, senão pega o valor da matriz
-            nome_m = str(m_v.get('nome', '')).upper()
-            if "DIAMANTE" in nome_m: 
-                def_qtd = 12
-            elif "CÉLULA" in nome_m or "CELULA" in nome_m: 
-                def_qtd = 16
-            else:
-                def_qtd = m_v.get('jogos') or m_v.get('qtd') or 10
-        else:
-            # Se não tem matriz, usa o padrão da estratégia
-            def_qtd = ESTRATEGIA_MAPA.get(est_escolhida, {}).get('qtd', 10)
+       # --- [LOGICA DE HIERARQUIA UNIFICADA - SEM ERRO DE SINTAXE] ---
+       if st.session_state.get('matriz_selecionada'):
+           m_v = st.session_state.matriz_selecionada
+           nome_m = str(m_v.get('nome', '')).upper()
+            
+           if "DIAMANTE" in nome_m: 
+               def_dez, def_qtd = 16, 12
+           elif "CÉLULA" in nome_m or "CELULA" in nome_m: 
+               def_dez, def_qtd = 16, 16
+           else:
+               def_dez = m_v.get('dezenas') or m_v.get('dez') or 15
+               def_qtd = m_v.get('jogos') or m_v.get('qtd') or 10
 
-        # O campo de entrada AGORA vai obedecer a matriz
-        qtd = st.number_input("Quantidade de Jogos", 1, 500, int(def_qtd))
-    
-        # Se não houver matriz, a estratégia assume o comando
-        elif est_escolhida != "Personalizado" and mod == "Lotofácil":
-            info_est = ESTRATEGIA_MAPA.get(est_escolhida, {})
-            def_dez = info_est.get("dez", 15)
-            def_qtd = info_est.get("qtd", 10)
+       elif est_escolhida != "Personalizado" and mod == "Lotofácil":
+           info_est = ESTRATEGIA_MAPA.get(est_escolhida, {})
+           def_dez = info_est.get("dez", 15)
+           def_qtd = info_est.get("qtd", 10)
+        
+       else:
+           def_dez, def_qtd = 15, 10
 
-        # Validação de índice para o selectbox (Evita erro de índice fora da lista)
-        try: 
-            idx_padrao = opcoes_dez.index(def_dez)
-        except: 
-            idx_padrao = 0
+       # --- [INTERFACE FINAL - APÓS TODA A LÓGICA] ---
+       try: 
+           idx_padrao = opcoes_dez.index(def_dez)
+       except: 
+           idx_padrao = 0
 
-        n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao)
-        qtd = st.number_input("Quantidade de Jogos", 1, 500, int(def_qtd))
+       n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao)
+       # APENAS UM number_input AQUI NO FINAL
+       qtd = st.number_input("Quantidade de Jogos", 1, 500, int(def_qtd)) 
 
     with c2:
         # --- [CORREÇÃO: HIERARQUIA ABSOLUTA DA MATRIZ] ---
