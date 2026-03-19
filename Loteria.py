@@ -1249,7 +1249,7 @@ with abas[0]:
                 fila_tamanhos = [16] + ([15] * 15)
             elif "DIAMANTE" in n_up:
                 fila_tamanhos = [16, 16] + ([15] * 10)
-           else:
+            else:
                 fila_tamanhos = [int(def_dez)] * int(def_qtd)
         else:
             # Se for automático, usa def_dez/def_qtd da estratégia. Se não, usa o input.
