@@ -894,21 +894,15 @@ with abas[0]:
     
     mostrar_status_backup()
     
-    # Seletor de Modalidade com reset inteligente
-    # --- [CORREÇÃO DE SEGURANÇA: INICIALIZAÇÃO] ---
-    # Garante que as chaves básicas existam para não travar o selectbox
+    # Inicialização de custos e resultados
     if 'custos' not in st.session_state:
-        st.session_state.custos = {"Lotofácil": 3.0} # Valor padrão de segurança
+        st.session_state.custos = {"Lotofácil": {15: 3.0, 16: 48.0}} 
 
     if 'ultimo_res' not in st.session_state:
         st.session_state.ultimo_res = {}
 
-    if 'analise_stats' not in st.session_state:
-        st.session_state.analise_stats = {}
-
     # --- [SELEÇÃO DE MODALIDADE] ---
-    # Usamos .get() e list() de forma segura
-    lista_loterias = list(st.session_state.get('custos', {"Lotofácil": 3.0}).keys())
+    lista_loterias = list(st.session_state.get('custos', {"Lotofácil": {}}).keys())
     mod = st.selectbox("Modalidade", lista_loterias, key="mod_selector")
     
     if 'ultima_mod_selecionada' not in st.session_state:
@@ -919,155 +913,126 @@ with abas[0]:
         st.session_state.ultima_mod_selecionada = mod
         st.rerun()
 
-    # --- [ATIVAÇÃO DO MOTOR DE CÁLCULO] ---
-    # Buscamos de forma segura para não dar erro se o dicionário estiver vazio
+    # --- [MOTOR DE CÁLCULO STATS] ---
     res_loto = st.session_state.get('ultimo_res', {}).get(mod, {})
     
-    # Só processa se houver histórico no banco
     if res_loto and len(res_loto) >= 1:
-        # Garantimos que os IDs dos concursos sejam tratados como inteiros para ordenar certo
         conc_ordenados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
+        # --- CARIMBO DO FUTURO (CONCURSO ALVO) ---
+        proximo_concurso_alvo = int(conc_ordenados[0]) + 1
+        st.session_state['conc_alvo_atual'] = proximo_concurso_alvo
+        
         contagem = Counter()
-        amostra = conc_ordenados[:50] # Analisa tendência dos últimos 50 sorteios
+        amostra = conc_ordenados[:50]
     
         for c in amostra:
             for n in res_loto[c]: 
                 contagem[n] += 1
         
         stats_temp = {}
-        # Definição do limite de dezenas por volante
-        if mod == "Lotofácil": 
-            max_dezenas = 25
-        elif mod in ["Quina", "Mega-Sena"]: 
-            max_dezenas = 80 if mod == "Quina" else 60
-        elif mod in ["Dupla-Sena", "+Milionária"]: 
-            max_dezenas = 50
-        else: 
-            max_dezenas = 80
-
+        max_dezenas = 25 if mod == "Lotofácil" else 60 # Simplificado para o exemplo
         for n in range(1, max_dezenas + 1):
             atraso_n = 0
             for c in conc_ordenados:
-                if n not in res_loto[c]: 
-                    atraso_n += 1
-                else: 
-                    break
-            # O Score Kadosh equilibra quem sai muito com quem está "maduro" para sair
+                if n not in res_loto[c]: atraso_n += 1
+                else: break
             stats_temp[n] = {'score': contagem[n] + (atraso_n * 0.8)}
     
-        # Salva no estado da sessão de forma segura
         st.session_state.analise_stats[mod] = stats_temp
     else:
-        st.info("💡 Sistema aguardando carregamento de dados (Backup ou Manual).")
+        st.session_state['conc_alvo_atual'] = 0
+        st.info("💡 Sistema aguardando carregamento de dados.")
 
-    # --- [INTERFACE DE ESTRATÉGIAS] ---
+    # --- [INTERFACE DE ESTRATÉGIAS E MATRIZES] ---
     col_est1, col_est2 = st.columns(2)
     with col_est1:
         if mod == "Lotofácil":
             est_escolhida = st.selectbox("💎 ESTRATÉGIA KADOSH", list(ESTRATEGIA_MAPA.keys()))
             est_info = ESTRATEGIA_MAPA[est_escolhida]
             st.progress(est_info["peso"])
-            qtd_total_est = est_info.get("qtd", 0) + est_info.get("qtd_15", 0) + est_info.get("qtd_16", 0)
-            st.markdown(f"🎯 **Probabilidade:** {est_info['prob']} | 📦 **Volume:** {qtd_total_est} jogos")
         else:
             est_escolhida = "Personalizado"
             
     with col_est2:
         if mod == "Lotofácil":
+            # Aqui garantimos que a Matriz seja salva no session_state para o motor de geração ler
             fe_escolhido = st.selectbox("📐 MODO FECHAMENTO (MATRIZ)", list(MATRIZES_FECHAMENTO.keys()))
             if fe_escolhido != "Nenhum":
-                fe_info = MATRIZES_FECHAMENTO[fe_escolhido]
-                st.progress(fe_info["peso"])
-                st.markdown(f"📐 **Garantia:** {fe_info['prob']} | 🧬 **Pool:** {fe_info['n_pool']} dezenas")
+                info_fech = MATRIZES_FECHAMENTO[fe_escolhido]
+                st.session_state['matriz_selecionada'] = info_fech # SALVA A MATRIZ COMO GENERAL
+                st.progress(info_fech["peso"])
+                st.markdown(f"📐 **Garantia:** {info_fech['prob']} | 🧬 **Pool:** {info_fech['n_pool']} dezenas")
             else:
+                st.session_state['matriz_selecionada'] = None
                 st.markdown("<br><br>", unsafe_allow_html=True)
         else:
             fe_escolhido = "Nenhum"
+            st.session_state['matriz_selecionada'] = None
 
-    # Preparação das variáveis de configuração
-    info_fech = MATRIZES_FECHAMENTO.get(fe_escolhido) if mod == "Lotofácil" else None
-    info_est = ESTRATEGIA_MAPA.get(est_escolhida) if mod == "Lotofácil" else ESTRATEGIA_MAPA["Personalizado"]
-    
     st.markdown("---")
 
     c1, c2 = st.columns(2)
     with c1:
-         # --- [CORREÇÃO DEFINITIVA: BLINDAGEM CONTRA ATTRIBUTEERROR] ---
-        
-         # 1. Recupera o dicionário global de custos de forma segura
-         custos_global = st.session_state.get('custos')
-         if custos_global is None:
-             custos_global = {}
+        # RECUPERAÇÃO DE CUSTOS SEGURA
+        custos_mod = st.session_state.get('custos', {}).get(mod) or {15: 3.0}
+        opcoes_dez = list(custos_mod.keys())
 
-         # 2. Recupera os custos da modalidade atual
-         # O segredo está aqui: se o retorno for None, o 'or {}' força a ser um dicionário
-         custos_mod = custos_global.get(mod) or {}
-
-         # 3. Agora extraímos as chaves. Se não houver chaves, aplicamos o fallback manual
-         # Isso elimina o erro 'AttributeError: NoneType has no attribute keys'
-         if isinstance(custos_mod, dict) and len(custos_mod) > 0:
-             opcoes_dez = list(custos_mod.keys())
-         else:
-             opcoes_dez = [15] if mod == "Lotofácil" else [6]
-
-         # --- [LÓGICA DE PREENCHIMENTO AUTOMÁTICO] ---
-         if info_fech:
-             if "DIAMANTE" in fe_escolhido: 
-                 def_dez, def_qtd = 16, 2
-             elif "CÉLULA" in fe_escolhido: 
-                 def_dez, def_qtd = 16, 1
-             else: 
-                 def_dez = 15
-                 def_qtd = 24 if "18-15-14" in fe_escolhido else 45
-         elif est_escolhida != "Personalizado" and mod == "Lotofácil":
-             # Uso do .get preventivo para o dicionário da estratégia
-             def_dez = info_est.get("dez", 15)
-             def_qtd = info_est.get("qtd", 10)
-         else:
-             # Seleção segura do valor padrão
-             def_dez = opcoes_dez[0]
-             def_qtd = 10
-
-         # --- [VALIDAÇÃO DO ÍNDICE] ---
-         # Garante que o selectbox não trave se o valor padrão não estiver na lista
-         try:
-             idx_padrao = opcoes_dez.index(def_dez)
-         except (ValueError, IndexError):
-             idx_padrao = 0
-
-         # --- [COMPONENTES DE INTERFACE] ---
-         n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao)
-        
-         # Conversão forçada para int para evitar erro de float no number_input
-         qtd = st.number_input("Quantidade de Jogos", 1, 300, int(def_qtd))
-    with c2:
-         # 1. Configuração de Limites por Modalidade
-         limites_reais = {
-             "Lotofácil": 25,
-             "Mega-Sena": 60,
-             "Quina": 80,
-             "Dupla-Sena": 50,
-             "+Milionária": 50
-         }
-         max_v_bt = limites_reais.get(mod, 60)
-        
-         # 2. Identificação do Tamanho Alvo do Pool (Motor de Decisão)
-         tamanhos_detectados = [18] # Mínimo padrão
-         if mod == "Lotofácil":
-             # Checa Estratégia
-             if "A MARRETA" in est_escolhida: tamanhos_detectados.append(22)
-             elif "PRESTIGE 20" in est_escolhida: tamanhos_detectados.append(20)
-             elif "ELITE KADOSH" in est_escolhida: tamanhos_detectados.append(19)
+        # --- [A HIERARQUIA DEFINITIVA: MATRIZ MANDA NA ESTRATÉGIA] ---
+        # Se houver matriz, ela define os valores padrão iniciais
+        if st.session_state.get('matriz_selecionada'):
+            m_ativa = st.session_state.matriz_selecionada
+            nome_m = m_ativa.get('nome', '').upper()
             
-             # Checa Matriz (Sobrepõe se for maior)
-             if fe_escolhido != "Nenhum":
-                 info_fe = MATRIZES_FECHAMENTO.get(fe_escolhido, {})
-                 tamanhos_detectados.append(info_fe.get("n_pool", 18))
+            if "DIAMANTE" in nome_m: 
+                def_dez, def_qtd = 16, 12 # Poder de fogo real
+            elif "CÉLULA" in nome_m: 
+                def_dez, def_qtd = 16, 16 # Poder de fogo real
+            else:
+                def_dez = m_ativa.get('dezenas', 15)
+                def_qtd = m_ativa.get('jogos', 10)
+        
+        # Se não houver matriz, a estratégia assume o comando
+        elif est_escolhida != "Personalizado" and mod == "Lotofácil":
+            info_est = ESTRATEGIA_MAPA.get(est_escolhida, {})
+            def_dez = info_est.get("dez", 15)
+            def_qtd = info_est.get("qtd", 10)
+        else:
+            def_dez, def_qtd = 15, 10
 
-         tamanho_alvo_pool = max(tamanhos_detectados)
-         st.session_state['tamanho_pool_ativo'] = tamanho_alvo_pool # Sincroniza com filtros
+        # Validação de índice para o selectbox
+        try: idx_padrao = opcoes_dez.index(def_dez)
+        except: idx_padrao = 0
 
-         st.markdown(f"🛠️ **CONFIGURAÇÃO ATIVA:** Pool travado em **{tamanho_alvo_pool}** dezenas.")
+        n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao)
+        qtd = st.number_input("Quantidade de Jogos", 1, 500, int(def_qtd))
+
+    with c2:
+        # --- [SINCRONIA DO POOL COM AS FIXAS] ---
+        # O Pool agora olha para a Matriz primeiro
+        tamanhos_pool = [18]
+        if st.session_state.get('matriz_selecionada'):
+            tamanhos_pool.append(st.session_state.matriz_selecionada.get('n_pool', 18))
+        
+        if mod == "Lotofácil":
+            if "A MARRETA" in est_escolhida: tamanhos_pool.append(22)
+            elif "PRESTIGE 20" in est_escolhida: tamanhos_pool.append(20)
+
+        tamanho_alvo_pool = max(tamanhos_pool)
+        st.session_state['tamanho_pool_ativo'] = tamanho_alvo_pool
+        
+        # Exibição do Status de Espera (Prevenindo o "Verde" precoce)
+        conc_alvo = st.session_state.get('conc_alvo_atual', 0)
+        st.markdown(f"""
+        <div style="background: #f1f2f6; padding: 15px; border-radius: 10px; border-left: 5px solid #2ecc71;">
+            <b style="color: #2f3640;">🎯 FOCO: CONCURSO {conc_alvo}</b><br>
+            <small>Pool travado em {tamanho_alvo_pool} dezenas para este alvo.</small>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # ESPAÇO PARA AS FIXAS (Aparecerão aqui e no carimbo do jogo)
+        fixas_selecionadas = st.session_state.get('dezenas_fixas', {}).get(mod, [])
+        if fixas_selecionadas:
+            st.markdown(f"📌 **Fixas Ativas ({len(fixas_selecionadas)}):** {sorted(fixas_selecionadas)}")
 
          # --- [BOTÕES DE COMANDO IA] ---
          col_btn1, col_btn2 = st.columns(2)
@@ -1151,22 +1116,58 @@ with abas[0]:
              st.markdown("---")
              modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
     
+             # --- [SINCRO-KADOSH: GESTÃO DE FIXAS E INTELIGÊNCIA DE SCORE] ---
              fixas_final = []
+             conc_alvo = st.session_state.get('conc_alvo_atual', 0)
+
              if modo_fixa == "Manual":
                  # Proteção: multiselect de fixas só aparece se houver dezenas no pool
-                 fixas_final = st.multiselect("📌 CRAVAR DEZENAS (FIXAS):", options=pool)
+                 fixas_final = st.multiselect(
+                     f"📌 CRAVAR DEZENAS (FIXAS) - CONCURSO {conc_alvo}:", 
+                     options=pool,
+                     help="As dezenas fixas serão mantidas em todos os jogos gerados."
+                 )
              elif modo_fixa == "IA Automática (Score)":
-                 qtd_auto = st.slider("Qtd de Cravadas:", 1, 10, 6)
-                 # Verifica se a análise de stats existe para não quebrar
-                 if mod in st.session_state.get('analise_stats', {}):
-                     stats = st.session_state.analise_stats[mod]
-                     # Ordena as dezenas do Pool pelo Score da IA
-                     melhores_ia = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
-                     fixas_final = melhores_ia[:qtd_auto]
+                 # Slider de controle para a IA
+                 qtd_auto = st.slider("Qtd de Cravadas (IA):", 1, 10, 6)
+    
+                 # Verifica se a análise de stats existe para não quebrar (Garantia de Simetria)
+                 stats_ia = st.session_state.get('analise_stats', {}).get(mod, {})
+    
+                 if stats_ia and pool:
+                     # A IA ordena as dezenas do Pool pelo Score Kadosh (Frequência + Atraso)
+                     # Quem tem o maior Score é considerado "Maduro" para sair no Concurso Alvo
+                     melhores_ia = sorted(
+                         [n for n in pool], 
+                         key=lambda x: stats_ia.get(x, {}).get('score', 0), 
+                         reverse=True
+                     )
+                     fixas_final = sorted(melhores_ia[:qtd_auto])
+        
                      if fixas_final:
-                         st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
-                     else:
-                         st.info("💡 Selecione dezenas no Pool para a IA analisar.")
+                         st.markdown(f"""
+                         <div style="background: #1e272e; padding: 10px; border-radius: 8px; border-left: 5px solid #8e44ad; margin-bottom: 10px;">
+                             <span style="color: #d2dae2; font-size: 13px;">💎 <b>IA KADOSH CRAVOU (Score):</b></span><br>
+                             <span style="color: #f1c40f; font-family: monospace; font-size: 16px;"><b>{', '.join(f"{d:02d}" for d in fixas_final)}</b></span>
+                             <div style="font-size: 10px; color: #7f8c8d;">Foco exclusivo no Concurso {conc_alvo}</div>
+                         </div>
+                         """, unsafe_allow_html=True)
+                 else:
+                     st.info("💡 Selecione dezenas no Pool para a IA analisar o Score.")
+
+             # --- [SINCRONIZAÇÃO DEFINITIVA PARA A ABA 1] ---
+             # Salvamos as fixas de forma estruturada para que o Motor de Geração e a Aba 1 enxerguem
+             if 'config_geracao' not in st.session_state:
+                 st.session_state.config_geracao = {}
+
+             st.session_state.config_geracao[mod] = {
+                 "fixas": fixas_final,
+                 "conc_alvo": conc_alvo,
+                 "modo": modo_fixa
+             }
+
+             # Variável de apoio para o motor de geração (Poder de Fogo)
+             st.session_state['fixas_ativas_combo'] = fixas_final
     
              # Renderiza o Heatmap passando os resultados de forma segura
              ult_res_map = st.session_state.get('ultimo_res', {}).get(mod, {})
@@ -1177,25 +1178,28 @@ with abas[0]:
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
         # 1. Sincronização Absoluta: Prioriza Matriz, usa Estratégia para Pesos
         conf = ESTRATEGIA_MAPA.get(est_escolhida, {"dez": 15, "qtd": 10, "pool_alvo": 18})
-        
+    
         # --- AJUSTE DE HIERARQUIA: CRIAÇÃO DA FILA DE PRODUÇÃO ---
         fila_tamanhos = []
-        
+    
         # Se houver matriz selecionada, ela manda na QUANTIDADE e no TAMANHO (Poder de Fogo)
         if st.session_state.get('matriz_selecionada'):
             matriz = st.session_state.matriz_selecionada
-            
+            nome_mat_up = matriz.get('nome', '').upper()
+        
             # Lógica para Matrizes Híbridas (Celular e Diamante)
-            if "CELULA" in matriz.get('nome', '').upper():
+            if "CELULA" in nome_mat_up or "CÉLULA" in nome_mat_up:
                 fila_tamanhos = [16] + ([15] * 15)  # 1 de 16 e 15 de 15 (Total 16 jogos)
-            elif "DIAMANTE" in matriz.get('nome', '').upper():
+            elif "DIAMANTE" in nome_mat_up:
                 fila_tamanhos = [16, 16] + ([15] * 10) # 2 de 16 e 10 de 15 (Total 12 jogos)
             else:
-                # Matrizes Normais (Ex: 20-15-13)
-                fila_tamanhos = [matriz['dezenas']] * matriz['jogos']
-            
-            tamanho_alvo_pool = matriz['pool']
-            est_nome_exibicao = f"{matriz['nome']}"
+                # Matrizes Normais (Ex: 20-15-13) - Buscando chaves flexíveis do seu mapa
+                qtd_m = matriz.get('jogos') or matriz.get('qtd') or 10
+                dez_m = matriz.get('dezenas') or matriz.get('dez') or 15
+                fila_tamanhos = [dez_m] * qtd_m
+        
+            tamanho_alvo_pool = matriz.get('pool') or matriz.get('n_pool') or 18
+            est_nome_exibicao = f"{matriz.get('nome', 'MATRIZ')}"
         else:
             # Se for só estratégia, segue o padrão fixo do mapa
             fila_tamanhos = [conf['dez']] * conf['qtd']
@@ -1206,15 +1210,18 @@ with abas[0]:
         pool_completo = st.session_state.favoritas.get(mod, [])
         if not pool_completo:
             pool_completo = list(range(1, 26))
-            
+        
         pool_cortado = pool_completo[:tamanho_alvo_pool]
         st.session_state['pool_ativo_geracao'] = pool_cortado
         pool_original_antes_da_ia = list(pool_cortado)
 
-        # --- AJUSTE DE CONCURSO: CARIMBO PARA CONFERÊNCIA FUTURA ---
+        # --- AJUSTE DE CONCURSO E FIXAS: CAPTURA DO DNA ---
         res_hist = st.session_state.ultimo_res.get(mod, {})
         chaves_reais = [int(c) for c in res_hist.keys() if str(c).isdigit()]
         proximo_concurso = (max(chaves_reais) + 1) if chaves_reais else 0
+    
+        # Captura as fixas (IA ou Manual) que definimos no bloco anterior
+        fixas_para_injecao = st.session_state.get('fixas_ativas_combo', [])
 
         # 3. Definição das IAs de Apoio
         dezenas_ciclo = []
@@ -1228,36 +1235,46 @@ with abas[0]:
         # 4. Processamento com Motor PSO e 7 IAs (O JUIZ SUPREMO)
         def processar_geracao_cirurgica(lista_tamanhos_fila):
             lista_jogos = []
-            
-            # Agora o loop percorre a fila de tamanhos da Matriz (Poder de Fogo)
+        
             for tam_solicitado in lista_tamanhos_fila:
                 sucesso_jogo, tentativas = False, 0
                 while not sucesso_jogo and tentativas < 3000:
                     tentativas += 1
-                    comb = sorted(random.sample(pool_cortado, tam_solicitado))
-                    
+                
+                    # Garante que as fixas estejam no jogo antes de completar com o pool
+                    pool_sem_fixas = [d for d in pool_cortado if d not in fixas_para_injecao]
+                    necessarias = tam_solicitado - len(fixas_para_injecao)
+                
+                    if necessarias > 0:
+                        resto_corpo = random.sample(pool_sem_fixas, necessarias)
+                        comb = sorted(fixas_para_injecao + resto_corpo)
+                    else:
+                        comb = sorted(random.sample(fixas_para_injecao, tam_solicitado))
+                
                     # O Juiz valida conforme o comportamento da Estratégia
                     passou = validar_kadosh_cirurgico(comb, mod, tam_solicitado)
                     troca_info = None
 
                     if not passou:
+                        # Tenta ajuste fino via PSO (Juiz 2)
                         vaga_idx = random.randint(0, len(comb)-1)
                         dezena_saiu = comb[vaga_idx]
-                        candidatos = [d for d in pool_cortado if d not in comb]
-                        
-                        if candidatos:
-                            dezena_entrou = random.choice(candidatos) 
-                            novo_jogo = sorted([n if n != dezena_saiu else dezena_entrou for n in comb])
+                    
+                        # PSO não pode remover uma DEZENA FIXA
+                        if dezena_saiu not in fixas_para_injecao:
+                            candidatos = [d for d in pool_cortado if d not in comb]
+                            if candidatos:
+                                dezena_entrou = random.choice(candidatos) 
+                                novo_jogo = sorted([n if n != dezena_saiu else dezena_entrou for n in comb])
                             
-                            if validar_kadosh_cirurgico(novo_jogo, mod, tam_solicitado):
-                                comb = novo_jogo
-                                passou = True
-                                troca_info = {
-                                    "saiu": dezena_saiu, 
-                                    "entrou": dezena_entrou,
-                                    "motivo": f"O Juiz 2 removeu a {dezena_saiu:02d} e inseriu a {dezena_entrou:02d} para ajustar Bi-LSTM, Circle e Simetria."
-                                }
-                                registrar_log_kadosh(f"🔄 Juiz 2 (PSO): Substituiu {dezena_saiu:02d} por {dezena_entrou:02d}", "info")
+                                if validar_kadosh_cirurgico(novo_jogo, mod, tam_solicitado):
+                                    comb = novo_jogo
+                                    passou = True
+                                    troca_info = {
+                                        "saiu": dezena_saiu, 
+                                        "entrou": dezena_entrou,
+                                        "motivo": "Ajuste Bi-LSTM, Circle e Simetria."
+                                    }
 
                     if passou:
                         jogo_final = {
@@ -1266,7 +1283,8 @@ with abas[0]:
                             "tam": tam_solicitado,
                             "est": est_nome_exibicao,
                             "pool_usado": pool_original_antes_da_ia,
-                            "conc_alvo": proximo_concurso, # CARIMBO DE SEGURANÇA
+                            "fixas_no_jogo": fixas_para_injecao, # ENVIA PARA ABA 1
+                            "conc_alvo": proximo_concurso,       # TRAVA O VERDE NA ABA 1
                             "chance": "ELITE" if not troca_info else "AJUSTADO PELO PSO"
                         }
                         lista_jogos.append(jogo_final)
@@ -1276,30 +1294,33 @@ with abas[0]:
 
         # Execução Final e Persistência
         st.session_state.jogos_gerados = processar_geracao_cirurgica(fila_tamanhos)
-        
+    
         if not st.session_state.jogos_gerados:
-            st.error("⚠️ O Juiz e o PSO não conseguiram validar jogos. Verifique o Pool das Operárias.")
+            st.error("⚠️ O Juiz e o PSO não conseguiram validar jogos. Verifique o Pool.")
         else:
-            registrar_log_kadosh(f"Sucesso: {len(st.session_state.jogos_gerados)} jogos (Combo Ativo)", "success")
             st.success(f"✅ Sincronia Total: {len(st.session_state.jogos_gerados)} jogos prontos!")
-        
+    
         st.rerun()
 
     # --- [VISUALIZAÇÃO COM DESTAQUE DE CORES] ---
     if st.session_state.get('jogos_gerados'):
         st.markdown("### 📝 Bilhetes de Elite (Análise PSO)")
-        
+    
         for i, jogo in enumerate(st.session_state.jogos_gerados):
             with st.container():
                 html_jogo = ""
                 for n in jogo['n']:
+                    # Destaque para Fixas (Borda Branca/Diferenciada)
+                    is_fixa = n in jogo.get('fixas_no_jogo', [])
                     is_pso = jogo['detalhe_troca'] and n == jogo['detalhe_troca']['entrou']
-                    
-                    if is_pso:
-                        html_jogo += f'<span style="background: #8e44ad; color: white; font-weight: bold; padding: 5px 10px; margin: 3px; border-radius: 50%; display: inline-block; border: 2px solid #fff; box-shadow: 0 0 10px #8e44ad;">{n:02d}</span>'
+                
+                    if is_fixa:
+                        html_jogo += f'<span style="background: #27ae60; color: white; font-weight: bold; padding: 5px 10px; margin: 3px; border-radius: 50%; display: inline-block; border: 2px solid #fff;">{n:02d}</span>'
+                    elif is_pso:
+                        html_jogo += f'<span style="background: #8e44ad; color: white; font-weight: bold; padding: 5px 10px; margin: 3px; border-radius: 50%; display: inline-block; border: 2px solid #fff;">{n:02d}</span>'
                     else:
                         html_jogo += f'<span style="background: #f1c40f; color: black; font-weight: bold; padding: 5px 10px; margin: 3px; border-radius: 50%; display: inline-block; border: 1px solid #d4af37;">{n:02d}</span>'
-                
+            
                 st.markdown(f"""
                 <div style="background: white; padding: 15px; border-radius: 12px; border-left: 8px solid #d4af37; margin-bottom: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);">
                     <div style="color: #333; font-size: 16px;"><b>JOGO #{i+1:02d}</b> | Conc. Alvo: {jogo.get('conc_alvo')}</div>
@@ -1308,16 +1329,12 @@ with abas[0]:
                 </div>
                 """, unsafe_allow_html=True)
 
-                if jogo['detalhe_troca']:
-                    st.info(f"⚖️ **Por que trocou?** {jogo['detalhe_troca']['motivo']}")
-
-        # --- [BOTÃO DE SALVAMENTO PARA ABA 1] ---
         if st.button("💾 ENVIAR PARA CONFERÊNCIA (ABA 1)"):
             if 'aba_conferencia' not in st.session_state:
                 st.session_state.aba_conferencia = []
-            
+        
             st.session_state.aba_conferencia.extend(st.session_state.jogos_gerados)
-            st.success(f"🎯 {len(st.session_state.jogos_gerados)} jogos salvos com sucesso na Aba de Conferência!")
+            st.success(f"🎯 {len(st.session_state.jogos_gerados)} jogos enviados!")
 with abas[1]:
     mostrar_status_backup() 
     st.header("🔍 Painel de Conferência (Sincro-Kadosh)")
@@ -1348,20 +1365,31 @@ with abas[1]:
         # --- 3. PERFORMANCE DO POOL (ANÁLISE DE CERCO PSO) ---
         ultimo_j = jogos_para_conferir[-1]
         pool_origem = ultimo_j.get('pool_usado', [])
+        conc_alvo_pool = ultimo_j.get('conc_alvo', 0)
         
         if pool_origem:
             st.markdown(f"### 🎯 EFICIÊNCIA DO POOL (JUIZ 2)")
-            if res_db:
-                res_alvo = res_db.get(ultimo_concurso_str, [])
-                if res_alvo:
-                    acertos_p = sum(1 for d in pool_origem if d in res_alvo)
-                    h_pool = '<div style="background: #ffffff; padding: 15px; border-radius: 12px; border: 2px solid #d4af37; margin-bottom: 20px; box-shadow: 2px 2px 10px rgba(0,0,0,0.05);">'
-                    h_pool += f'<b style="color: #1a1a1a;">Análise do Pool (Último Conc. {ultimo_concurso_str}):</b><br><br>'
-                    for d in sorted(pool_origem):
-                        cor_p = "background-color: #27ae60; color: white; border: 1px solid #1e8449;" if d in res_alvo else "background-color: #f1f2f6; color: #636e72; border: 1px solid #d1d1d1;"
-                        h_pool += f'<span style="display: inline-block; width: 28px; height: 28px; line-height: 28px; text-align: center; border-radius: 50%; margin: 3px; font-size: 12px; font-weight: bold; {cor_p}">{d:02d}</span>'
-                    h_pool += f'<br><br><b style="color: #2c3e50;">📊 ACERTOS NO POOL: {acertos_p} de {len(res_alvo)} sorteados.</b></div>'
-                    st.markdown(h_pool, unsafe_allow_html=True)
+            
+            # AJUSTE: O Pool só brilha se o sorteio alvo já estiver no Banco de Dados
+            if res_db and ultimo_concurso_num >= conc_alvo_pool:
+                res_alvo = res_db.get(str(conc_alvo_pool), res_db.get(ultimo_concurso_str, []))
+                acertos_p = sum(1 for d in pool_origem if d in res_alvo)
+                
+                h_pool = '<div style="background: #ffffff; padding: 15px; border-radius: 12px; border: 2px solid #d4af37; margin-bottom: 20px; box-shadow: 2px 2px 10px rgba(0,0,0,0.05);">'
+                h_pool += f'<b style="color: #1a1a1a;">Análise do Pool (Conc. {conc_alvo_pool}):</b><br><br>'
+                for d in sorted(pool_origem):
+                    cor_p = "background-color: #27ae60; color: white; border: 1px solid #1e8449;" if d in res_alvo else "background-color: #f1f2f6; color: #636e72; border: 1px solid #d1d1d1;"
+                    h_pool += f'<span style="display: inline-block; width: 28px; height: 28px; line-height: 28px; text-align: center; border-radius: 50%; margin: 3px; font-size: 12px; font-weight: bold; {cor_p}">{d:02d}</span>'
+                h_pool += f'<br><br><b style="color: #2c3e50;">📊 ACERTOS NO POOL: {acertos_p} de {len(res_alvo)} sorteados.</b></div>'
+                st.markdown(h_pool, unsafe_allow_html=True)
+            else:
+                # MODO ESPERA DO POOL
+                h_pool = '<div style="background: #f8f9fa; padding: 15px; border-radius: 12px; border: 1px dashed #bdc3c7; margin-bottom: 20px;">'
+                h_pool += f'<b style="color: #7f8c8d;">⏳ Pool em espera para o Concurso {conc_alvo_pool}...</b><br><br>'
+                for d in sorted(pool_origem):
+                    h_pool += f'<span style="display: inline-block; width: 28px; height: 28px; line-height: 28px; text-align: center; border-radius: 50%; margin: 3px; font-size: 12px; color: #bdc3c7; border: 1px solid #dfe6e9;">{d:02d}</span>'
+                h_pool += '</div>'
+                st.markdown(h_pool, unsafe_allow_html=True)
 
         # --- 4. CONFERÊNCIA DE BILHETES ---
         st.markdown("---")
@@ -1372,16 +1400,16 @@ with abas[1]:
         for i, jogo in enumerate(jogos_para_conferir):
             dezenas_j = jogo.get('n', [])
             tam_j = jogo.get('tam', 15)
-            # Carimbo de concurso que criamos no motor
             conc_do_bilhete = jogo.get('conc_alvo', 0)
-            fixas_matriz = st.session_state.get('matriz_selecionada', {}).get('fixas', [])
+            # Puxa as fixas do DNA do jogo gerado
+            fixas_no_bilhete = jogo.get('fixas_no_jogo', [])
             
-            # DETERMINAÇÃO DO SORTEIO ALVO PARA ESTE BILHETE ESPECÍFICO
-            # Se o bilhete tem um concurso alvo, buscamos ele. Se não tiver, comparamos com o último disponível.
-            c_alvo_str = str(conc_do_bilhete) if conc_do_bilhete > 0 else ultimo_concurso_str
-            sorteio = res_db.get(c_alvo_str, [])
+            # DETERMINAÇÃO DO SORTEIO ALVO
+            sorteio = []
+            if conc_do_bilhete > 0 and str(conc_do_bilhete) in res_db:
+                sorteio = res_db.get(str(conc_do_bilhete), [])
             
-            # VACINA DE CUSTO (Sempre soma o custo, pois o bilhete foi gerado/pago)
+            # CUSTO
             custo_j = 0.0
             custos_dic = st.session_state.get('custos', {}).get(mod_f, {})
             if isinstance(custos_dic, dict):
@@ -1392,7 +1420,7 @@ with abas[1]:
             v_premio = 0.0
             html_dez = ""
             
-            # SÓ ATIVA CONFERÊNCIA SE O SORTEIO JÁ EXISTIR NO BANCO
+            # SÓ ATIVA CONFERÊNCIA SE O SORTEIO EXISTIR
             if sorteio:
                 acertos = len(set(dezenas_j) & set(sorteio))
                 premios_dic = st.session_state.get('premios', {}).get(mod_f, {})
@@ -1403,24 +1431,27 @@ with abas[1]:
                 for d in dezenas_j:
                     is_sorteada = d in sorteio
                     is_pso = jogo.get('detalhe_troca') and d == jogo['detalhe_troca']['entrou']
-                    is_fixa = d in fixas_matriz
+                    is_fixa = d in fixas_no_bilhete
                     
-                    borda = "3px solid #00d2ff" if is_pso else ("2px solid #d4af37" if is_fixa else "1px solid #dfe6e9")
+                    # Estilo dinâmico: Prioridade Fixa > PSO > Normal
+                    borda = "3px solid #27ae60" if is_fixa else ("3px solid #00d2ff" if is_pso else "1px solid #dfe6e9")
                     bg = "#27ae60" if is_sorteada else "#f8f9fa"
                     txt = "white" if is_sorteada else "#2d3436"
-                    sombra = "box-shadow: 0 0 8px #00d2ff;" if (is_pso and is_sorteada) else ""
+                    sombra = "box-shadow: 0 0 8px rgba(39, 174, 96, 0.5);" if (is_fixa and is_sorteada) else ""
+                    
                     html_dez += f'<span style="background:{bg}; color:{txt}; border:{borda}; {sombra} padding: 4px 8px; border-radius: 6px; margin: 2px; display: inline-block; font-weight: bold; font-family: monospace;">{d:02d}</span>'
                 
                 res_msg = f"<b style='color: #27ae60;'>🎯 {acertos} ACERTOS</b> | <b style='color: #1a1a1a;'>💰 R$ {v_premio:,.2f}</b>"
             else:
-                # MODO AGUARDANDO (Sem cores de acerto)
+                # MODO AGUARDANDO
                 for d in dezenas_j:
                     is_pso = jogo.get('detalhe_troca') and d == jogo['detalhe_troca']['entrou']
-                    borda = "3px solid #00d2ff" if is_pso else "1px solid #dfe6e9"
+                    is_fixa = d in fixas_no_bilhete
+                    borda = "2px solid #27ae60" if is_fixa else ("2px solid #00d2ff" if is_pso else "1px solid #dfe6e9")
                     html_dez += f'<span style="background:#f8f9fa; color:#2d3436; border:{borda}; padding: 4px 8px; border-radius: 6px; margin: 2px; display: inline-block; font-family: monospace;">{d:02d}</span>'
                 res_msg = f"<span style='color: #636e72;'>⏳ Aguardando Sorteio {conc_do_bilhete}...</span>"
 
-            # CARD DO JOGO (Mantendo sua estrutura intacta)
+            # CARD DO JOGO
             st.markdown(f"""
             <div style="border-left: 10px solid #d4af37; padding: 15px; background: white; border-radius: 15px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
