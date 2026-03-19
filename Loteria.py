@@ -1191,7 +1191,7 @@ with abas[0]:
 
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
 
-    # --- [1. HIERARQUIA DE INTERFACE: A MATRIZ MANDA] ---
+    # --- [1. HIERARQUIA DE INTERFACE: A MATRIZ MANDA NO TAMANHO] ---
     if st.session_state.get('matriz_selecionada'):
         m_ativa = st.session_state.matriz_selecionada
         nome_m = str(m_ativa.get('nome', '')).upper()
@@ -1212,17 +1212,16 @@ with abas[0]:
         t_pool_alvo = conf_e.get('pool_alvo', 18)
         est_nome_exibicao = est_escolhida
 
-    # --- [2. INPUTS COM KEYS ÚNICAS PARA MATAR O DUPLICATE ID] ---
+    # --- [2. INPUTS COM KEYS ÚNICAS] ---
     c1, c2 = st.columns(2)
     with c1:
         idx_p = opcoes_dez.index(def_dez) if def_dez in opcoes_dez else 0
-        n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_p, key="sb_final_resgate_ia_v30")
+        n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_p, key="sb_final_resgate_v40")
     with c2:
-        qtd = st.number_input("Quantidade de Jogos", 1, 500, int(def_qtd), key="ni_final_resgate_ia_v30")
+        qtd = st.number_input("Quantidade de Jogos", 1, 500, int(def_qtd), key="ni_final_resgate_v40")
 
-    # --- [3. MOTOR DE GERAÇÃO: JUIZ KADOSH + PSO + INFORMAÇÃO DE TROCA] ---
-    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)", key="btn_gerar_master_v30"):
-        # FAZ O GERADOR ENXERGAR A MATRIZ (COMBO 16/15)
+    # --- [3. MOTOR DE GERAÇÃO: 7 IAs + PSO + LOG DE TROCAS] ---
+    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)", key="btn_gerar_v40"):
         fila_tamanhos = []
         if st.session_state.get('matriz_selecionada'):
             m = st.session_state.matriz_selecionada
@@ -1240,42 +1239,50 @@ with abas[0]:
         if not pool_f: pool_f = list(range(1, 26))[:t_pool_alvo]
         fixas_f = st.session_state.get('fixas_ativas_combo', [])
         
+        # DNA do concurso
+        res_hist = st.session_state.ultimo_res.get(mod, {})
+        chaves_reais = [int(c) for c in res_hist.keys() if str(c).isdigit()]
+        proximo_concurso = (max(chaves_reais) + 1) if chaves_reais else 0
+
         jogos_vips = []
         for tam_solicitado in fila_tamanhos:
             sucesso, tentativas = False, 0
-            while not sucesso and tentativas < 3000:
+            while not sucesso and tentativas < 2000:
                 tentativas += 1
                 corpo = [d for d in pool_f if d not in fixas_f]
                 needs = tam_solicitado - len(fixas_f)
                 comb = sorted(fixas_f + random.sample(corpo, min(len(corpo), needs))) if needs > 0 else sorted(random.sample(fixas_f, tam_solicitado))
                 
-                # --- CHAMADA DAS 7 IAs (JUIZ SUPREMO) ---
+                # --- CHAMADA DO JUIZ (AS 7 IAs) ---
                 passou = validar_kadosh_cirurgico(comb, mod, tam_solicitado)
                 troca_info = None
 
                 if not passou:
-                    # MOTOR PSO: SÓ TROCA SE O JUIZ REPROVAR
+                    # MOTOR PSO DE AJUSTE
                     vaga_idx = random.randint(0, len(comb)-1)
                     if comb[vaga_idx] not in fixas_f:
-                        candidatos = [d for d in pool_f if d not in comb]
-                        if candidatos:
-                            entrou = random.choice(candidatos)
-                            novo = sorted([n if idx != vaga_idx else entrou for idx, n in enumerate(comb)])
+                        cand = [d for d in pool_f if d not in comb]
+                        if cand:
+                            entrou = random.choice(cand)
+                            saiu_original = comb[vaga_idx]
+                            novo = sorted([n if i != vaga_idx else entrou for i, n in enumerate(comb)])
                             
-                            # VALIDAÇÃO DA TROCA
                             if validar_kadosh_cirurgico(novo, mod, tam_solicitado):
                                 comb, passou = novo, True
-                                # --- [AQUI ESTÁ A INFORMAÇÃO DE TROCA QUE SUMIU] ---
                                 troca_info = {
-                                    "saiu": comb[vaga_idx], 
+                                    "saiu": saiu_original, 
                                     "entrou": entrou, 
                                     "motivo": "Ajuste Bi-LSTM, Circle e Simetria (DNA Kadosh)"
                                 }
 
                 if passou:
                     jogos_vips.append({
-                        "n": comb, "detalhe_troca": troca_info, "tam": tam_solicitado,
-                        "est": est_nome_exibicao, "fixas": fixas_f,
+                        "n": comb, 
+                        "detalhe_troca": troca_info, 
+                        "tam": tam_solicitado,
+                        "est": est_nome_exibicao, 
+                        "fixas_f": fixas_f,  # CHAVE CORRIGIDA PARA EVITAR KeyError
+                        "conc_alvo": proximo_concurso,
                         "chance": "ELITE" if not troca_info else "PSO AJUSTADO"
                     })
                     sucesso = True
@@ -1283,25 +1290,27 @@ with abas[0]:
         st.session_state.jogos_gerados = jogos_vips
         st.rerun()
 
-    # --- [4. VISUALIZAÇÃO: MOSTRANDO O PORQUÊ DA TROCA] ---
+    # --- [4. VISUALIZAÇÃO: DNA DAS TROCAS (CORREÇÃO DE KEYERRORS)] ---
     if st.session_state.get('jogos_gerados'):
+        st.markdown("### 📝 Bilhetes de Elite (Análise PSO)")
         for i, j in enumerate(st.session_state.jogos_gerados):
             html = ""
             for n in j['n']:
-                # Verde = Fixa | Roxo = Troca IA | Amarelo = Padrão
-                cor = '#27ae60' if n in j['fixas'] else ('#8e44ad' if j['detalhe_troca'] and n == j['detalhe_troca']['entrou'] else '#f1c40f')
+                # Verifica se é fixa, se é troca PSO ou padrão
+                is_fixa = n in j.get('fixas_f', [])
+                is_pso = j['detalhe_troca'] and n == j['detalhe_troca']['entrou']
+                
+                cor = '#27ae60' if is_fixa else ('#8e44ad' if is_pso else '#f1c40f')
                 html += f'<span style="background:{cor}; color:white; font-weight:bold; padding:5px 10px; margin:2px; border-radius:50%; display:inline-block;">{n:02d}</span>'
             
-            # EXIBE O MOTIVO TÉCNICO EMBAIXO DO JOGO
-            motivo_pso = f"<br><span style='color:#8e44ad; font-size:12px;'><b>ℹ️ INFORMAÇÃO DE TROCA:</b> {j['detalhe_troca']['motivo']} (Dezena {j['detalhe_troca']['saiu']} → {j['detalhe_troca']['entrou']})</span>" if j['detalhe_troca'] else ""
+            motivo_pso = f"<br><span style='color:#8e44ad; font-size:12px;'><b>ℹ️ TROCA IA:</b> {j['detalhe_troca']['motivo']} ({j['detalhe_troca']['saiu']} → {j['detalhe_troca']['entrou']})</span>" if j['detalhe_troca'] else ""
             
             st.markdown(f"""
-                <div style="background:white; padding:12px; border-radius:10px; border-left:8px solid #d4af37; margin-bottom:10px; color:black; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);">
-                    <b>BILHETE #{i+1}</b> | {j['chance']} <br> {html} {motivo_pso}
-                    <div style="font-size:10px; color:gray; margin-top:5px;">Estratégia: {j['est']} | Tamanho: {j['tam']}</div>
+                <div style="background:white; padding:12px; border-radius:10px; border-left:8px solid #d4af37; margin-bottom:10px; color:black;">
+                    <b>BILHETE #{i+1:02d}</b> | {j['chance']} <br> {html} {motivo_pso}
+                    <div style="font-size:10px; color:gray; margin-top:5px;">Estratégia: {j['est']} | Tamanho: {j['tam']} | Concurso: {j.get('conc_alvo')}</div>
                 </div>
             """, unsafe_allow_html=True)
-
         if st.button("💾 ENVIAR PARA CONFERÊNCIA (ABA 1)", key="btn_envia_vfinal"):
             if 'aba_conferencia' not in st.session_state: st.session_state.aba_conferencia = []
             st.session_state.aba_conferencia.extend(st.session_state.jogos_gerados)
