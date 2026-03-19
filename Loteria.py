@@ -1077,101 +1077,101 @@ with abas[0]:
                     st.success(f"🎯 Refinado com Inteligência Híbrida!")
                     st.rerun()
 
-         # --- SELEÇÃO MANUAL E VISUALIZAÇÃO ---
-         st.markdown("---")
+        # --- SELEÇÃO MANUAL E VISUALIZAÇÃO ---
+        st.markdown("---")
         
-         # --- [CORREÇÃO CRÍTICA: BLINDAGEM DO POOL] ---
-         # 1. Garante que o dicionário de favoritas exista
-         if 'favoritas' not in st.session_state:
-             st.session_state.favoritas = {}
+        # --- [CORREÇÃO CRÍTICA: BLINDAGEM DO POOL] ---
+        # 1. Garante que o dicionário de fvoritas exista
+        if 'favoritas' not in st.session_state:
+            st.session_state.favoritas = {}
         
-         # 2. Busca o que já estava selecionado (ou lista vazia se for a primeira vez)
-         # O 'or []' impede o erro de AttributeError no parâmetro 'default'
-         pool_default = st.session_state.favoritas.get(mod, []) or []
+        # 2. Busca o que já estava selecionado (ou lista vazia se for a primeira vez)
+        # O 'or []' impede o erro de AttributeError no parâmetro 'default'
+        pool_default = st.session_state.favoritas.get(mod, []) or []
         
-         # 3. O multiselect agora está protegido
-         pool = st.multiselect(
-             f"SELECIONE SEU POOL ({mod}):", 
-             range(1, max_v_bt + 1), 
-             default=pool_default
-         )
-         st.session_state.favoritas[mod] = pool 
+        # 3. O multiselect agora está protegido
+        pool = st.multiselect(
+            f"SELECIONE SEU POOL ({mod}):", 
+            range(1, max_v_bt + 1), 
+            default=pool_default
+        )
+        st.session_state.favoritas[mod] = pool 
 
-         # Análise Geográfica do Pool
-         if pool and mod == "Lotofácil":
-             linhas_p = [0]*5
-             for n in pool: 
-                 linhas_p[(n-1)//5] += 1
+        # Análise Geográfica do Pool
+        if pool and mod == "Lotofácil":
+            linhas_p = [0]*5
+            for n in pool: 
+                linhas_p[(n-1)//5] += 1
             
-             if any(l == 0 for l in linhas_p):
-                 st.warning("⚠️ Atenção: Seu Pool possui linhas vazias! Isso reduz a eficácia do Filtro Kadosh.")
+            if any(l == 0 for l in linhas_p):
+                st.warning("⚠️ Atenção: Seu Pool possui linhas vazias! Isso reduz a eficácia do Filtro Kadosh.")
             
-             with st.expander("📊 Distribuição Geográfica do Pool"):
-                 cols_q = st.columns(5)
-                 for idx, qtd_l in enumerate(linhas_p):
-                     cols_q[idx].metric(f"L{idx+1}", f"{qtd_l} dez")
+            with st.expander("📊 Distribuição Geográfica do Pool"):
+                cols_q = st.columns(5)
+                for idx, qtd_l in enumerate(linhas_p):
+                    cols_q[idx].metric(f"L{idx+1}", f"{qtd_l} dez")
         
-         # Fixação de Dezenas (Cravadas)
-         if mod == "Lotofácil":
-             st.markdown("---")
-             modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
+        # Fixação de Dezenas (Cravadas)
+        if mod == "Lotofácil":
+            st.markdown("---")
+            modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
     
-             # --- [SINCRO-KADOSH: GESTÃO DE FIXAS E INTELIGÊNCIA DE SCORE] ---
-             fixas_final = []
-             conc_alvo = st.session_state.get('conc_alvo_atual', 0)
+            # --- [SINCRO-KADOSH: GESTÃO DE FIXAS E INTELIGÊNCIA DE SCORE] ---
+            fixas_final = []
+            conc_alvo = st.session_state.get('conc_alvo_atual', 0)
 
-             if modo_fixa == "Manual":
-                 # Proteção: multiselect de fixas só aparece se houver dezenas no pool
-                 fixas_final = st.multiselect(
-                     f"📌 CRAVAR DEZENAS (FIXAS) - CONCURSO {conc_alvo}:", 
-                     options=pool,
-                     help="As dezenas fixas serão mantidas em todos os jogos gerados."
-                 )
-             elif modo_fixa == "IA Automática (Score)":
-                 # Slider de controle para a IA
-                 qtd_auto = st.slider("Qtd de Cravadas (IA):", 1, 10, 6)
+            if modo_fixa == "Manual":
+                # Proteção: multiselect de fixas só aparece se houver dezenas no pool
+                fixas_final = st.multiselect(
+                    f"📌 CRAVAR DEZENAS (FIXAS) - CONCURSO {conc_alvo}:", 
+                    options=pool,
+                    help="As dezenas fixas serão mantidas em todos os jogos gerados."
+                )
+            elif modo_fixa == "IA Automática (Score)":
+                # Slider de controle para a IA
+                qtd_auto = st.slider("Qtd de Cravadas (IA):", 1, 10, 6)
     
-                 # Verifica se a análise de stats existe para não quebrar (Garantia de Simetria)
-                 stats_ia = st.session_state.get('analise_stats', {}).get(mod, {})
+                # Verifica se a análise de stats existe para não quebrar (Garantia de Simetria)
+                stats_ia = st.session_state.get('analise_stats', {}).get(mod, {})
     
-                 if stats_ia and pool:
-                     # A IA ordena as dezenas do Pool pelo Score Kadosh (Frequência + Atraso)
-                     # Quem tem o maior Score é considerado "Maduro" para sair no Concurso Alvo
-                     melhores_ia = sorted(
-                         [n for n in pool], 
-                         key=lambda x: stats_ia.get(x, {}).get('score', 0), 
-                         reverse=True
-                     )
-                     fixas_final = sorted(melhores_ia[:qtd_auto])
+                if stats_ia and pool:
+                    # A IA ordena as dezenas do Pool pelo Score Kadosh (Frequência + Atraso)
+                    # Quem tem o maior Score é considerado "Maduro" para sair no Concurso Alvo
+                    melhores_ia = sorted(
+                        [n for n in pool], 
+                        key=lambda x: stats_ia.get(x, {}).get('score', 0), 
+                        reverse=True
+                    )
+                    fixas_final = sorted(melhores_ia[:qtd_auto])
         
-                     if fixas_final:
-                         st.markdown(f"""
-                         <div style="background: #1e272e; padding: 10px; border-radius: 8px; border-left: 5px solid #8e44ad; margin-bottom: 10px;">
-                             <span style="color: #d2dae2; font-size: 13px;">💎 <b>IA KADOSH CRAVOU (Score):</b></span><br>
-                             <span style="color: #f1c40f; font-family: monospace; font-size: 16px;"><b>{', '.join(f"{d:02d}" for d in fixas_final)}</b></span>
-                             <div style="font-size: 10px; color: #7f8c8d;">Foco exclusivo no Concurso {conc_alvo}</div>
-                         </div>
-                         """, unsafe_allow_html=True)
-                 else:
-                     st.info("💡 Selecione dezenas no Pool para a IA analisar o Score.")
+                    if fixas_final:
+                        st.markdown(f"""
+                        <div style="background: #1e272e; padding: 10px; border-radius: 8px; border-left: 5px solid #8e44ad; margin-bottom: 10px;">
+                            <span style="color: #d2dae2; font-size: 13px;">💎 <b>IA KADOSH CRAVOU (Score):</b></span><br>
+                            <span style="color: #f1c40f; font-family: monospace; font-size: 16px;"><b>{', '.join(f"{d:02d}" for d in fixas_final)}</b></span>
+                            <div style="font-size: 10px; color: #7f8c8d;">Foco exclusivo no Concurso {conc_alvo}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.info("💡 Selecione dezenas no Pool para a IA analisar o Score.")
 
-             # --- [SINCRONIZAÇÃO DEFINITIVA PARA A ABA 1] ---
-             # Salvamos as fixas de forma estruturada para que o Motor de Geração e a Aba 1 enxerguem
-             if 'config_geracao' not in st.session_state:
-                 st.session_state.config_geracao = {}
+            # --- [SINCRONIZAÇÃO DEFINITIVA PARA A ABA 1] ---
+            # Salvamos as fixas de forma estruturada para que o Motor de Geração e a Aba 1 enxerguem
+            if 'config_geracao' not in st.session_state:
+                st.session_state.config_geracao = {}
 
-             st.session_state.config_geracao[mod] = {
-                 "fixas": fixas_final,
-                 "conc_alvo": conc_alvo,
-                 "modo": modo_fixa
-             }
+            st.session_state.config_geracao[mod] = {
+                "fixas": fixas_final,
+                "conc_alvo": conc_alvo,
+                "modo": modo_fixa
+            }
 
-             # Variável de apoio para o motor de geração (Poder de Fogo)
-             st.session_state['fixas_ativas_combo'] = fixas_final
+            # Variável de apoio para o motor de geração (Poder de Fogo)
+            st.session_state['fixas_ativas_combo'] = fixas_final
     
-             # Renderiza o Heatmap passando os resultados de forma segura
-             ult_res_map = st.session_state.get('ultimo_res', {}).get(mod, {})
-             renderizar_heatmap(mod, ult_res_map)
+            # Renderiza o Heatmap passando os resultados de forma segura
+            ult_res_map = st.session_state.get('ultimo_res', {}).get(mod, {})
+            renderizar_heatmap(mod, ult_res_map)
 
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
 
