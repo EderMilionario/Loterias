@@ -1197,6 +1197,11 @@ with abas[0]:
         m_ativa = st.session_state.matriz_selecionada
         nome_m = m_ativa.get('nome', '').upper()
     
+        # --- [1. LOGICA DE HIERARQUIA: DEFINIÇÃO DE INTERFACE] ---
+    if st.session_state.get('matriz_selecionada'):
+        m_ativa = st.session_state.matriz_selecionada
+        nome_m = str(m_ativa.get('nome', '')).upper()
+        
         # Define os valores que a INTERFACE (selectbox/number_input) vai mostrar
         if "CELULA" in nome_m or "CÉLULA" in nome_m:
             def_qtd, def_dez = 16, 16 # Poder de fogo
@@ -1207,166 +1212,135 @@ with abas[0]:
             def_dez = m_ativa.get('dezenas') or m_ativa.get('dez') or 15
     
         tamanho_alvo_pool = m_ativa.get('pool') or m_ativa.get('n_pool') or 18
+        est_nome_exibicao = f"MATRIZ: {nome_m}"
     else:
         # Se for só estratégia, pega do mapa de estratégias
         conf_e = ESTRATEGIA_MAPA.get(est_escolhida, {"dez": 15, "qtd": 10, "pool_alvo": 18})
         def_qtd = conf_e['qtd']
         def_dez = conf_e['dez']
         tamanho_alvo_pool = conf_e.get('pool_alvo', 18)
+        est_nome_exibicao = est_escolhida
 
-    # --- [2. CAMPOS DE ENTRADA OBEDECENDO A HIERARQUIA] ---
-    # Aqui os campos param de ficar travados em 10 ou 20
-    n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=opcoes_dez.index(def_dez) if def_dez in opcoes_dez else 0)
-    qtd = st.number_input("Quantidade de Jogos", 1, 500, int(def_qtd))
+    # --- [2. CAMPOS DE ENTRADA COM CHAVES ÚNICAS (ANTI-DUPLICIDADE)] ---
+    col_input_1, col_input_2 = st.columns(2)
+    with col_input_1:
+        # Validação de índice segura para o selectbox
+        idx_padrao = opcoes_dez.index(def_dez) if def_dez in opcoes_dez else 0
+        n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao, key="sb_dez_combo_fix")
+    
+    with col_input_2:
+        qtd = st.number_input("Quantidade de Jogos", 1, 500, int(def_qtd), key="ni_qtd_combo_fix")
 
-    # --- [3. O BOTÃO DE GERAR (USANDO A FILA QUE VOCÊ MANDOU)] ---
+    # --- [3. O BOTÃO DE GERAR (SINCRO-MATRIZ KADOSH)] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-        # Re-valida a fila no momento do clique para garantir o Combo
+        # Re-valida a fila no momento do clique para garantir a prioridade da Matriz
         fila_tamanhos = []
         if st.session_state.get('matriz_selecionada'):
             matriz = st.session_state.matriz_selecionada
-            nome_mat_up = matriz.get('nome', '').upper()
+            nome_mat_up = str(matriz.get('nome', '')).upper()
         
             if "CELULA" in nome_mat_up or "CÉLULA" in nome_mat_up:
-                fila_tamanhos = [16] + ([15] * 15)
+                fila_tamanhos = [16] + ([15] * 15) # 1 de 16 e 15 de 15
             elif "DIAMANTE" in nome_mat_up:
-                fila_tamanhos = [16, 16] + ([15] * 10)
+                fila_tamanhos = [16, 16] + ([15] * 10) # 2 de 16 e 10 de 15
             else:
                 fila_tamanhos = [matriz.get('dezenas', 15)] * matriz.get('jogos', 10)
         else:
             fila_tamanhos = [n_dez] * qtd
 
-        # O RESTO DO SEU MOTOR PSO SEGUE AQUI...
-        # processar_geracao_cirurgica(fila_tamanhos)
-        # 2. Sincronização do Pool
+        # Configuração do Pool e Fixas
         pool_completo = st.session_state.favoritas.get(mod, [])
-        if not pool_completo:
-            pool_completo = list(range(1, 26))
+        if not pool_completo: pool_completo = list(range(1, 26))
         
         pool_cortado = pool_completo[:tamanho_alvo_pool]
         st.session_state['pool_ativo_geracao'] = pool_cortado
         pool_original_antes_da_ia = list(pool_cortado)
-
-        # --- AJUSTE DE CONCURSO E FIXAS: CAPTURA DO DNA ---
+        
+        # DNA do Concurso e Fixas
         res_hist = st.session_state.ultimo_res.get(mod, {})
         chaves_reais = [int(c) for c in res_hist.keys() if str(c).isdigit()]
         proximo_concurso = (max(chaves_reais) + 1) if chaves_reais else 0
-    
-        # Captura as fixas (IA ou Manual) que definimos no bloco anterior
         fixas_para_injecao = st.session_state.get('fixas_ativas_combo', [])
 
-        # 3. Definição das IAs de Apoio
-        dezenas_ciclo = []
-        if res_hist and mod == "Lotofácil":
-            chaves = sorted(res_hist.keys(), key=int)
-            if len(chaves) >= 3:
-                ultimos_3 = [res_hist[c] for c in chaves[-3:]]
-                sorteadas_recentes = set(n for jogo in ultimos_3 for n in jogo)
-                dezenas_ciclo = [d for d in range(1, 26) if d not in sorteadas_recentes]
-
-        # 4. Processamento com Motor PSO e 7 IAs (O JUIZ SUPREMO)
+        # --- 4. MOTOR DE GERAÇÃO CIRÚRGICA (PSO + JUIZ KADOSH) ---
         def processar_geracao_cirurgica(lista_tamanhos_fila):
             lista_jogos = []
-        
             for tam_solicitado in lista_tamanhos_fila:
                 sucesso_jogo, tentativas = False, 0
                 while not sucesso_jogo and tentativas < 3000:
                     tentativas += 1
-                
-                    # Garante que as fixas estejam no jogo antes de completar com o pool
+                    
+                    # Montagem do jogo respeitando as fixas
                     pool_sem_fixas = [d for d in pool_cortado if d not in fixas_para_injecao]
                     necessarias = tam_solicitado - len(fixas_para_injecao)
-                
+                    
                     if necessarias > 0:
-                        resto_corpo = random.sample(pool_sem_fixas, necessarias)
+                        resto_corpo = random.sample(pool_sem_fixas, min(len(pool_sem_fixas), necessarias))
                         comb = sorted(fixas_para_injecao + resto_corpo)
                     else:
                         comb = sorted(random.sample(fixas_para_injecao, tam_solicitado))
-                
-                    # O Juiz valida conforme o comportamento da Estratégia
+                    
+                    # Validação Kadosh
                     passou = validar_kadosh_cirurgico(comb, mod, tam_solicitado)
                     troca_info = None
 
                     if not passou:
-                        # Tenta ajuste fino via PSO (Juiz 2)
+                        # Ajuste via PSO (Tentativa de troca de dezena não-fixa)
                         vaga_idx = random.randint(0, len(comb)-1)
-                        dezena_saiu = comb[vaga_idx]
-                    
-                        # PSO não pode remover uma DEZENA FIXA
-                        if dezena_saiu not in fixas_para_injecao:
+                        if comb[vaga_idx] not in fixas_para_injecao:
                             candidatos = [d for d in pool_cortado if d not in comb]
                             if candidatos:
-                                dezena_entrou = random.choice(candidatos) 
-                                novo_jogo = sorted([n if n != dezena_saiu else dezena_entrou for n in comb])
-                            
+                                dezena_entrou = random.choice(candidatos)
+                                novo_jogo = sorted([n if idx != vaga_idx else dezena_entrou for idx, n in enumerate(comb)])
                                 if validar_kadosh_cirurgico(novo_jogo, mod, tam_solicitado):
-                                    comb = novo_jogo
-                                    passou = True
-                                    troca_info = {
-                                        "saiu": dezena_saiu, 
-                                        "entrou": dezena_entrou,
-                                        "motivo": "Ajuste Bi-LSTM, Circle e Simetria."
-                                    }
+                                    comb, passou = novo_jogo, True
+                                    troca_info = {"saiu": comb[vaga_idx], "entrou": dezena_entrou, "motivo": "PSO Refine"}
 
                     if passou:
-                        jogo_final = {
-                            "n": comb, 
-                            "detalhe_troca": troca_info,
-                            "tam": tam_solicitado,
-                            "est": est_nome_exibicao,
-                            "pool_usado": pool_original_antes_da_ia,
-                            "fixas_no_jogo": fixas_para_injecao, # ENVIA PARA ABA 1
-                            "conc_alvo": proximo_concurso,       # TRAVA O VERDE NA ABA 1
-                            "chance": "ELITE" if not troca_info else "AJUSTADO PELO PSO"
-                        }
-                        lista_jogos.append(jogo_final)
+                        lista_jogos.append({
+                            "n": comb, "detalhe_troca": troca_info, "tam": tam_solicitado,
+                            "est": est_nome_exibicao, "pool_usado": pool_original_antes_da_ia,
+                            "fixas_no_jogo": fixas_para_injecao, "conc_alvo": proximo_concurso,
+                            "chance": "ELITE" if not troca_info else "PSO AJUSTADO"
+                        })
                         sucesso_jogo = True
-                        
             return lista_jogos
 
-        # Execução Final e Persistência
         st.session_state.jogos_gerados = processar_geracao_cirurgica(fila_tamanhos)
-    
-        if not st.session_state.jogos_gerados:
-            st.error("⚠️ O Juiz e o PSO não conseguiram validar jogos. Verifique o Pool.")
-        else:
+        if st.session_state.jogos_gerados:
             st.success(f"✅ Sincronia Total: {len(st.session_state.jogos_gerados)} jogos prontos!")
-    
         st.rerun()
 
-    # --- [VISUALIZAÇÃO COM DESTAQUE DE CORES] ---
+    # --- [5. VISUALIZAÇÃO DOS BILHETES] ---
     if st.session_state.get('jogos_gerados'):
         st.markdown("### 📝 Bilhetes de Elite (Análise PSO)")
-    
         for i, jogo in enumerate(st.session_state.jogos_gerados):
-            with st.container():
-                html_jogo = ""
-                for n in jogo['n']:
-                    # Destaque para Fixas (Borda Branca/Diferenciada)
-                    is_fixa = n in jogo.get('fixas_no_jogo', [])
-                    is_pso = jogo['detalhe_troca'] and n == jogo['detalhe_troca']['entrou']
+            html_jogo = ""
+            for n in jogo['n']:
+                is_fixa = n in jogo.get('fixas_no_jogo', [])
+                is_pso = jogo['detalhe_troca'] and n == jogo['detalhe_troca']['entrou']
                 
-                    if is_fixa:
-                        html_jogo += f'<span style="background: #27ae60; color: white; font-weight: bold; padding: 5px 10px; margin: 3px; border-radius: 50%; display: inline-block; border: 2px solid #fff;">{n:02d}</span>'
-                    elif is_pso:
-                        html_jogo += f'<span style="background: #8e44ad; color: white; font-weight: bold; padding: 5px 10px; margin: 3px; border-radius: 50%; display: inline-block; border: 2px solid #fff;">{n:02d}</span>'
-                    else:
-                        html_jogo += f'<span style="background: #f1c40f; color: black; font-weight: bold; padding: 5px 10px; margin: 3px; border-radius: 50%; display: inline-block; border: 1px solid #d4af37;">{n:02d}</span>'
+                if is_fixa:
+                    color = 'background: #27ae60; border: 2px solid #fff;' # Verde para fixas
+                elif is_pso:
+                    color = 'background: #8e44ad; border: 2px solid #fff;' # Roxo para PSO
+                else:
+                    color = 'background: #f1c40f; color: black; border: 1px solid #d4af37;' # Amarelo padrão
+                
+                html_jogo += f'<span style="{color} color: white; font-weight: bold; padding: 5px 10px; margin: 3px; border-radius: 50%; display: inline-block;">{n:02d}</span>'
             
-                st.markdown(f"""
+            st.markdown(f"""
                 <div style="background: white; padding: 15px; border-radius: 12px; border-left: 8px solid #d4af37; margin-bottom: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);">
-                    <div style="color: #333; font-size: 16px;"><b>JOGO #{i+1:02d}</b> | Conc. Alvo: {jogo.get('conc_alvo')}</div>
+                    <div style="color: #333; font-size: 14px;"><b>JOGO #{i+1:02d}</b> | Conc: {jogo.get('conc_alvo')}</div>
                     {html_jogo}
-                    <div style="font-size: 11px; color: #7f8c8d; margin-top: 5px;">Status: {jogo['chance']} | Dezenas: {jogo['tam']} | Origem: {jogo['est']}</div>
+                    <div style="font-size: 11px; color: #7f8c8d; margin-top: 5px;">Status: {jogo['chance']} | Tam: {jogo['tam']} | {jogo['est']}</div>
                 </div>
-                """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
         if st.button("💾 ENVIAR PARA CONFERÊNCIA (ABA 1)"):
-            if 'aba_conferencia' not in st.session_state:
-                st.session_state.aba_conferencia = []
-        
+            if 'aba_conferencia' not in st.session_state: st.session_state.aba_conferencia = []
             st.session_state.aba_conferencia.extend(st.session_state.jogos_gerados)
-            st.success(f"🎯 {len(st.session_state.jogos_gerados)} jogos enviados!")
+            st.success("🎯 Jogos enviados com sucesso!")
 with abas[1]:
     mostrar_status_backup() 
     st.header("🔍 Painel de Conferência (Sincro-Kadosh)")
