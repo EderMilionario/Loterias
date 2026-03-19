@@ -1216,23 +1216,24 @@ with abas[0]:
     col_input_1, col_input_2 = st.columns(2)
     with col_input_1:
         idx_padrao = opcoes_dez.index(def_dez) if def_dez in opcoes_dez else 0
-        n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao, key="sb_dez_combo_v10")
+        n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao, key="sb_dez_combo_vfinal_full")
     
     with col_input_2:
-        qtd = st.number_input("Quantidade de Jogos", 1, 500, int(def_qtd), key="ni_qtd_combo_v10")
+        qtd = st.number_input("Quantidade de Jogos", 1, 500, int(def_qtd), key="ni_qtd_combo_vfinal_full")
 
     # --- [3. O BOTÃO DE GERAR (SINCRO-MATRIZ COM AS 7 IAs RESTAURADAS)] ---
-    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)", key="btn_gerar_v10"):
+    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)", key="btn_gerar_vfinal_full"):
         fila_tamanhos = []
+        # CORREÇÃO CRÍTICA: O GERADOR AGORA LÊ A MATRIZ ATIVA
         if st.session_state.get('matriz_selecionada'):
             matriz = st.session_state.matriz_selecionada
             nome_mat_up = str(matriz.get('nome', '')).upper()
             if "CELULA" in nome_mat_up or "CÉLULA" in nome_mat_up:
-                fila_tamanhos = [16] + ([15] * 15)
+                fila_tamanhos = [16] + ([15] * 15) # Total 16 jogos
             elif "DIAMANTE" in nome_mat_up:
-                fila_tamanhos = [16, 16] + ([15] * 10)
+                fila_tamanhos = [16, 16] + ([15] * 10) # Total 12 jogos
             else:
-                fila_tamanhos = [matriz.get('dezenas', 15)] * matriz.get('jogos', 10)
+                fila_tamanhos = [int(def_dez)] * int(def_qtd)
         else:
             fila_tamanhos = [n_dez] * qtd
 
@@ -1259,7 +1260,7 @@ with abas[0]:
                     else:
                         comb = sorted(random.sample(fixas_para_injecao, tam_solicitado))
                     
-                    # --- [RESTAURAÇÃO DAS INTELIGÊNCIAS: JUIZ KADOSH] ---
+                    # --- [JUIZ KADOSH: CHAMADA DAS 7 IAs] ---
                     passou = validar_kadosh_cirurgico(comb, mod, tam_solicitado)
                     troca_info = None
 
@@ -1271,13 +1272,14 @@ with abas[0]:
                             if candidatos:
                                 dez_entrou = random.choice(candidatos)
                                 novo_jogo = sorted([n if idx != vaga_idx else dez_entrou for idx, n in enumerate(comb)])
-                                # Segunda chance via PSO
+                                
+                                # --- [PSO: SEGUNDA CHANCE COM RE-VALIDAÇÃO IA] ---
                                 if validar_kadosh_cirurgico(novo_jogo, mod, tam_solicitado):
                                     comb, passou = novo_jogo, True
                                     troca_info = {
                                         "saiu": dez_saiu, 
                                         "entrou": dez_entrou, 
-                                        "motivo": "Ajuste Bi-LSTM, Circle e Simetria." # Devolvendo a informação
+                                        "motivo": "Ajuste Bi-LSTM, Circle e Simetria." 
                                     }
 
                     if passou:
@@ -1293,7 +1295,7 @@ with abas[0]:
         st.session_state.jogos_gerados = processar_geracao_cirurgica(fila_tamanhos)
         st.rerun()
 
-    # --- [5. VISUALIZAÇÃO COM MOTIVOS DE TROCA RESTAURADOS] ---
+    # --- [5. VISUALIZAÇÃO: RESTAURAÇÃO DO DNA DE TROCA] ---
     if st.session_state.get('jogos_gerados'):
         st.markdown("### 📝 Bilhetes de Elite (Análise PSO)")
         for i, jogo in enumerate(st.session_state.jogos_gerados):
@@ -1308,6 +1310,7 @@ with abas[0]:
                 
                 html_jogo += f'<span style="{color} color: white; font-weight: bold; padding: 5px 10px; margin: 3px; border-radius: 50%; display: inline-block;">{n:02d}</span>'
             
+            # DEVOLVENDO O MOTIVO DA TROCA PARA A TELA
             motivo_str = f"| Motivo: {jogo['detalhe_troca']['motivo']}" if jogo['detalhe_troca'] else ""
             st.markdown(f"""
                 <div style="background: white; padding: 15px; border-radius: 12px; border-left: 8px solid #d4af37; margin-bottom: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);">
@@ -1317,7 +1320,7 @@ with abas[0]:
                 </div>
             """, unsafe_allow_html=True)
 
-        if st.button("💾 ENVIAR PARA CONFERÊNCIA (ABA 1)", key="btn_envia_v10"):
+        if st.button("💾 ENVIAR PARA CONFERÊNCIA (ABA 1)", key="btn_envia_vfinal"):
             if 'aba_conferencia' not in st.session_state: st.session_state.aba_conferencia = []
             st.session_state.aba_conferencia.extend(st.session_state.jogos_gerados)
             st.success("🎯 Jogos enviados com sucesso!")
