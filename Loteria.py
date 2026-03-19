@@ -973,35 +973,48 @@ with abas[0]:
 
     c1, c2 = st.columns(2)
     with c1:
-        # RECUPERAÇÃO DE CUSTOS SEGURA
-        custos_mod = st.session_state.get('custos', {}).get(mod) or {15: 3.0}
+        # --- [CORREÇÃO: RECUPERAÇÃO DE CUSTOS SEGURA] ---
+        # Garantimos que custos_mod seja SEMPRE um dicionário, nunca None.
+        custos_global = st.session_state.get('custos', {})
+        if not custos_global:
+            # Se o state sumir, forçamos o padrão Lotofácil para o app não travar
+            custos_mod = {15: 3.0, 16: 48.0}
+        else:
+            # Busca a modalidade atual. Se não existir, usa o padrão de 15 dezenas.
+            custos_mod = custos_global.get(mod, {15: 3.0})
+
+        # Extrai as chaves (ex: [15, 16]) para o selectbox
         opcoes_dez = list(custos_mod.keys())
 
         # --- [A HIERARQUIA DEFINITIVA: MATRIZ MANDA NA ESTRATÉGIA] ---
+        # Inicializamos def_dez e def_qtd para evitar erro de variável não definida
+        def_dez, def_qtd = 15, 10
+
         # Se houver matriz, ela define os valores padrão iniciais
         if st.session_state.get('matriz_selecionada'):
             m_ativa = st.session_state.matriz_selecionada
-            nome_m = m_ativa.get('nome', '').upper()
-            
+            nome_m = str(m_ativa.get('nome', '')).upper()
+        
             if "DIAMANTE" in nome_m: 
                 def_dez, def_qtd = 16, 12 # Poder de fogo real
-            elif "CÉLULA" in nome_m: 
+            elif "CÉLULA" in nome_m or "CELULA" in nome_m: 
                 def_dez, def_qtd = 16, 16 # Poder de fogo real
             else:
-                def_dez = m_ativa.get('dezenas', 15)
-                def_qtd = m_ativa.get('jogos', 10)
-        
+                # Tenta pegar 'dezenas' ou 'dez', e 'jogos' ou 'qtd' (flexibilidade)
+                def_dez = m_ativa.get('dezenas') or m_ativa.get('dez') or 15
+                def_qtd = m_ativa.get('jogos') or m_ativa.get('qtd') or 10
+    
         # Se não houver matriz, a estratégia assume o comando
         elif est_escolhida != "Personalizado" and mod == "Lotofácil":
             info_est = ESTRATEGIA_MAPA.get(est_escolhida, {})
             def_dez = info_est.get("dez", 15)
             def_qtd = info_est.get("qtd", 10)
-        else:
-            def_dez, def_qtd = 15, 10
 
-        # Validação de índice para o selectbox
-        try: idx_padrao = opcoes_dez.index(def_dez)
-        except: idx_padrao = 0
+        # Validação de índice para o selectbox (Evita erro de índice fora da lista)
+        try: 
+            idx_padrao = opcoes_dez.index(def_dez)
+        except: 
+            idx_padrao = 0
 
         n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_padrao)
         qtd = st.number_input("Quantidade de Jogos", 1, 500, int(def_qtd))
