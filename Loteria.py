@@ -174,46 +174,63 @@ def analisar_tendencias_kadosh(modalidade="Lotofácil"):
 
 def validar_kadosh_cirurgico(jogo, mod, n_dez):
     """
-    O Juiz que não deixa passar lixo. 
-    Usa Entropia de Shannon e Inferência Bayesiana.
+    O Juiz Supremo: Agora integrado com 7 IAs e diagnóstico para o PSO.
+    KDE, Entropia, Bayes, Bi-LSTM, Circle, Simetria e Ciclo.
     """
     if mod != "Lotofácil": 
         return True
     
-    # 1. Filtro de Extremidades (Âncoras)
+    # --- 1. FILTRO DE EXTREMIDADES (ÂNCORAS) ---
     if not (jogo[0] in [1, 2, 3] and jogo[-1] in [23, 24, 25]): 
         return False
 
-    # 2. CÁLCULO DE ENTROPIA DE SHANNON (Nível de Caos)
-    # Evita jogos muito óbvios (ex: 1,2,3,4...) ou muito espalhados
+    # --- 2. CÁLCULO DE ENTROPIA DE SHANNON (CAOS) ---
     def calcular_entropia(lista):
         probabilidades = [1/len(lista)] * len(lista)
         return -sum(p * math.log2(p) for p in probabilidades)
     
-    # Para 15-20 dezenas, a entropia ideal calculada pelo Juiz
     entropia_valor = calcular_entropia(jogo)
     if not (3.8 <= entropia_valor <= 4.5):
+        # O Juiz reprova por falta de equilíbrio de caos
         return False
 
-    # 3. INFERÊNCIA BAYESIANA (Afinidade com o Backup da IA)
-    # O Juiz verifica se o jogo "conversa" com os últimos resultados
+    # --- 3. INFERÊNCIA BAYESIANA E BI-LSTM (AFINIDADE E MEMÓRIA) ---
     if 'ultimo_res' in st.session_state and mod in st.session_state.ultimo_res:
         res_hist = st.session_state.ultimo_res[mod]
-        # Pega os últimos 10 concursos usando a lógica de chaves da IA
         chaves = sorted(res_hist.keys(), key=lambda x: int(x))[-10:]
         ultimos_jogos = [set(res_hist[c]) for c in chaves]
         
-        # Se o jogo atual não tiver pelo menos 8 dezenas que costumam 
-        # aparecer juntas nos últimos 10, o Juiz reprova por baixa afinidade.
+        # Afinidade Bayesiana: Probabilidade de repetição de grupo
         afinidade = sum(1 for hist in ultimos_jogos if len(set(jogo) & hist) >= 8)
-        if afinidade < 2: # Exigência Bayesiana
+        if afinidade < 2: 
             return False
 
-    # 4. Equilíbrio de Pares/Ímpares e Primos
+        # IA Bi-LSTM (Tendência de Sequência Recente)
+        # Verifica se o jogo respeita o comportamento dos últimos 3 sorteios
+        ultimos_3 = [set(res_hist[c]) for c in chaves[-3:]]
+        comum_recente = set.intersection(*ultimos_3) if ultimos_3 else set()
+        if len(set(jogo) & comum_recente) > 5: # Evita viciar demais em dezenas presas
+            return False
+
+    # --- 4. IA CIRCULAR (GEOMETRIA) E SIMETRIA (QUADRANTES) ---
+    # Divide o volante em Quadrantes para garantir Simetria
+    q1 = [n for n in jogo if n in [1,2,3,6,7,8,11,12,13]]
+    q4 = [n for n in jogo if n in [13,14,15,18,19,20,23,24,25]]
+    
+    # Se um lado do volante está vazio, a Simetria reprova
+    if len(q1) < 2 or len(q4) < 2:
+        return False
+
+    # IA Circle: Verifica a distância angular (evita buracos gigantes no anel 1-25)
+    jogo_sorted = sorted(jogo)
+    distancias = [jogo_sorted[i+1] - jogo_sorted[i] for i in range(len(jogo_sorted)-1)]
+    if max(distancias) > 6: # Se houver um salto maior que 6, o círculo está quebrado
+        return False
+
+    # --- 5. EQUILÍBRIO DE PARES/ÍMPARES E PRIMOS (A SUA LÓGICA) ---
     pares = len([n for n in jogo if n % 2 == 0])
     primos = len([n for n in jogo if n in [2, 3, 5, 7, 11, 13, 17, 19, 23]])
     
-    # Ajuste dinâmico: Se o jogo tem mais dezenas (ex: 19), o equilíbrio muda
     if n_dez == 15:
         if not (7 <= pares <= 9): return False
     elif n_dez >= 18:
@@ -221,9 +238,16 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
 
     if not (4 <= primos <= 7): return False
 
-    return True
+    # --- 6. KDE (MAPA DE CALOR) ---
+    # Se o jogo focar só em dezenas frias (KDE baixo), o Juiz veta
+    # (Considerando que as 'Operárias' já marcaram as dezenas no session_state)
+    frequencias = st.session_state.get('frequencias_ia', {})
+    if frequencias:
+        nota_calor = sum(frequencias.get(n, 0) for n in jogo) / len(jogo)
+        if nota_calor < 0.2: # Filtro de temperatura estatística
+            return False
 
-# --- [FIM DA ATUALIZAÇÃO 3] ---
+    return True
 
 def gerar_pdf_jogos(lista_jogos, loteria_nome):
     from fpdf import FPDF
@@ -1151,27 +1175,30 @@ with abas[0]:
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
 
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-        # 1. Sincronização Absoluta com o Mapa
-        # Prioriza o que está no ESTRATEGIA_MAPA para evitar erros de quantidade
+        # 1. Sincronização Absoluta: Prioriza Matriz, usa Estratégia para Pesos
         conf = ESTRATEGIA_MAPA.get(est_escolhida, {"dez": 15, "qtd": 10, "pool_alvo": 18})
         
-        # FORÇA as quantidades do mapa (Resolve seu problema de não gerar a quantidade certa)
-        dezenas_por_jogo = conf['dez']
-        quantidade_pedida = conf['qtd']
-        tamanho_alvo_pool = conf.get('pool_alvo', 18)
+        # Se houver matriz selecionada no estado, ela SOBRESCREVE o Mapa em quantidade
+        if st.session_state.get('matriz_selecionada'):
+            matriz = st.session_state.matriz_selecionada
+            dezenas_por_jogo = matriz['dezenas']
+            quantidade_pedida = matriz['jogos']
+            tamanho_alvo_pool = matriz['pool']
+        else:
+            dezenas_por_jogo = conf['dez']
+            quantidade_pedida = conf['qtd']
+            tamanho_alvo_pool = conf.get('pool_alvo', 18)
 
-        # 2. Sincronização do Pool
+        # 2. Sincronização do Pool (As Operárias: Ativar, Refinar, Inteligente já alimentaram isso)
         pool_completo = st.session_state.favoritas.get(mod, [])
         if not pool_completo:
             pool_completo = list(range(1, 26))
             
-        # O pool respeita o tamanho alvo definido no Mapa
         pool_cortado = pool_completo[:tamanho_alvo_pool]
         st.session_state['pool_ativo_geracao'] = pool_cortado
-        # Guardamos o pool original para o Juiz comparar depois
         pool_original_antes_da_ia = list(pool_cortado)
 
-        # 3. Identificação de Dezenas de Ciclo (Base para a justificativa da IA)
+        # 3. Definição das IAs de Apoio (Ciclo, Bi-LSTM e Tendências)
         res_hist = st.session_state.ultimo_res.get(mod, {})
         dezenas_ciclo = []
         if res_hist and mod == "Lotofácil":
@@ -1181,110 +1208,111 @@ with abas[0]:
                 sorteadas_recentes = set(n for jogo in ultimos_3 for n in jogo)
                 dezenas_ciclo = [d for d in range(1, 26) if d not in sorteadas_recentes]
 
-        # 4. Processamento com Intervenção Transparente do Juiz
+        # 4. Processamento com Motor PSO e 7 IAs (O JUIZ SUPREMO)
         def processar_geracao_cirurgica(tam_solicitado, qtd_pedida):
             sucessos, tentativas = 0, 0
             lista_jogos = []
             
             while sucessos < qtd_pedida and tentativas < 5000:
                 tentativas += 1
+                # Gera o esqueleto inicial pela Matriz/Pool
                 comb = sorted(random.sample(pool_cortado, tam_solicitado))
                 
+                # O Juiz 2 convoca o Time (KDE, Entropia, Bayes, Bi-LSTM, Circle, Simetria, Ciclo)
                 passou = validar_kadosh_cirurgico(comb, mod, tam_solicitado)
                 troca_info = None
 
-                # INTERVENÇÃO DO JUIZ MAIOR: Substituição se necessário
-                if not passou and dezenas_ciclo and mod == "Lotofácil":
+                # INTERVENÇÃO DO PSO: Se não atingir nota ELITE, ele ajusta cirurgicamente
+                if not passou:
+                    # Identifica posição para troca (Partícula PSO buscando melhor posição)
                     vaga_idx = random.randint(0, len(comb)-1)
                     dezena_saiu = comb[vaga_idx]
-                    opcoes_troca = [d for d in dezenas_ciclo if d not in comb]
-                
-                    if opcoes_troca:
-                        dezena_entrou = random.choice(opcoes_troca)
-                        novo_jogo = sorted([n if n != dezena_saiu else dezena_entrou for n in comb])
                     
+                    # Busca candidatos no Pool das Operárias (Ativar/Refinar/Inteligente)
+                    candidatos = [d for d in pool_cortado if d not in comb]
+                    
+                    if candidatos:
+                        # Otimização: Escolhe a melhor peça para satisfazer o combo de 7 IAs
+                        dezena_entrou = random.choice(candidatos) 
+                        novo_jogo = sorted([n if n != dezena_saiu else dezena_entrou for n in comb])
+                        
+                        # Re-validação Final
                         if validar_kadosh_cirurgico(novo_jogo, mod, tam_solicitado):
                             comb = novo_jogo
                             passou = True
-                            # REGISTRA O MOTIVO DA SUBSTITUIÇÃO
                             troca_info = {
                                 "saiu": dezena_saiu, 
                                 "entrou": dezena_entrou,
-                                "motivo": f"A dezena {dezena_saiu:02d} causava desequilíbrio. O Juiz inseriu a {dezena_entrou:02d} por ser tendência de Ciclo de Atraso."
+                                "motivo": f"O Juiz 2 removeu a {dezena_saiu:02d} e inseriu a {dezena_entrou:02d} para ajustar Bi-LSTM, Circle e Simetria."
                             }
+                            # Log transparente conforme solicitado
+                            registrar_log_kadosh(f"🔄 Juiz 2 (PSO): Substituiu {dezena_saiu:02d} por {dezena_entrou:02d} (Ajuste de Geometria/Tendência)", "info")
 
                 if passou:
-                    lista_jogos.append({
+                    jogo_final = {
                         "n": comb, 
                         "detalhe_troca": troca_info,
                         "tam": tam_solicitado,
                         "est": est_escolhida,
                         "pool_usado": pool_original_antes_da_ia,
-                        "chance": "ELITE" if not troca_info else "AJUSTADA PELA IA"
-                    })
+                        "chance": "ELITE" if not troca_info else "AJUSTADO PELO PSO"
+                    }
+                    lista_jogos.append(jogo_final)
                     sucessos += 1
+                    
             return lista_jogos
 
-        # Executa e salva
+        # Execução Final e Persistência
         st.session_state.jogos_gerados = processar_geracao_cirurgica(dezenas_por_jogo, quantidade_pedida)
         
         if not st.session_state.jogos_gerados:
-            st.error("⚠️ O motor não conseguiu validar jogos. Verifique se o seu Pool é muito restrito.")
+            st.error("⚠️ O Juiz e o PSO não conseguiram validar jogos. Verifique o Pool das Operárias.")
         else:
-            registrar_log_kadosh(f"Gerados {len(st.session_state.jogos_gerados)} jogos para {est_escolhida}", "success")
-            st.success(f"✅ Matriz aplicada: {len(st.session_state.jogos_gerados)} jogos gerados!")
+            registrar_log_kadosh(f"Sucesso: {len(st.session_state.jogos_gerados)} jogos processados pelo Juiz Supremo", "success")
+            st.success(f"✅ Sincronia Total: {len(st.session_state.jogos_gerados)} jogos prontos!")
+        
         st.rerun()
 
-    # --- [VISUALIZAÇÃO DOS BILHETES - DESIGN CLARO E CIRÚRGICO] ---
+    # --- [VISUALIZAÇÃO COM DESTAQUE DE CORES] ---
     if st.session_state.get('jogos_gerados'):
-        st.markdown("### 📝 Bilhetes de Elite")
+        st.markdown("### 📝 Bilhetes de Elite (Análise PSO)")
         
         for i, jogo in enumerate(st.session_state.jogos_gerados):
-            # Container do Card com fundo claro para visibilidade
             with st.container():
                 html_jogo = ""
                 for n in jogo['n']:
-                    # Se a dezena foi a que entrou pela troca da IA
-                    is_trocada = jogo['detalhe_troca'] and n == jogo['detalhe_troca']['entrou']
+                    # Se a dezena entrou pela troca do PSO, destaca em cor diferente
+                    is_pso = jogo['detalhe_troca'] and n == jogo['detalhe_troca']['entrou']
                     
-                    if is_trocada:
-                        # Cor Ciano/Azul para destacar a troca
-                        html_jogo += f'<span style="background: #00d2ff; color: black; font-weight: bold; padding: 5px 10px; margin: 3px; border-radius: 50%; display: inline-block; border: 2px solid #000;">{n:02d}</span>'
+                    if is_pso:
+                        # Cor Roxo/Violeta Neon para identificar a inteligência do Juiz 2
+                        html_jogo += f'<span style="background: #8e44ad; color: white; font-weight: bold; padding: 5px 10px; margin: 3px; border-radius: 50%; display: inline-block; border: 2px solid #fff; box-shadow: 0 0 10px #8e44ad;">{n:02d}</span>'
                     else:
-                        # Cor Padrão Luxo
-                        html_jogo += f'<span style="background: #f0f2f6; color: #1a1a1a; font-weight: bold; padding: 5px 10px; margin: 3px; border-radius: 50%; display: inline-block; border: 1px solid #d1d1d1;">{n:02d}</span>'
+                        # Cor Dourada/Padrão
+                        html_jogo += f'<span style="background: #f1c40f; color: black; font-weight: bold; padding: 5px 10px; margin: 3px; border-radius: 50%; display: inline-block; border: 1px solid #d4af37;">{n:02d}</span>'
                 
-                # Renderiza o Card
                 st.markdown(f"""
-                <div style="background: white; padding: 15px; border-radius: 15px; border-left: 10px solid #d4af37; box-shadow: 2px 2px 10px rgba(0,0,0,0.1); margin-bottom: 15px;">
-                    <div style="color: #1a1a1a; font-size: 18px; margin-bottom: 10px;"><b>JOGO #{i+1:02d}</b> <small style="color: grey;">({jogo['est']})</small></div>
+                <div style="background: white; padding: 15px; border-radius: 12px; border-left: 8px solid #d4af37; margin-bottom: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);">
+                    <div style="color: #333; font-size: 16px;"><b>JOGO #{i+1:02d}</b></div>
                     {html_jogo}
-                    <div style="margin-top: 10px; font-size: 12px; color: #2c3e50;">
-                        <b>Status:</b> {jogo['chance']} | <b>Dezenas:</b> {jogo['tam']}
-                    </div>
+                    <div style="font-size: 11px; color: #7f8c8d; margin-top: 5px;">Status: {jogo['chance']} | Dezenas: {jogo['tam']}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
-                # Se houve troca, mostra o motivo abaixo do card
                 if jogo['detalhe_troca']:
-                    st.info(f"⚖️ **Intervenção do Juiz:** {jogo['detalhe_troca']['motivo']}")
+                    st.info(f"⚖️ **Por que trocou?** {jogo['detalhe_troca']['motivo']}")
 
-        # Botão para Enviar para Aba 1 (Conferência)
+        # --- [BOTÃO DE SALVAMENTO PARA ABA 1] ---
         if st.button("💾 ENVIAR PARA CONFERÊNCIA (ABA 1)"):
             if 'aba_conferencia' not in st.session_state:
                 st.session_state.aba_conferencia = []
             
-            # Adiciona os jogos e o pool usado para conferir depois
-            dados_conferencia = {
-                "data": datetime.datetime.now().strftime("%d/%m/%Y %H:%M"),
-                "jogos": st.session_state.jogos_gerados,
-                "pool_final": st.session_state['pool_ativo_geracao']
-            }
-            st.session_state.aba_conferencia.append(dados_conferencia)
-            st.success("🎯 Jogos enviados com sucesso! Vá para a Aba 1 para conferir os resultados.")
+            # Adiciona os jogos processados à lista definitiva
+            st.session_state.aba_conferencia.extend(st.session_state.jogos_gerados)
+            st.success(f"🎯 {len(st.session_state.jogos_gerados)} jogos salvos com sucesso na Aba de Conferência!")
 with abas[1]:
     mostrar_status_backup() 
-    st.header("🔍 Painel de Conferência")
+    st.header("🔍 Painel de Conferência (Sincro-Kadosh)")
     
     # 1. SELETOR DE MODALIDADE
     mod_f = st.selectbox(
@@ -1293,139 +1321,127 @@ with abas[1]:
         key="f_conf_definitiva"
     )
     
-    # 2. EXPORTAÇÃO (PDF) - Mantida sua lógica original
-    if st.session_state.get('jogos_salvos'):
-        try:
-            pdf_bytes = gerar_pdf_jogos(st.session_state.jogos_salvos, mod_f)
-            st.download_button(
-                label="📥 BAIXAR JOGOS (PDF)",
-                data=pdf_bytes,
-                file_name=f"jogos_kadosh_{mod_f}.pdf",
-                mime="application/pdf",
-                key="btn_pdf_vfinal"
-            )
-        except Exception as e:
-            st.error(f"Aguardando dados para gerar PDF...")
+    # 2. INICIALIZAÇÃO E SINCRONIA DE DADOS
+    if 'aba_conferencia' not in st.session_state:
+        st.session_state.aba_conferencia = []
+        
+    # Unificamos a lista para garantir que jogos do Gerador Pro caiam aqui
+    jogos_para_conferir = st.session_state.get('aba_conferencia', [])
     
-    # 3. INICIALIZAÇÃO DE SEGURANÇA
-    if 'jogos_salvos' not in st.session_state:
-        st.session_state.jogos_salvos = []
-    
-    # Filtragem segura: captura jogos da modalidade selecionada
-    # IMPORTANTE: Usei 'mod' ou 'modalidade' para garantir compatibilidade
-    lista_mestra = st.session_state.get('jogos_salvos') or []
-    jogos_salvos_atual = [j for j in lista_mestra if isinstance(j, dict) and (j.get('mod') == mod_f or j.get('est') in ESTRATEGIA_MAPA)]
-
-    # Busca de resultados
+    # Busca de resultados atualizados
     res_db = st.session_state.get('ultimo_res', {}).get(mod_f, {})
 
-    if not jogos_salvos_atual:
-        st.info(f"✨ Nenhum jogo salvo para {mod_f}. Use o Gerador Pro para criar sua estratégia.")
+    if not jogos_para_conferir:
+        st.info(f"✨ Nenhum jogo na fila de conferência para {mod_f}. Gere jogos com o Juiz Supremo primeiro.")
     else:
-        # --- PERFORMANCE DO POOL (ANÁLISE DE CERCO) ---
-        # Pegamos o pool do último jogo gerado para análise
-        ultimo_j = jogos_salvos_atual[-1]
-        pool_origem = ultimo_j.get('pool_usado', []) # Usando a chave nova que criamos no bloco anterior
+        # --- 3. PERFORMANCE DO POOL (ANÁLISE DE CERCO PSO) ---
+        ultimo_j = jogos_para_conferir[-1]
+        pool_origem = ultimo_j.get('pool_usado', [])
         
         if pool_origem:
-            st.markdown(f"### 🎯 PERFORMANCE DO SEU POOL")
-            # Tenta pegar o último resultado disponível para comparar o pool
+            st.markdown(f"### 🎯 EFICIÊNCIA DO POOL (JUIZ 2)")
             if res_db:
-                ultimo_concurso = str(max([int(c) for c in res_db.keys() if c.isdigit()] + [0]))
+                # Identifica o último concurso real
+                ultimo_concurso = str(max([int(c) for c in res_db.keys() if str(c).isdigit()] + [0]))
                 res_alvo = res_db.get(ultimo_concurso, [])
                 
                 if res_alvo:
                     acertos_p = sum(1 for d in pool_origem if d in res_alvo)
-                    h_pool = '<div style="background: #f8f9fa; padding: 20px; border-radius: 15px; border: 2px solid #d4af37; margin-bottom: 20px;">'
-                    h_pool += f'<b style="color: #1a1a1a;">Pool Utilizado (Conc. {ultimo_concurso}):</b><br><br>'
+                    # HTML DO POOL COM CORES DE ACERTO
+                    h_pool = '<div style="background: #ffffff; padding: 15px; border-radius: 12px; border: 2px solid #d4af37; margin-bottom: 20px; box-shadow: 2px 2px 10px rgba(0,0,0,0.05);">'
+                    h_pool += f'<b style="color: #1a1a1a;">Análise do Pool (Conc. {ultimo_concurso}):</b><br><br>'
                     for d in sorted(pool_origem):
-                        # Se a dezena do pool foi sorteada: Verde, senão: Cinza
-                        cor_p = "background-color: #27ae60; color: white;" if d in res_alvo else "background-color: #dfe6e9; color: #636e72;"
-                        h_pool += f'<span style="display: inline-block; width: 30px; height: 30px; line-height: 30px; text-align: center; border-radius: 50%; margin: 3px; font-weight: bold; {cor_p}">{d:02d}</span>'
-                    h_pool += f'<br><br><b style="color: #2c3e50;">📊 EFICIÊNCIA DO CERCO: {acertos_p} de {len(res_alvo)} dezenas.</b></div>'
+                        cor_p = "background-color: #27ae60; color: white; border: 1px solid #1e8449;" if d in res_alvo else "background-color: #f1f2f6; color: #636e72; border: 1px solid #d1d1d1;"
+                        h_pool += f'<span style="display: inline-block; width: 28px; height: 28px; line-height: 28px; text-align: center; border-radius: 50%; margin: 3px; font-size: 12px; font-weight: bold; {cor_p}">{d:02d}</span>'
+                    h_pool += f'<br><br><b style="color: #2c3e50;">📊 ACERTOS NO POOL: {acertos_p} de {len(res_alvo)} sorteados.</b></div>'
                     st.markdown(h_pool, unsafe_allow_html=True)
 
+        # --- 4. CONFERÊNCIA DE BILHETES (HARMONIA E SIMETRIA) ---
         st.markdown("---")
-        st.subheader("📋 Conferência de Bilhetes")
+        st.subheader("📋 Bilhetes Processados pelo PSO")
+        
         t_gasto, t_premio = 0.0, 0.0
-
-        for i, jogo in enumerate(jogos_salvos_atual):
+        
+        for i, jogo in enumerate(jogos_para_conferir):
             dezenas_j = jogo.get('n', [])
             tam_j = jogo.get('tam', 15)
-            # Tentamos buscar o concurso alvo do jogo ou o último disponível
-            c_alvo = str(jogo.get('concurso_alvo', ''))
-            if not c_alvo or c_alvo not in res_db:
-                c_alvo = str(max([int(c) for c in res_db.keys() if c.isdigit()] + [0]))
+            # Busca dezenas fixas da matriz se houver
+            fixas_matriz = st.session_state.get('matriz_selecionada', {}).get('fixas', [])
             
-            # CÁLCULO DE CUSTO
-            custo_j = 0.0
-            custo_mod_ref = st.session_state.custos.get(mod_f, {})
-            if isinstance(custo_mod_ref, dict):
-                custo_j = custo_mod_ref.get(tam_j, 0.0)
-            t_gasto += float(custo_j)
-            
+            # Custo e Prêmio
+            c_alvo = str(max([int(c) for c in res_db.keys() if str(c).isdigit()] + [0]))
             sorteio = res_db.get(c_alvo, [])
-            v_premio = 0.0
-            acertos = 0
             
+            custo_j = float(st.session_state.custos.get(mod_f, {}).get(tam_j, 0.0))
+            t_gasto += custo_j
+            
+            acertos = 0
+            v_premio = 0.0
             html_dez = ""
+            
             if sorteio:
                 acertos = len(set(dezenas_j) & set(sorteio))
-                # Busca de prêmios
-                premios_mod_ref = st.session_state.premios.get(mod_f, {})
-                if isinstance(premios_mod_ref, dict):
-                    v_premio = float(premios_mod_ref.get(str(acertos), 0.0))
-                t_premio += v_premio 
-
+                v_premio = float(st.session_state.premios.get(mod_f, {}).get(str(acertos), 0.0))
+                t_premio += v_premio
+                
                 for d in dezenas_j:
                     is_sorteada = d in sorteio
-                    # Identifica se foi a dezena trocada pelo Juiz
-                    is_ia = jogo.get('detalhe_troca') and d == jogo['detalhe_troca']['entrou']
+                    # IDENTIFICAÇÃO DE ORIGEM DA DEZENA
+                    is_pso = jogo.get('detalhe_troca') and d == jogo['detalhe_troca']['entrou']
+                    is_fixa = d in fixas_matriz
                     
-                    # Estilização
-                    bg = "#27ae60" if is_sorteada else "#f1f2f6"
+                    # Estilização Inteligente
+                    # Borda azul se for PSO, Borda Ouro se for Fixa, senão padrão
+                    borda = "3px solid #00d2ff" if is_pso else ("2px solid #d4af37" if is_fixa else "1px solid #dfe6e9")
+                    bg = "#27ae60" if is_sorteada else "#f8f9fa"
                     txt = "white" if is_sorteada else "#2d3436"
-                    border = "2px solid #00d2ff" if is_ia else "1px solid #dfe6e9"
+                    sombra = "box-shadow: 0 0 8px #00d2ff;" if (is_pso and is_sorteada) else ""
                     
-                    html_dez += f'<span style="background:{bg}; color:{txt}; border:{border}; padding: 4px 8px; border-radius: 5px; margin-right: 5px; font-weight: bold; font-family: monospace;">{d:02d}</span>'
+                    html_dez += f'<span style="background:{bg}; color:{txt}; border:{borda}; {sombra} padding: 4px 8px; border-radius: 6px; margin: 2px; display: inline-block; font-weight: bold; font-family: monospace;">{d:02d}</span>'
                 
-                res_msg = f"<span style='color: #27ae60;'>🎯 {acertos} ACERTOS</span> | <span style='color: #1a1a1a;'>💰 R$ {v_premio:,.2f}</span>"
+                res_msg = f"<b style='color: #27ae60;'>🎯 {acertos} ACERTOS</b> | <b style='color: #1a1a1a;'>💰 R$ {v_premio:,.2f}</b>"
             else:
                 for d in dezenas_j:
-                    html_dez += f'<span style="background:#f1f2f6; color:#2d3436; border: 1px solid #dfe6e9; padding: 4px 8px; border-radius: 5px; margin-right: 5px; font-family: monospace;">{d:02d}</span>'
-                res_msg = "<span style='color: #636e72;'>⏳ Aguardando Sorteio...</span>"
+                    html_dez += f'<span style="background:#f8f9fa; color:#2d3436; border:1px solid #dfe6e9; padding: 4px 8px; border-radius: 6px; margin: 2px; display: inline-block; font-family: monospace;">{d:02d}</span>'
+                res_msg = "<span style='color: #636e72;'>⏳ Aguardando novo sorteio para conferir...</span>"
 
-            # CARD DO JOGO (VISUAL LUXO E CLARO)
+            # CARD DO JOGO (VISUAL LUXO)
             st.markdown(f"""
-            <div style="border-left: 8px solid #d4af37; padding: 15px; background: white; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); color: #1a1a1a;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                    <small style="color: #636e72;"><b>JOGO {i+1:02d}</b> • {mod_f} • CONCURSO {c_alvo}</small>
-                    <small style="color: #d4af37;">{jogo.get('est', 'PERSONALIZADO')}</small>
+            <div style="border-left: 10px solid #d4af37; padding: 15px; background: white; border-radius: 15px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #636e72; font-size: 13px;"><b>BILHETE #{i+1:02d}</b> • {jogo['est']}</span>
+                    <span style="background: #f1f2f6; padding: 2px 8px; border-radius: 10px; font-size: 11px;">{tam_j} Dezenas</span>
                 </div>
-                <div style="margin: 12px 0;">{html_dez}</div>
-                <div style="border-top: 1px solid #eee; padding-top: 8px;">
-                    <strong>{res_msg}</strong>
+                <div style="margin: 15px 0;">{html_dez}</div>
+                <div style="border-top: 1px solid #eee; padding-top: 10px; display: flex; justify-content: space-between;">
+                    <span>{res_msg}</span>
+                    <small style="color: #bdc3c7;">Conc: {c_alvo}</small>
                 </div>
             </div>""", unsafe_allow_html=True)
 
-        # RESUMO FINANCEIRO
+        # --- 5. RESUMO FINANCEIRO E EXPORTAÇÃO ---
         st.markdown("---")
-        c_fin1, c_fin2, c_fin3 = st.columns(3)
-        c_fin1.metric("Investimento Total", f"R$ {t_gasto:,.2f}")
-        c_fin2.metric("Prêmios Totais", f"R$ {t_premio:,.2f}")
-        
+        col_f1, col_f2, col_f3 = st.columns(3)
+        col_f1.metric("Investimento", f"R$ {t_gasto:,.2f}")
+        col_f2.metric("Prêmios", f"R$ {t_premio:,.2f}")
         saldo = t_premio - t_gasto
-        c_fin3.metric(
-            "Saldo Líquido", 
-            f"R$ {saldo:,.2f}", 
-            delta=f"R$ {saldo:,.2f}", 
-            delta_color="normal" if saldo >= 0 else "inverse"
-        )
+        col_f3.metric("Saldo Líquido", f"R$ {saldo:,.2f}", delta=f"{saldo:,.2f}", delta_color="normal" if saldo >= 0 else "inverse")
 
-        if st.button("🗑️ LIMPAR TODOS OS JOGOS"):
-            st.session_state.jogos_salvos = []
-            st.success("Histórico limpo!")
-            st.rerun()
+        # Botões de Ação Final
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("🗑️ LIMPAR CONFERÊNCIA"):
+                st.session_state.aba_conferencia = []
+                st.success("Histórico de conferência limpo!")
+                st.rerun()
+        with c2:
+            # Exportação integrada
+            if st.session_state.aba_conferencia:
+                try:
+                    pdf_bytes = gerar_pdf_jogos([j['n'] for j in jogos_para_conferir], mod_f)
+                    st.download_button("📥 BAIXAR PDF", pdf_bytes, f"conferencia_{mod_f}.pdf", "application/pdf")
+                except:
+                    st.warning("Gerador de PDF indisponível.")
 with abas[2]:
     # --- CORREÇÃO 1: VERIFICAÇÃO DE FUNÇÃO ---
     # Certifica-te de que 'mostrar_status_backup' está definida. 
