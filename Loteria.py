@@ -1315,9 +1315,11 @@ with abas[1]:
     st.header("🔍 Painel de Conferência (Sincro-Kadosh)")
     
     # 1. SELETOR DE MODALIDADE
+    # Usando get para evitar erro caso custos não esteja inicializado
+    lista_loterias = list(st.session_state.get('custos', {}).keys())
     mod_f = st.selectbox(
         "Selecione a Loteria para Conferir", 
-        list(st.session_state.custos.keys()), 
+        lista_loterias if lista_loterias else ["Lotofácil"], 
         key="f_conf_definitiva"
     )
     
@@ -1325,10 +1327,7 @@ with abas[1]:
     if 'aba_conferencia' not in st.session_state:
         st.session_state.aba_conferencia = []
         
-    # Unificamos a lista para garantir que jogos do Gerador Pro caiam aqui
     jogos_para_conferir = st.session_state.get('aba_conferencia', [])
-    
-    # Busca de resultados atualizados
     res_db = st.session_state.get('ultimo_res', {}).get(mod_f, {})
 
     if not jogos_para_conferir:
@@ -1341,13 +1340,13 @@ with abas[1]:
         if pool_origem:
             st.markdown(f"### 🎯 EFICIÊNCIA DO POOL (JUIZ 2)")
             if res_db:
-                # Identifica o último concurso real
-                ultimo_concurso = str(max([int(c) for c in res_db.keys() if str(c).isdigit()] + [0]))
+                # Identifica o último concurso real de forma segura
+                chaves_reais = [int(c) for c in res_db.keys() if str(c).isdigit()]
+                ultimo_concurso = str(max(chaves_reais)) if chaves_reais else "0"
                 res_alvo = res_db.get(ultimo_concurso, [])
                 
                 if res_alvo:
                     acertos_p = sum(1 for d in pool_origem if d in res_alvo)
-                    # HTML DO POOL COM CORES DE ACERTO
                     h_pool = '<div style="background: #ffffff; padding: 15px; border-radius: 12px; border: 2px solid #d4af37; margin-bottom: 20px; box-shadow: 2px 2px 10px rgba(0,0,0,0.05);">'
                     h_pool += f'<b style="color: #1a1a1a;">Análise do Pool (Conc. {ultimo_concurso}):</b><br><br>'
                     for d in sorted(pool_origem):
@@ -1356,7 +1355,7 @@ with abas[1]:
                     h_pool += f'<br><br><b style="color: #2c3e50;">📊 ACERTOS NO POOL: {acertos_p} de {len(res_alvo)} sorteados.</b></div>'
                     st.markdown(h_pool, unsafe_allow_html=True)
 
-        # --- 4. CONFERÊNCIA DE BILHETES (HARMONIA E SIMETRIA) ---
+        # --- 4. CONFERÊNCIA DE BILHETES ---
         st.markdown("---")
         st.subheader("📋 Bilhetes Processados pelo PSO")
         
@@ -1365,14 +1364,18 @@ with abas[1]:
         for i, jogo in enumerate(jogos_para_conferir):
             dezenas_j = jogo.get('n', [])
             tam_j = jogo.get('tam', 15)
-            # Busca dezenas fixas da matriz se houver
             fixas_matriz = st.session_state.get('matriz_selecionada', {}).get('fixas', [])
             
-            # Custo e Prêmio
-            c_alvo = str(max([int(c) for c in res_db.keys() if str(c).isdigit()] + [0]))
+            # Cálculo de Resultados
+            chaves_reais = [int(c) for c in res_db.keys() if str(c).isdigit()]
+            c_alvo = str(max(chaves_reais)) if chaves_reais else "0"
             sorteio = res_db.get(c_alvo, [])
             
-            custo_j = float(st.session_state.custos.get(mod_f, {}).get(tam_j, 0.0))
+            # --- SOLUÇÃO DO ATTRIBUTEERROR: VACINA DE CUSTO ---
+            custo_j = 0.0
+            custos_dic = st.session_state.get('custos', {}).get(mod_f, {})
+            if isinstance(custos_dic, dict):
+                custo_j = float(custos_dic.get(tam_j, 0.0))
             t_gasto += custo_j
             
             acertos = 0
@@ -1381,17 +1384,17 @@ with abas[1]:
             
             if sorteio:
                 acertos = len(set(dezenas_j) & set(sorteio))
-                v_premio = float(st.session_state.premios.get(mod_f, {}).get(str(acertos), 0.0))
+                # Busca de prêmios segura
+                premios_dic = st.session_state.get('premios', {}).get(mod_f, {})
+                if isinstance(premios_dic, dict):
+                    v_premio = float(premios_dic.get(str(acertos), 0.0))
                 t_premio += v_premio
                 
                 for d in dezenas_j:
                     is_sorteada = d in sorteio
-                    # IDENTIFICAÇÃO DE ORIGEM DA DEZENA
                     is_pso = jogo.get('detalhe_troca') and d == jogo['detalhe_troca']['entrou']
                     is_fixa = d in fixas_matriz
                     
-                    # Estilização Inteligente
-                    # Borda azul se for PSO, Borda Ouro se for Fixa, senão padrão
                     borda = "3px solid #00d2ff" if is_pso else ("2px solid #d4af37" if is_fixa else "1px solid #dfe6e9")
                     bg = "#27ae60" if is_sorteada else "#f8f9fa"
                     txt = "white" if is_sorteada else "#2d3436"
@@ -1403,13 +1406,13 @@ with abas[1]:
             else:
                 for d in dezenas_j:
                     html_dez += f'<span style="background:#f8f9fa; color:#2d3436; border:1px solid #dfe6e9; padding: 4px 8px; border-radius: 6px; margin: 2px; display: inline-block; font-family: monospace;">{d:02d}</span>'
-                res_msg = "<span style='color: #636e72;'>⏳ Aguardando novo sorteio para conferir...</span>"
+                res_msg = "<span style='color: #636e72;'>⏳ Aguardando novo sorteio...</span>"
 
-            # CARD DO JOGO (VISUAL LUXO)
+            # CARD DO JOGO
             st.markdown(f"""
             <div style="border-left: 10px solid #d4af37; padding: 15px; background: white; border-radius: 15px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #636e72; font-size: 13px;"><b>BILHETE #{i+1:02d}</b> • {jogo['est']}</span>
+                    <span style="color: #636e72; font-size: 13px;"><b>BILHETE #{i+1:02d}</b> • {jogo.get('est', 'Kadosh')}</span>
                     <span style="background: #f1f2f6; padding: 2px 8px; border-radius: 10px; font-size: 11px;">{tam_j} Dezenas</span>
                 </div>
                 <div style="margin: 15px 0;">{html_dez}</div>
@@ -1419,7 +1422,7 @@ with abas[1]:
                 </div>
             </div>""", unsafe_allow_html=True)
 
-        # --- 5. RESUMO FINANCEIRO E EXPORTAÇÃO ---
+        # --- 5. RESUMO FINANCEIRO ---
         st.markdown("---")
         col_f1, col_f2, col_f3 = st.columns(3)
         col_f1.metric("Investimento", f"R$ {t_gasto:,.2f}")
@@ -1427,13 +1430,9 @@ with abas[1]:
         saldo = t_premio - t_gasto
         col_f3.metric("Saldo Líquido", f"R$ {saldo:,.2f}", delta=f"{saldo:,.2f}", delta_color="normal" if saldo >= 0 else "inverse")
 
-        # Botões de Ação Final
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("🗑️ LIMPAR CONFERÊNCIA"):
-                st.session_state.aba_conferencia = []
-                st.success("Histórico de conferência limpo!")
-                st.rerun()
+        if st.button("🗑️ LIMPAR CONFERÊNCIA"):
+            st.session_state.aba_conferencia = []
+            st.rerun()
         with c2:
             # Exportação integrada
             if st.session_state.aba_conferencia:
