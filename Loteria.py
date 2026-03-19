@@ -1034,8 +1034,8 @@ with abas[0]:
         if fixas_selecionadas:
             st.markdown(f"📌 **Fixas Ativas ({len(fixas_selecionadas)}):** {sorted(fixas_selecionadas)}")
 
-         # --- [BOTÕES DE COMANDO IA] ---
-         col_btn1, col_btn2 = st.columns(2)
+        # --- [BOTÕES DE COMANDO IA] ---
+        col_btn1, col_btn2 = st.columns(2)
 
          with col_btn1:
              if mod == "Lotofácil":
