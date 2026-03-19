@@ -1191,11 +1191,16 @@ with abas[0]:
 
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
 
-    # --- [1. HIERARQUIA DE INTERFACE: A MATRIZ MANDA NO TAMANHO] ---
+    # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
+
+    # --- [1. HIERARQUIA DE INTERFACE: A MATRIZ OU ESTRATÉGIA MANDA NO TAMANHO] ---
+    e_automatico = False
+
     if st.session_state.get('matriz_selecionada'):
         m_ativa = st.session_state.matriz_selecionada
         nome_m = str(m_ativa.get('nome', '')).upper()
-        
+        e_automatico = True
+    
         if "CELULA" in nome_m or "CÉLULA" in nome_m:
             def_qtd, def_dez = 16, 16 
         elif "DIAMANTE" in nome_m:
@@ -1203,26 +1208,40 @@ with abas[0]:
         else:
             def_qtd = m_ativa.get('jogos') or m_ativa.get('qtd') or 10
             def_dez = m_ativa.get('dezenas') or m_ativa.get('dez') or 15
-    
+
         t_pool_alvo = m_ativa.get('pool') or m_ativa.get('n_pool') or 18
         est_nome_exibicao = f"MATRIZ: {nome_m}"
-    else:
+    
+    elif est_escolhida and est_escolhida != "PERSONALIZADO":
+        # MODO AUTOMÁTICO: Estratégia selecionada assume o controle
         conf_e = ESTRATEGIA_MAPA.get(est_escolhida, {"dez": 15, "qtd": 10, "pool_alvo": 18})
         def_qtd, def_dez = conf_e['qtd'], conf_e['dez']
         t_pool_alvo = conf_e.get('pool_alvo', 18)
         est_nome_exibicao = est_escolhida
+        e_automatico = True
+    else:
+        # MODO MANUAL: Usuário define
+        def_qtd, def_dez = 10, 15
+        t_pool_alvo = 18
+        est_nome_exibicao = "PERSONALIZADO / AVULSO"
+        e_automatico = False
 
-    # --- [2. INPUTS COM KEYS ÚNICAS] ---
+    # --- [2. INPUTS COM KEYS ÚNICAS - AGORA COM TRAVA DE SEGURANÇA] ---
     c1, c2 = st.columns(2)
     with c1:
         idx_p = opcoes_dez.index(def_dez) if def_dez in opcoes_dez else 0
-        n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_p, key="sb_final_resgate_v40")
+        # Desabilita se for automático para não haver conflito
+        n_dez_final = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=idx_p, 
+                                   key="sb_final_resgate_v40", disabled=e_automatico)
     with c2:
-        qtd = st.number_input("Quantidade de Jogos", 1, 500, int(def_qtd), key="ni_final_resgate_v40")
+        # Desabilita se for automático para não haver conflito
+        qtd_final = st.number_input("Quantidade de Jogos", 1, 500, int(def_qtd), 
+                                    key="ni_final_resgate_v40", disabled=e_automatico)
 
     # --- [3. MOTOR DE GERAÇÃO: 7 IAs + PSO + LOG DE TROCAS] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)", key="btn_gerar_v40"):
         fila_tamanhos = []
+    
         if st.session_state.get('matriz_selecionada'):
             m = st.session_state.matriz_selecionada
             n_up = str(m.get('nome', '')).upper()
@@ -1230,15 +1249,18 @@ with abas[0]:
                 fila_tamanhos = [16] + ([15] * 15)
             elif "DIAMANTE" in n_up:
                 fila_tamanhos = [16, 16] + ([15] * 10)
-            else:
+           else:
                 fila_tamanhos = [int(def_dez)] * int(def_qtd)
         else:
-            fila_tamanhos = [n_dez] * qtd
+            # Se for automático, usa def_dez/def_qtd da estratégia. Se não, usa o input.
+            v_dez = def_dez if e_automatico else n_dez_final
+            v_qtd = def_qtd if e_automatico else qtd_final
+            fila_tamanhos = [v_dez] * v_qtd
 
         pool_f = st.session_state.favoritas.get(mod, [])[:t_pool_alvo]
         if not pool_f: pool_f = list(range(1, 26))[:t_pool_alvo]
         fixas_f = st.session_state.get('fixas_ativas_combo', [])
-        
+    
         # DNA do concurso
         res_hist = st.session_state.ultimo_res.get(mod, {})
         chaves_reais = [int(c) for c in res_hist.keys() if str(c).isdigit()]
@@ -1251,14 +1273,19 @@ with abas[0]:
                 tentativas += 1
                 corpo = [d for d in pool_f if d not in fixas_f]
                 needs = tam_solicitado - len(fixas_f)
-                comb = sorted(fixas_f + random.sample(corpo, min(len(corpo), needs))) if needs > 0 else sorted(random.sample(fixas_f, tam_solicitado))
-                
-                # --- CHAMADA DO JUIZ (AS 7 IAs) ---
+            
+                # Sorteio inicial respeitando as fixas
+                if needs > 0:
+                    comb = sorted(fixas_f + random.sample(corpo, min(len(corpo), needs)))
+                else:
+                    comb = sorted(random.sample(fixas_f, tam_solicitado))
+            
+                # --- CHAMADA DO JUIZ (AS 7 IAs ATIVAS) ---
                 passou = validar_kadosh_cirurgico(comb, mod, tam_solicitado)
                 troca_info = None
 
                 if not passou:
-                    # MOTOR PSO DE AJUSTE
+                    # MOTOR PSO DE AJUSTE (Cura de Vácuo)
                     vaga_idx = random.randint(0, len(comb)-1)
                     if comb[vaga_idx] not in fixas_f:
                         cand = [d for d in pool_f if d not in comb]
@@ -1266,7 +1293,8 @@ with abas[0]:
                             entrou = random.choice(cand)
                             saiu_original = comb[vaga_idx]
                             novo = sorted([n if i != vaga_idx else entrou for i, n in enumerate(comb)])
-                            
+                        
+                            # Re-validação após ajuste da IA
                             if validar_kadosh_cirurgico(novo, mod, tam_solicitado):
                                 comb, passou = novo, True
                                 troca_info = {
@@ -1281,7 +1309,7 @@ with abas[0]:
                         "detalhe_troca": troca_info, 
                         "tam": tam_solicitado,
                         "est": est_nome_exibicao, 
-                        "fixas_f": fixas_f,  # CHAVE CORRIGIDA PARA EVITAR KeyError
+                        "fixas_f": fixas_f,
                         "conc_alvo": proximo_concurso,
                         "chance": "ELITE" if not troca_info else "PSO AJUSTADO"
                     })
@@ -1296,21 +1324,21 @@ with abas[0]:
         for i, j in enumerate(st.session_state.jogos_gerados):
             html = ""
             for n in j['n']:
-                # Verifica se é fixa, se é troca PSO ou padrão
                 is_fixa = n in j.get('fixas_f', [])
                 is_pso = j['detalhe_troca'] and n == j['detalhe_troca']['entrou']
-                
+            
                 cor = '#27ae60' if is_fixa else ('#8e44ad' if is_pso else '#f1c40f')
                 html += f'<span style="background:{cor}; color:white; font-weight:bold; padding:5px 10px; margin:2px; border-radius:50%; display:inline-block;">{n:02d}</span>'
-            
+        
             motivo_pso = f"<br><span style='color:#8e44ad; font-size:12px;'><b>ℹ️ TROCA IA:</b> {j['detalhe_troca']['motivo']} ({j['detalhe_troca']['saiu']} → {j['detalhe_troca']['entrou']})</span>" if j['detalhe_troca'] else ""
-            
+        
             st.markdown(f"""
                 <div style="background:white; padding:12px; border-radius:10px; border-left:8px solid #d4af37; margin-bottom:10px; color:black;">
                     <b>BILHETE #{i+1:02d}</b> | {j['chance']} <br> {html} {motivo_pso}
                     <div style="font-size:10px; color:gray; margin-top:5px;">Estratégia: {j['est']} | Tamanho: {j['tam']} | Concurso: {j.get('conc_alvo')}</div>
                 </div>
             """, unsafe_allow_html=True)
+
         if st.button("💾 ENVIAR PARA CONFERÊNCIA (ABA 1)", key="btn_envia_vfinal"):
             if 'aba_conferencia' not in st.session_state: st.session_state.aba_conferencia = []
             st.session_state.aba_conferencia.extend(st.session_state.jogos_gerados)
