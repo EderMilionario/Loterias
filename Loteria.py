@@ -986,23 +986,23 @@ with abas[0]:
         # Extrai as chaves (ex: [15, 16]) para o selectbox
         opcoes_dez = list(custos_mod.keys())
 
-        # --- [A HIERARQUIA DEFINITIVA: MATRIZ MANDA NA ESTRATÉGIA] ---
-        # Inicializamos def_dez e def_qtd para evitar erro de variável não definida
-        def_dez, def_qtd = 15, 10
-
-        # Se houver matriz, ela define os valores padrão iniciais
+        # --- [PRIORIDADE DE QUANTIDADE] ---
         if st.session_state.get('matriz_selecionada'):
-            m_ativa = st.session_state.matriz_selecionada
-            nome_m = str(m_ativa.get('nome', '')).upper()
-        
+            m_v = st.session_state.matriz_selecionada
+            # Se for Diamante ou Célula, força o poder de fogo, senão pega o valor da matriz
+            nome_m = str(m_v.get('nome', '')).upper()
             if "DIAMANTE" in nome_m: 
-                def_dez, def_qtd = 16, 12 # Poder de fogo real
+                def_qtd = 12
             elif "CÉLULA" in nome_m or "CELULA" in nome_m: 
-                def_dez, def_qtd = 16, 16 # Poder de fogo real
+                def_qtd = 16
             else:
-                # Tenta pegar 'dezenas' ou 'dez', e 'jogos' ou 'qtd' (flexibilidade)
-                def_dez = m_ativa.get('dezenas') or m_ativa.get('dez') or 15
-                def_qtd = m_ativa.get('jogos') or m_ativa.get('qtd') or 10
+                def_qtd = m_v.get('jogos') or m_v.get('qtd') or 10
+        else:
+            # Se não tem matriz, usa o padrão da estratégia
+            def_qtd = ESTRATEGIA_MAPA.get(est_escolhida, {}).get('qtd', 10)
+
+        # O campo de entrada AGORA vai obedecer a matriz
+        qtd = st.number_input("Quantidade de Jogos", 1, 500, int(def_qtd))
     
         # Se não houver matriz, a estratégia assume o comando
         elif est_escolhida != "Personalizado" and mod == "Lotofácil":
@@ -1020,17 +1020,23 @@ with abas[0]:
         qtd = st.number_input("Quantidade de Jogos", 1, 500, int(def_qtd))
 
     with c2:
-        # --- [SINCRONIA DO POOL COM AS FIXAS] ---
-        # O Pool agora olha para a Matriz primeiro
-        tamanhos_pool = [18]
+        # --- [CORREÇÃO: HIERARQUIA ABSOLUTA DA MATRIZ] ---
+        # 1. Verifica se existe Matriz selecionada primeiro
         if st.session_state.get('matriz_selecionada'):
-            tamanhos_pool.append(st.session_state.matriz_selecionada.get('n_pool', 18))
-        
-        if mod == "Lotofácil":
-            if "A MARRETA" in est_escolhida: tamanhos_pool.append(22)
-            elif "PRESTIGE 20" in est_escolhida: tamanhos_pool.append(20)
+            m_ativa = st.session_state.matriz_selecionada
+            # Busca o pool da matriz (tenta as duas chaves possíveis 'pool' ou 'n_pool')
+            tamanho_alvo_pool = m_ativa.get('pool') or m_ativa.get('n_pool') or 18
+        else:
+            # 2. Se NÃO houver matriz, segue a regra da Estratégia
+            tamanhos_pool = [18]
+            if mod == "Lotofácil":
+                if "A MARRETA" in est_escolhida: 
+                    tamanhos_pool.append(22)
+                elif "PRESTIGE 20" in est_escolhida: 
+                    tamanhos_pool.append(20)
+            tamanho_alvo_pool = max(tamanhos_pool)
 
-        tamanho_alvo_pool = max(tamanhos_pool)
+        # Salva o valor final para o sistema usar
         st.session_state['tamanho_pool_ativo'] = tamanho_alvo_pool
         
         # Exibição do Status de Espera (Prevenindo o "Verde" precoce)
@@ -1038,7 +1044,7 @@ with abas[0]:
         st.markdown(f"""
         <div style="background: #f1f2f6; padding: 15px; border-radius: 10px; border-left: 5px solid #2ecc71;">
             <b style="color: #2f3640;">🎯 FOCO: CONCURSO {conc_alvo}</b><br>
-            <small>Pool travado em {tamanho_alvo_pool} dezenas para este alvo.</small>
+            <small>Pool travado em <b>{tamanho_alvo_pool}</b> dezenas para este alvo (Prioridade: {'Matriz' if st.session_state.get('matriz_selecionada') else 'Estratégia'}).</small>
         </div>
         """, unsafe_allow_html=True)
         
@@ -1191,37 +1197,53 @@ with abas[0]:
 
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
 
+    # --- [1. LOGICA DE HIERARQUIA PARA A INTERFACE] ---
+    # Coloque isso logo abaixo da seleção da Matriz/Estratégia para a tela atualizar
+    if st.session_state.get('matriz_selecionada'):
+        m_ativa = st.session_state.matriz_selecionada
+        nome_m = m_ativa.get('nome', '').upper()
+    
+        # Define os valores que a INTERFACE (selectbox/number_input) vai mostrar
+        if "CELULA" in nome_m or "CÉLULA" in nome_m:
+            def_qtd, def_dez = 16, 16 # Poder de fogo
+        elif "DIAMANTE" in nome_m:
+            def_qtd, def_dez = 12, 16 # Poder de fogo
+        else:
+            def_qtd = m_ativa.get('jogos') or m_ativa.get('qtd') or 10
+            def_dez = m_ativa.get('dezenas') or m_ativa.get('dez') or 15
+    
+        tamanho_alvo_pool = m_ativa.get('pool') or m_ativa.get('n_pool') or 18
+    else:
+        # Se for só estratégia, pega do mapa de estratégias
+        conf_e = ESTRATEGIA_MAPA.get(est_escolhida, {"dez": 15, "qtd": 10, "pool_alvo": 18})
+        def_qtd = conf_e['qtd']
+        def_dez = conf_e['dez']
+        tamanho_alvo_pool = conf_e.get('pool_alvo', 18)
+
+    # --- [2. CAMPOS DE ENTRADA OBEDECENDO A HIERARQUIA] ---
+    # Aqui os campos param de ficar travados em 10 ou 20
+    n_dez = st.selectbox("Dezenas por Bilhete", opcoes_dez, index=opcoes_dez.index(def_dez) if def_dez in opcoes_dez else 0)
+    qtd = st.number_input("Quantidade de Jogos", 1, 500, int(def_qtd))
+
+    # --- [3. O BOTÃO DE GERAR (USANDO A FILA QUE VOCÊ MANDOU)] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-        # 1. Sincronização Absoluta: Prioriza Matriz, usa Estratégia para Pesos
-        conf = ESTRATEGIA_MAPA.get(est_escolhida, {"dez": 15, "qtd": 10, "pool_alvo": 18})
-    
-        # --- AJUSTE DE HIERARQUIA: CRIAÇÃO DA FILA DE PRODUÇÃO ---
+        # Re-valida a fila no momento do clique para garantir o Combo
         fila_tamanhos = []
-    
-        # Se houver matriz selecionada, ela manda na QUANTIDADE e no TAMANHO (Poder de Fogo)
         if st.session_state.get('matriz_selecionada'):
             matriz = st.session_state.matriz_selecionada
             nome_mat_up = matriz.get('nome', '').upper()
         
-            # Lógica para Matrizes Híbridas (Celular e Diamante)
             if "CELULA" in nome_mat_up or "CÉLULA" in nome_mat_up:
-                fila_tamanhos = [16] + ([15] * 15)  # 1 de 16 e 15 de 15 (Total 16 jogos)
+                fila_tamanhos = [16] + ([15] * 15)
             elif "DIAMANTE" in nome_mat_up:
-                fila_tamanhos = [16, 16] + ([15] * 10) # 2 de 16 e 10 de 15 (Total 12 jogos)
+                fila_tamanhos = [16, 16] + ([15] * 10)
             else:
-                # Matrizes Normais (Ex: 20-15-13) - Buscando chaves flexíveis do seu mapa
-                qtd_m = matriz.get('jogos') or matriz.get('qtd') or 10
-                dez_m = matriz.get('dezenas') or matriz.get('dez') or 15
-                fila_tamanhos = [dez_m] * qtd_m
-        
-            tamanho_alvo_pool = matriz.get('pool') or matriz.get('n_pool') or 18
-            est_nome_exibicao = f"{matriz.get('nome', 'MATRIZ')}"
+                fila_tamanhos = [matriz.get('dezenas', 15)] * matriz.get('jogos', 10)
         else:
-            # Se for só estratégia, segue o padrão fixo do mapa
-            fila_tamanhos = [conf['dez']] * conf['qtd']
-            tamanho_alvo_pool = conf.get('pool_alvo', 18)
-            est_nome_exibicao = est_escolhida
+            fila_tamanhos = [n_dez] * qtd
 
+        # O RESTO DO SEU MOTOR PSO SEGUE AQUI...
+        # processar_geracao_cirurgica(fila_tamanhos)
         # 2. Sincronização do Pool
         pool_completo = st.session_state.favoritas.get(mod, [])
         if not pool_completo:
