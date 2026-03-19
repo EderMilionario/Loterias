@@ -1095,6 +1095,10 @@ with abas[0]:
         
         # --- [CORREÇÃO CRÍTICA: BLINDAGEM DO POOL] ---
         # 1. Garante que o dicionário de fvoritas exista
+        # --- DEFINIÇÃO DE SEGURANÇA (PARA MATAR O NAMEERROR) ---
+        # Se max_v_bt não existir, definimos como 25 (Lotofácil) para o range não quebrar
+        max_v_bt = 25 if mod == "Lotofácil" else 60 # Ajuste conforme sua config global
+        
         if 'favoritas' not in st.session_state:
             st.session_state.favoritas = {}
         
@@ -1102,14 +1106,13 @@ with abas[0]:
         # O 'or []' impede o erro de AttributeError no parâmetro 'default'
         pool_default = st.session_state.favoritas.get(mod, []) or []
         
-        # 3. O multiselect agora está protegido
+        # 3. O multiselect agora está protegido e as fixas VOLTARÃO a aparecer
         pool = st.multiselect(
             f"SELECIONE SEU POOL ({mod}):", 
             range(1, max_v_bt + 1), 
             default=pool_default
         )
-        st.session_state.favoritas[mod] = pool 
-
+        st.session_state.favoritas[mod] = pool
         # Análise Geográfica do Pool
         if pool and mod == "Lotofácil":
             linhas_p = [0]*5
