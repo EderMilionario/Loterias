@@ -1158,45 +1158,45 @@ with abas[0]:
         # 1. Garante a Matriz de Afinidade (Sua lógica original)
         matriz_af = st.session_state.get('matriz_ativa')
         if matriz_af is None:
-            matriz_af = calcular_matriz_afinidade_kadosh(mod)
-            st.session_state['matriz_ativa'] = matriz_af
+             matriz_af = calcular_matriz_afinidade_kadosh(mod)
+             st.session_state['matriz_ativa'] = matriz_af
 
         if not pool or len(pool) < n_dez:
             st.error("⚠️ Erro: Seu Pool é menor que a quantidade de dezenas por bilhete.")
         else:
             with st.spinner("🧠 Sincronizando 10 Camadas de IA..."):
-                # O PSO agora substitui o random.choices antigo
-                # Ele respeita sua variável 'escolha', 'mod', 'qtd' e 'fixas_final'
-                novos = executar_pso_kadosh(
+                # CORREÇÃO 1: Alterado 'escolha' para 'est_escolhida'
+                 novos = executar_pso_kadosh(
                     modalidade=mod,
                     pool_selecionado=pool,
                     qtd_jogos=qtd,
                     dezenas_fixas=list(fixas_final),
                     matriz_afinidade=matriz_af,
-                    estrategia_nome=escolha
+                    estrategia_nome=est_escolhida  
                 )
-            
+                
                 # Adiciona as informações extras que sua lógica de salvamento exige
                 for j in novos:
                     j['mod'] = mod
                     j['tam'] = len(j['n'])
                     j['fixas_utilizadas'] = list(fixas_final)
                     j['chance'] = definir_label_chance(j['n'], mod)
-            
+                
                 st.session_state.jogos_gerados = novos
                 st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com PSO!")
                 st.rerun()
-            
-            # Feedback visual das dezenas do Pool (Verde se IA aprovou forte)
-            st.markdown("### 🧬 Pool de Elite Selecionado pelas 10 IAs")
-            html_pool = ""
-            for d in range(1, 26):
-                cor = "pool-verde" if d in pool_final_kadosh else "pool-vermelho"
-                # Se a dezena foi trocada pela "Cura de Vácuo", ela ganha brilho extra
-                html_pool += f'<span class="dezena-pool {cor}">{d:02d}</span>'
-            st.markdown(f'<div style="margin-bottom:20px;">{html_pool}</div>', unsafe_allow_html=True)
+                
+        # Feedback visual das dezenas do Pool (Verde se IA aprovou forte)
+        st.markdown("### 🧬 Pool de Elite Selecionado pelas 10 IAs")
+        html_pool = ""
+        for d in range(1, 26):
+            cor = "pool-verde" if d in pool_final_kadosh else "pool-vermelho"
+            # Se a dezena foi trocada pela "Cura de Vácuo", ela ganha brilho extra
+            html_pool += f'<span class="dezena-pool {cor}">{d:02d}</span>'
+        st.markdown(f'<div style="margin-bottom:20px;">{html_pool}</div>', unsafe_allow_html=True)
 
-            st.success(f"✅ {len(novos_jogos)} Jogos Gerados com Sucesso!")
+        # CORREÇÃO 2: Alterado 'novos_jogos' para 'novos' para evitar outro NameError
+        st.success(f"✅ {len(novos)} Jogos Gerados com Sucesso!")
             
             # O sistema segue para mostrar os jogos abaixo (sua lógica original de display)
 
