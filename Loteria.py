@@ -1144,101 +1144,71 @@ with abas[0]:
     # --- [DENTRO DA ABA 0 - BOTÃO GERAR] ---
     # --- [INÍCIO DO BLOCO JUIZ FINAL KADOSH CORRIGIDO] ---
     # --- [INÍCIO DO BLOCO JUIZ FINAL KADOSH CORRIGIDO E COMPLETO] ---
+    # --- [INÍCIO DO BLOCO JUIZ FINAL KADOSH - 100% SINCRONIZADO] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH + 10 IAs)"):
         with st.spinner("⚖️ O Juiz Final (10 IAs) está auditando o Pool e as Fixas..."):
             
-            # 1. Sincronização com as variáveis nativas do seu sistema (Atualizada.txt)
+            # Variáveis nativas do seu código
             v_mod = mod if 'mod' in locals() else "Lotofácil"
             v_n_dez = n_dez if 'n_dez' in locals() else 19
             v_n_jogos = n_jogos if 'n_jogos' in locals() else 12
             
-            # Captura o estado atual vindo das IAs anteriores
             pool_antes = set(st.session_state.get('pool_favoritas', []))
             fixas_antes = set(st.session_state.get('fixas_selecionadas', []))
     
-            # 2. Executa o Score de Elite (As 10 Inteligências)
+            # 1. Execução das 10 Camadas de IA
             matriz_afim = calcular_matriz_afinidade_kadosh(v_mod)
             scores_10_ias = calcular_score_elite_10(v_mod, list(range(1, 26)), matriz_afim)
     
-            # 3. REFINAMENTO FINAL DO POOL (O Juiz decide a troca literal aqui)
+            # 2. Refinamento e Troca Literal (Juiz Final)
             pool_final = refinar_pool_kadosh(list(pool_antes), matriz_afim, v_n_dez, scores_ia=scores_10_ias)
     
-            # Identifica o que o Juiz mudou para o Alerta Visual
+            # Identifica trocas para o relatório visual
             dezenas_removidas = pool_antes - set(pool_final)
             dezenas_inseridas = set(pool_final) - pool_antes
     
-            # ATUALIZAÇÃO DO SISTEMA: O Pool agora é o que o Juiz decidiu
+            # Atualiza o estado oficial do Pool
             st.session_state['pool_favoritas'] = pool_final
             
-            # 4. Exibição da Justificativa e Destaque Visual Neon
+            # 3. Relatório do Juiz (Apenas se houver trocas)
             if dezenas_inseridas:
                 st.markdown(f"""
                 <div style="background: #1a1a1a; border: 2px solid #d4af37; padding: 15px; border-radius: 10px; margin: 10px 0;">
-                    <span style="color: #d4af37; font-size: 16px;"><b>⚖️ VEREDITO DO JUIZ FINAL (CORREÇÃO DE ELITE):</b></span><br>
-                    <span style="color: white; font-size: 14px;">O Juiz Final removeu dezenas fracas: <del style="color: #ff4b4b;">{', '.join(map(str, sorted(dezenas_removidas)))}</del></span><br>
-                    <span style="color: white; font-size: 14px;">E inseriu dezenas de maior afinidade: <b style="color: #00f2ff;">{', '.join(map(str, sorted(dezenas_inseridas)))}</b></span><br>
-                    <p style="color: #888; font-size: 12px; margin-top: 5px;">
-                        <i>Motivo: Reequilíbrio de Entropia Estocástica e Sincronização de Ciclos para evitar o Overfitting.</i>
-                    </p>
+                    <span style="color: #d4af37; font-size: 16px;"><b>⚖️ VEREDITO DO JUIZ FINAL:</b></span><br>
+                    <span style="color: white;">Removidas: <del style="color: #ff4b4b;">{', '.join(map(str, sorted(dezenas_removidas)))}</del> | Inseridas: <b style="color: #00f2ff;">{', '.join(map(str, sorted(dezenas_inseridas)))}</b></span>
                 </div>
                 """, unsafe_allow_html=True)
-            else:
-                st.info("✅ O Juiz Final auditou o Pool e confirmou que a seleção atual é a melhor possível.")
 
-            # 5. GERAÇÃO DOS JOGOS (Sincronizada com as Estratégias)
-            with st.spinner("🧠 Sincronizando 10 Camadas de IA nos Jogos..."):
-                # Função para gerar jogos respeitando as trocas do Juiz
-                def processar_geracao(dezenas_por_jogo, quantidade):
-                    novos = executar_pso_kadosh(v_mod, pool_final, quantidade, list(fixas_antes), matriz_afim)
-                    if novos:
-                        st.session_state.jogos_gerados.extend(novos)
-
-                # Limpa a memória para os novos jogos do Juiz
-                st.session_state.jogos_gerados = []
-
-                # Aplica as estratégias do seu arquivo
+            # 4. GERAÇÃO DE JOGOS (Usando sua lógica original de estratégias)
+            st.session_state.jogos_gerados = [] # Limpa antes de gerar novos
+            
+            with st.spinner("🧠 Sincronizando 10 Camadas de IA..."):
+                # Estratégia: FECHAMENTOS ESPECIAIS
                 if fe_escolhido != "Nenhum":
                     if "DIAMANTE" in fe_escolhido:
-                        processar_geracao(16, 2)
-                        processar_geracao(15, 10)
+                        st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 2, list(fixas_antes), matriz_afim)) # 16 dezenas
+                        st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 10, list(fixas_antes), matriz_afim)) # 15 dezenas
                     elif "CÉLULA" in fe_escolhido:
-                        processar_geracao(16, 1)
-                        processar_geracao(15, 15)
+                        st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 1, list(fixas_antes), matriz_afim))
+                        st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 15, list(fixas_antes), matriz_afim))
                     else:
-                        processar_geracao(15, v_n_jogos)
+                        st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, v_n_jogos, list(fixas_antes), matriz_afim))
+                
+                # Estratégia: MÉTODOS FIXOS
                 elif est_escolhida == "6. A MARRETA":
-                    processar_geracao(18, 1)
-                    processar_geracao(16, 5)
+                    st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 1, list(fixas_antes), matriz_afim)) # 18 dez
+                    st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 5, list(fixas_antes), matriz_afim)) # 16 dez
                 elif est_escolhida == "10. KADOSH PRESTIGE 20":
-                    processar_geracao(15, 36)
+                    st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 36, list(fixas_antes), matriz_afim))
                 else:
-                    processar_geracao(15, v_n_jogos)
+                    # Geração Padrão
+                    st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, v_n_jogos, list(fixas_antes), matriz_afim))
 
+                # Mensagem final de sucesso baseada na lista global que já existe no seu código
                 if st.session_state.jogos_gerados:
                     st.success(f"✅ {len(st.session_state.jogos_gerados)} Jogos Gerados com o Pool Corrigido pelo Juiz!")
+
     # --- [FIM DO BLOCO JUIZ FINAL KADOSH] ---
-            # Feedback visual das dezenas do Pool (Verde se IA aprovou forte)
-            st.markdown("### 🧬 Pool de Elite Selecionado pelas 10 IAs")
-            html_pool = ""
-            # ESTE É O LOCAL DA LINHA 1224 (Ajustado para o seu código real)
-            cols = st.columns(5)
-            for i in range(5):
-                with cols[i]:
-                    for j in range(5):
-                        d = i * 5 + j + 1
-            
-                        # Aqui está a chave: pegamos o pool que o Juiz Final salvou
-                        pool_atual = st.session_state.get('pool_favoritas', [])
-            
-                        # Define a cor comparando com o que o Juiz decidiu
-                        cor = "pool-verde" if d in pool_atual else "pool-vermelho"
-            
-                        st.markdown(f'<div class="pool-quadrado {cor}">{d:02d}</div>', unsafe_allow_html=True)
-
-            st.success(f"✅ {len(novos_jogos)} Jogos Gerados com Sucesso!")
-            
-            # O sistema segue para mostrar os jogos abaixo (sua lógica original de display)
-
 # --- [FIM DA ATUALIZAÇÃO 4] ---
     # --- [FIM DO NOVO MOTOR SINCRONIZADO] ---
 
