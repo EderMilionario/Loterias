@@ -1130,41 +1130,66 @@ with abas[0]:
 
     # --- [DENTRO DA ABA 0 - BOTÃO GERAR] ---
     if st.button("🚀 GERAR JOGOS COM INTELIGÊNCIA HÍBRIDA (PSO)"):
-        # Prevenção de NameError: verifica se 'escolha' ou 'mod' existem
-        # Se não existirem como variáveis soltas, busca no local correto
-        v_escolha = escolha if 'escolha' in locals() else "SNIPER (17 Dezenas)"
+        # 1. Recupera as variáveis do teu sistema (respeitando os teus nomes originais)
         v_mod = mod if 'mod' in locals() else "Lotofácil"
-        v_pool = pool if 'pool' in locals() else list(range(1, 26))
-        v_qtd = qtd if 'qtd' in locals() else 24
+        v_pool = pool if 'pool' in locals() else []
         v_fixas = list(fixas_final) if 'fixas_final' in locals() else []
+    
+        # Identifica qual estratégia foi escolhida (pode vir de fe_escolhido ou est_escolhida)
+        v_estrategia = fe_escolhido if ( 'fe_escolhido' in locals() and fe_escolhido != "Nenhum") else est_escolhida
 
-        with st.spinner("🧠 KADOSH: Sincronizando 10 Camadas de IA..."):
-            # Garante a matriz
-            matriz_af = st.session_state.get('matriz_ativa')
-            if matriz_af is None:
-                matriz_af = calcular_matriz_afinidade_kadosh(v_mod)
-                st.session_state['matriz_ativa'] = matriz_af
+        if not v_pool or len(v_pool) < 15:
+            st.error("⚠️ Erro: Pool insuficiente para gerar jogos.")
+        else:
+            with st.spinner("🧠 KADOSH PSO: Gerando Matrizes Híbridas..."):
+                novos = []
+            
+                # RECONSTRUÇÃO DA TUA FUNÇÃO ORIGINAL COM MOTOR PSO
+                def gerar_pso_hibrido(tamanho_bolas, quantidade_jogos):
+                    # Chama o motor de 10 IAs para este tamanho específico
+                    res = executar_pso_kadosh(
+                        modalidade=v_mod,
+                        pool_selecionado=v_pool,
+                        qtd_jogos=quantidade_jogos,
+                        dezenas_fixas=v_fixas,
+                        matriz_afinidade=st.session_state.get('matriz_ativa', {}),
+                        estrategia_nome=v_estrategia
+                    )
+                    # Ajusta cada jogo para o formato do teu sistema
+                    for j in res:
+                        # Se o PSO devolveu um jogo com tamanho diferente do solicitado, ele ajusta aqui
+                        # Isso garante que se a matriz pede 15, sai 15. Se pede 16, sai 16.
+                        dezenas = j['n'][:tamanho_bolas] 
+                        novos.append({
+                            "mod": v_mod, 
+                            "n": dezenas, 
+                            "tam": tamanho_bolas, 
+                            "fixas_utilizadas": v_fixas,
+                            "chance": definir_label_chance(dezenas, v_mod), 
+                            "est": v_estrategia
+                        })
 
-            # Chama o motor PSO com as variáveis validadas
-            novos = executar_pso_kadosh(
-                modalidade=v_mod,
-                pool_selecionado=v_pool,
-                qtd_jogos=v_qtd,
-                dezenas_fixas=v_fixas,
-                matriz_afinidade=matriz_af,
-                estrategia_nome=v_escolha
-            )
-        
-            # Preenche os dados extras para o seu sistema de salvamento/PDF
-            for j in novos:
-                j['mod'] = v_mod
-                j['tam'] = len(j['n'])
-                j['fixas_utilizadas'] = v_fixas
-                j['chance'] = definir_label_chance(j['n'], v_mod)
-        
-            st.session_state.jogos_gerados = novos
-            st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com PSO!")
-            st.rerun()
+                # 3. LÓGICA DE MATRIZES HÍBRIDAS (Copiada do teu código original)
+                if "DIAMANTE" in v_estrategia:
+                    gerar_pso_hibrido(16, 2)  # 2 jogos de 16
+                    gerar_pso_hibrido(15, 10) # 10 jogos de 15
+                elif "CÉLULA" in v_estrategia:
+                    gerar_pso_hibrido(16, 1)  # 1 jogo de 16
+                    gerar_pso_hibrido(15, 15) # 15 jogos de 15
+                elif "A MARRETA" in v_estrategia:
+                    gerar_pso_hibrido(18, 1)
+                    gerar_pso_hibrido(16, 5)
+                elif "PRESTIGE 20" in v_estrategia:
+                    gerar_pso_hibrido(15, 36)
+                else:
+                    # Caso padrão para Sniper ou Personalizado
+                    # Pega o número de dezenas da tua variável 'n_dez' ou 'info_est'
+                    t_alvo = n_dez if 'n_dez' in locals() else 15
+                    gerar_pso_hibrido(t_alvo, qtd)
+
+                st.session_state.jogos_gerados = novos
+                st.success(f"🔥 Matriz {v_estrategia} Gerada com Sucesso!")
+                st.rerun()
             
             # Feedback visual das dezenas do Pool (Verde se IA aprovou forte)
             st.markdown("### 🧬 Pool de Elite Selecionado pelas 10 IAs")
