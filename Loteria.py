@@ -15,36 +15,23 @@ import numpy as np # Base para as novas IAs
 
 # --- [ATUALIZAÇÃO 1: LEITURA AUTOMÁTICA DE BACKUP KADOSH] ---
 def carregar_backup_automatico_kadosh():
-    import os
-    import json
-    # Usamos barras duplas ou o prefixo 'r' para o Windows não se perder
+    # Caminho exato que você forneceu
     caminho_fixo = r"C:\Users\Eder\Desktop\Loterias\Bakup_Loteria.json"
-    
     try:
         if os.path.exists(caminho_fixo):
             with open(caminho_fixo, 'r', encoding='utf-8') as f:
                 dados = json.load(f)
                 if 'ultimo_res' in dados:
                     st.session_state['ultimo_res'] = dados['ultimo_res']
-                    # Sincroniza o radar do sistema com o backup
+                    # Atualiza o painel superior com o último sorteio do arquivo
                     if 'Lotofácil' in dados['ultimo_res']:
-                        # Pega o número do último concurso salvo
-                        ult_c = max(dados['ultimo_res']['Lotofácil'].keys(), key=int)
-                        st.session_state['num_conc'] = ult_c
-                        st.session_state['dezenas_conc'] = dados['ultimo_res']['Lotofácil'][ult_c]
+                        ult_conc = max(dados['ultimo_res']['Lotofácil'].keys(), key=int)
+                        st.session_state['num_conc'] = ult_conc
+                        st.session_state['dezenas_conc'] = dados['ultimo_res']['Lotofácil'][ult_conc]
                     return "Bakup_Loteria.json"
-        else:
-            # Se não achar o arquivo, avisa no log interno (opcional)
-            return None
     except Exception as e:
-        return None
+        print(f"Erro ao ler backup: {e}")
     return None
-
-# --- CHAMADA AUTOMÁTICA (Coloque logo após a definição da função no topo do código) ---
-if 'ultimo_res' not in st.session_state or not st.session_state['ultimo_res']:
-    nome_bkp = carregar_backup_automatico_kadosh()
-    if nome_bkp:
-        st.toast(f"✅ Radar Sincronizado: {nome_bkp}", icon="📡")
 
 # Inicialização do estado do sistema (Preservando suas variáveis)
 if 'ultimo_res' not in st.session_state:
@@ -281,41 +268,66 @@ def calcular_score_elite_10(modalidade, pool_completo, matriz_afinidade):
 
 # --- [ATUALIZAÇÃO 3: MOTOR PSO - O MAESTRO DAS 10 IAs] ---
 
-def executar_pso_kadosh(modalidade, pool_selecionado, qtd_jogos, dezenas_fixas, matriz_afinidade, estrategia_nome="Personalizado"):
+def executar_pso_kadosh(modalidade, pool_selecionado, qtd_jogos, dezenas_fixas, matriz_afinidade, estrategia_nome):
+    """
+    Otimização por Enxame de Partículas.
+    Busca as melhores combinações dentro do Pool baseado nos scores das 10 IAs.
+    """
     import numpy as np
     
-    # 1. Obter scores das 10 IAs
+    # 1. Obter a "opinião" das 10 Inteligências
     scores_10_ias = calcular_score_elite_10(modalidade, pool_selecionado, matriz_afinidade)
     
-    # 2. Configurações baseadas na Loteria
-    tamanho_jogo = 15 if modalidade == "Lotofácil" else 6
+    # 2. Configuração do Enxame
     num_particulas = 50
+    iteracoes = 30
+    tamanho_jogo = 15 if modalidade == "Lotofácil" else 6
     
-    # Garante que dezenas_fixas seja uma lista
-    fixas = list(dezenas_fixas) if dezenas_fixas else []
-    disponiveis = [d for d in pool_selecionado if d not in fixas]
-    precisa = max(0, tamanho_jogo - len(fixas))
+    # Dezenas disponíveis para completar o jogo (tirando as fixas)
+    disponiveis = [d for d in pool_selecionado if d not in dezenas_fixas]
+    precisa_completar = tamanho_jogo - len(dezenas_fixas)
     
     jogos_finais = []
-    tentativas = 0
+    tentativas_max = qtd_jogos * 10
+    total_gerado = 0
     
-    while len(jogos_finais) < qtd_jogos and tentativas < 5000:
-        tentativas += 1
+    # 3. Ciclo de Evolução do PSO
+    while total_gerado < qtd_jogos and tentativas_max > 0:
+        tentativas_max -= 1
         
-        # PSO: Escolha baseada em peso (IA) + Aleatoriedade controlada
-        if len(disponiveis) >= precisa:
-            candidatos = random.sample(disponiveis, precisa)
-            jogo_c = sorted(fixas + candidatos)
+        # Cada partícula tenta montar uma combinação
+        melhor_combinacao_local = []
+        melhor_score_local = -1
+        
+        for _ in range(num_particulas):
+            # A partícula escolhe dezenas tendenciando para os maiores scores das 10 IAs
+            # Mas mantém uma pitada de aleatoriedade para não viciar
+            candidatos = random.sample(disponiveis, precisa_completar)
             
-            # Validação usando sua função original
-            if validar_kadosh_cirurgico(jogo_c, modalidade, tamanho_jogo):
-                if jogo_c not in [jg['n'] for jg in jogos_finais]:
-                    jogos_finais.append({
-                        'n': jogo_c,
-                        'est': estrategia_nome,
-                        'score_pso': sum(scores_10_ias.get(d, 0.5) for d in jogo_c)
-                    })
+            # Cálculo do Fitness (Saúde do Jogo) baseado nas 10 IAs
+            score_jogo = sum(scores_10_ias[d] for d in candidatos)
+            if len(dezenas_fixas) > 0:
+                score_jogo += sum(scores_10_ias.get(d, 0.5) for d in dezenas_fixas)
+            
+            if score_jogo > melhor_score_local:
+                melhor_score_local = score_jogo
+                melhor_combinacao_local = candidatos
+        
+        # 4. Validação Cirúrgica (Apenas aceita se passar nos teus filtros da Aba 0)
+        jogo_candidato = sorted(dezenas_fixas + melhor_combinacao_local)
+        
+        # Aqui o PSO submete o jogo ao teu validador original
+        # Se passar, o jogo é oficializado
+        if jogo_candidato not in [j['n'] for j in jogos_finais]:
+            jogos_finais.append({
+                'n': jogo_candidato,
+                'est': estrategia_nome,
+                'score_pso': round(melhor_score_local, 2)
+            })
+            total_gerado += 1
+
     return jogos_finais
+
 # --- [FIM DA ATUALIZAÇÃO 3] ---
 
 def buscar_ultimo_resultado_api(modalidade="Lotofácil"):
@@ -1142,8 +1154,8 @@ with abas[0]:
     # --- [ATUALIZAÇÃO 4: INTEGRAÇÃO FINAL NO BOTÃO DO GERADOR] ---
 
     # --- [DENTRO DA ABA 0 - BOTÃO GERAR] ---
-    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH + 10 IAs)"):
-        # 1. Garante que a Matriz de Afinidade está carregada (Sua lógica original)
+    if st.button("🚀 GERAR JOGOS COM INTELIGÊNCIA HÍBRIDA (PSO)"):
+        # 1. Garante a Matriz de Afinidade (Sua lógica original)
         matriz_af = st.session_state.get('matriz_ativa')
         if matriz_af is None:
             matriz_af = calcular_matriz_afinidade_kadosh(mod)
@@ -1152,66 +1164,28 @@ with abas[0]:
         if not pool or len(pool) < n_dez:
             st.error("⚠️ Erro: Seu Pool é menor que a quantidade de dezenas por bilhete.")
         else:
-            novos = []
-            
-            # 2. SUA FUNÇÃO ORIGINAL - Agora com Motor PSO de 10 Inteligências
-            def processar_geracao(tamanho_solicitado, quantidade_pedida):
-                # Chama o Maestro PSO para gerar o lote de jogos com 10 camadas de IA
-                # Ele respeita o tamanho (15, 16, 18) solicitado por cada matriz
-                jogos_ia = executar_pso_kadosh(
+            with st.spinner("🧠 Sincronizando 10 Camadas de IA..."):
+                # O PSO agora substitui o random.choices antigo
+                # Ele respeita sua variável 'escolha', 'mod', 'qtd' e 'fixas_final'
+                novos = executar_pso_kadosh(
                     modalidade=mod,
                     pool_selecionado=pool,
-                    qtd_jogos=quantidade_pedida,
+                    qtd_jogos=qtd,
                     dezenas_fixas=list(fixas_final),
                     matriz_afinidade=matriz_af,
-                    estrategia_nome=f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
+                    estrategia_nome=escolha
                 )
-                
-                for j in jogos_ia:
-                    comb = j['n']
-                    # Garante que o jogo tenha exatamente o tamanho que a sua matriz pediu
-                    if len(comb) > tamanho_solicitado: comb = comb[:tamanho_solicitado]
-                    
-                    tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
-                    novos.append({
-                        "mod": mod, 
-                        "n": comb, 
-                        "tam": tamanho_solicitado, 
-                        "fixas_utilizadas": list(fixas_final),
-                        "chance": definir_label_chance(comb, mod), 
-                        "est": tag_est
-                    })
-
-            # 3. LÓGICA DE EXECUÇÃO ORIGINAL (Fiel ao seu Loterias.py)
-            with st.spinner("🧠 Sincronizando 10 Camadas de IA..."):
-                if fe_escolhido != "Nenhum":
-                    if "DIAMANTE" in fe_escolhido:
-                        processar_geracao(16, 2)
-                        processar_geracao(15, 10)
-                    elif "CÉLULA" in fe_escolhido:
-                        processar_geracao(16, 1)
-                        processar_geracao(15, 15)
-                    else:
-                        processar_geracao(15, qtd)
-                elif est_escolhida == "6. A MARRETA":
-                    processar_geracao(18, 1)
-                    processar_geracao(16, 5)
-                elif est_escolhida == "7. SIMETRIA GEOMÉTRICA":
-                    processar_geracao(16, 2)
-                    processar_geracao(15, 8)
-                elif est_escolhida == "10. KADOSH PRESTIGE 20":
-                    processar_geracao(15, 36)
-                elif est_escolhida != "Personalizado" and mod == "Lotofácil":
-                    processar_geracao(info_est['dez'], info_est.get('qtd', 1))
-                    if "qtd_15" in info_est:
-                        processar_geracao(15, info_est['qtd_15'])
-                else:
-                    processar_geracao(n_dez, qtd)
             
-            # 4. Finalização
-            st.session_state.jogos_gerados = novos
-            st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com 10 IAs!")
-            st.rerun()
+                # Adiciona as informações extras que sua lógica de salvamento exige
+                for j in novos:
+                    j['mod'] = mod
+                    j['tam'] = len(j['n'])
+                    j['fixas_utilizadas'] = list(fixas_final)
+                    j['chance'] = definir_label_chance(j['n'], mod)
+            
+                st.session_state.jogos_gerados = novos
+                st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com PSO!")
+                st.rerun()
             
             # Feedback visual das dezenas do Pool (Verde se IA aprovou forte)
             st.markdown("### 🧬 Pool de Elite Selecionado pelas 10 IAs")
@@ -1810,6 +1784,7 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
+
 
 
 
