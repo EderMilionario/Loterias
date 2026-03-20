@@ -1143,87 +1143,60 @@ with abas[0]:
 
     # --- [DENTRO DA ABA 0 - BOTÃO GERAR] ---
     # --- [INÍCIO DO BLOCO JUIZ FINAL KADOSH CORRIGIDO] ---
+    # --- [INÍCIO DO BLOCO JUIZ FINAL KADOSH CORRIGIDO E COMPLETO] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH + 10 IAs)"):
         with st.spinner("⚖️ O Juiz Final (10 IAs) está auditando o Pool e as Fixas..."):
-        
-            # AJUSTE AQUI: O seu código usa 'mod' em vez de 'modalidade_alvo'
+            
+            # 1. Sincronização com as variáveis nativas do seu sistema (Atualizada.txt)
             v_mod = mod if 'mod' in locals() else "Lotofácil"
-        
-            # Captura o Pool e Fixas atuais (usando os nomes do seu session_state)
-            pool_antes = set(st.session_state.get('pool_trabalhado_ia', []))
+            v_n_dez = n_dez if 'n_dez' in locals() else 19
+            v_n_jogos = n_jogos if 'n_jogos' in locals() else 12
+            
+            # Captura o estado atual vindo das IAs anteriores
+            pool_antes = set(st.session_state.get('pool_favoritas', []))
             fixas_antes = set(st.session_state.get('fixas_selecionadas', []))
-        
-            # 1. Executa o Score de Elite usando 'v_mod'
+    
+            # 2. Executa o Score de Elite (As 10 Inteligências)
             matriz_afim = calcular_matriz_afinidade_kadosh(v_mod)
             scores_10_ias = calcular_score_elite_10(v_mod, list(range(1, 26)), matriz_afim)
-        
-            # 2. REFINAMENTO FINAL (O Juiz decide se troca)
-            # O seu sistema usa n_dez para o tamanho do pool
-            tamanho_alvo = n_dez if 'n_dez' in locals() else 19
-            pool_final = refinar_pool_kadosh(list(pool_antes), matriz_afim, tamanho_alvo, scores_ia=scores_10_ias)
-            # Identifica Trocas no Pool para destaque visual
+    
+            # 3. REFINAMENTO FINAL DO POOL (O Juiz decide a troca literal aqui)
+            pool_final = refinar_pool_kadosh(list(pool_antes), matriz_afim, v_n_dez, scores_ia=scores_10_ias)
+    
+            # Identifica o que o Juiz mudou para o Alerta Visual
             dezenas_removidas = pool_antes - set(pool_final)
             dezenas_inseridas = set(pool_final) - pool_antes
     
-            # Atualiza o estado oficial do sistema com o veredito do Juiz
+            # ATUALIZAÇÃO DO SISTEMA: O Pool agora é o que o Juiz decidiu
             st.session_state['pool_favoritas'] = pool_final
-    
-            # 2. Exibição da Justificativa e Mudança Visual
+            
+            # 4. Exibição da Justificativa e Destaque Visual Neon
             if dezenas_inseridas:
                 st.markdown(f"""
                 <div style="background: #1a1a1a; border: 2px solid #d4af37; padding: 15px; border-radius: 10px; margin: 10px 0;">
-                    <span style="color: #d4af37; font-size: 16px;"><b>⚖️ VEREDITO DO JUIZ FINAL:</b></span><br>
-                    <span style="color: white;">O Pool foi otimizado. Removidas: <del>{', '.join(map(str, dezenas_removidas))}</del> 
-                    | Inseridas: <b style="color: #00f2ff;">{', '.join(map(str, dezenas_inseridas))}</b></span><br>
-                    <small style="color: #888;">Motivo: Afinidade de Entropia e Ciclos superior identificada pelas 10 IAs.</small>
+                    <span style="color: #d4af37; font-size: 16px;"><b>⚖️ VEREDITO DO JUIZ FINAL (CORREÇÃO DE ELITE):</b></span><br>
+                    <span style="color: white; font-size: 14px;">O Juiz Final removeu dezenas fracas: <del style="color: #ff4b4b;">{', '.join(map(str, sorted(dezenas_removidas)))}</del></span><br>
+                    <span style="color: white; font-size: 14px;">E inseriu dezenas de maior afinidade: <b style="color: #00f2ff;">{', '.join(map(str, sorted(dezenas_inseridas)))}</b></span><br>
+                    <p style="color: #888; font-size: 12px; margin-top: 5px;">
+                        <i>Motivo: Reequilíbrio de Entropia Estocástica e Sincronização de Ciclos para evitar o Overfitting.</i>
+                    </p>
                 </div>
                 """, unsafe_allow_html=True)
+            else:
+                st.info("✅ O Juiz Final auditou o Pool e confirmou que a seleção atual é a melhor possível.")
 
-            # 3. Geração dos Jogos com o Pool já Corrigido
-            # Aqui o sistema chama sua função PSO ou Matriz usando o st.session_state['pool_favoritas'] atualizado
-            meus_jogos = executar_pso_kadosh(modalidade_alvo, pool_final, qtd_solicitada, list(fixas_antes), matriz_afim)
-        # --- [FIM DO BLOCO JUIZ FINAL KADOSH] ---
-        # 1. Garante que a Matriz de Afinidade está carregada (Sua lógica original)
-        matriz_af = st.session_state.get('matriz_ativa')
-        if matriz_af is None:
-            matriz_af = calcular_matriz_afinidade_kadosh(mod)
-            st.session_state['matriz_ativa'] = matriz_af
+            # 5. GERAÇÃO DOS JOGOS (Sincronizada com as Estratégias)
+            with st.spinner("🧠 Sincronizando 10 Camadas de IA nos Jogos..."):
+                # Função para gerar jogos respeitando as trocas do Juiz
+                def processar_geracao(dezenas_por_jogo, quantidade):
+                    novos = executar_pso_kadosh(v_mod, pool_final, quantidade, list(fixas_antes), matriz_afim)
+                    if novos:
+                        st.session_state.jogos_gerados.extend(novos)
 
-        if not pool or len(pool) < n_dez:
-            st.error("⚠️ Erro: Seu Pool é menor que a quantidade de dezenas por bilhete.")
-        else:
-            novos = []
-            
-            # 2. SUA FUNÇÃO ORIGINAL - Agora com Motor PSO de 10 Inteligências
-            def processar_geracao(tamanho_solicitado, quantidade_pedida):
-                # Chama o Maestro PSO para gerar o lote de jogos com 10 camadas de IA
-                # Ele respeita o tamanho (15, 16, 18) solicitado por cada matriz
-                jogos_ia = executar_pso_kadosh(
-                    modalidade=mod,
-                    pool_selecionado=pool,
-                    qtd_jogos=quantidade_pedida,
-                    dezenas_fixas=list(fixas_final),
-                    matriz_afinidade=matriz_af,
-                    estrategia_nome=f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
-                )
-                
-                for j in jogos_ia:
-                    comb = j['n']
-                    # Garante que o jogo tenha exatamente o tamanho que a sua matriz pediu
-                    if len(comb) > tamanho_solicitado: comb = comb[:tamanho_solicitado]
-                    
-                    tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
-                    novos.append({
-                        "mod": mod, 
-                        "n": comb, 
-                        "tam": tamanho_solicitado, 
-                        "fixas_utilizadas": list(fixas_final),
-                        "chance": definir_label_chance(comb, mod), 
-                        "est": tag_est
-                    })
+                # Limpa a memória para os novos jogos do Juiz
+                st.session_state.jogos_gerados = []
 
-            # 3. LÓGICA DE EXECUÇÃO ORIGINAL (Fiel ao seu Loterias.py)
-            with st.spinner("🧠 Sincronizando 10 Camadas de IA..."):
+                # Aplica as estratégias do seu arquivo
                 if fe_escolhido != "Nenhum":
                     if "DIAMANTE" in fe_escolhido:
                         processar_geracao(16, 2)
@@ -1232,27 +1205,18 @@ with abas[0]:
                         processar_geracao(16, 1)
                         processar_geracao(15, 15)
                     else:
-                        processar_geracao(15, qtd)
+                        processar_geracao(15, v_n_jogos)
                 elif est_escolhida == "6. A MARRETA":
                     processar_geracao(18, 1)
                     processar_geracao(16, 5)
-                elif est_escolhida == "7. SIMETRIA GEOMÉTRICA":
-                    processar_geracao(16, 2)
-                    processar_geracao(15, 8)
                 elif est_escolhida == "10. KADOSH PRESTIGE 20":
                     processar_geracao(15, 36)
-                elif est_escolhida != "Personalizado" and mod == "Lotofácil":
-                    processar_geracao(info_est['dez'], info_est.get('qtd', 1))
-                    if "qtd_15" in info_est:
-                        processar_geracao(15, info_est['qtd_15'])
                 else:
-                    processar_geracao(n_dez, qtd)
-            
-            # 4. Finalização
-            st.session_state.jogos_gerados = novos
-            st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com 10 IAs!")
-            st.rerun()
-            
+                    processar_geracao(15, v_n_jogos)
+
+                if st.session_state.jogos_gerados:
+                    st.success(f"✅ {len(st.session_state.jogos_gerados)} Jogos Gerados com o Pool Corrigido pelo Juiz!")
+    # --- [FIM DO BLOCO JUIZ FINAL KADOSH] ---
             # Feedback visual das dezenas do Pool (Verde se IA aprovou forte)
             st.markdown("### 🧬 Pool de Elite Selecionado pelas 10 IAs")
             html_pool = ""
