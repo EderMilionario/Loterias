@@ -15,23 +15,36 @@ import numpy as np # Base para as novas IAs
 
 # --- [ATUALIZAÇÃO 1: LEITURA AUTOMÁTICA DE BACKUP KADOSH] ---
 def carregar_backup_automatico_kadosh():
-    # Caminho exato que você forneceu
+    import os
+    import json
+    # Usamos barras duplas ou o prefixo 'r' para o Windows não se perder
     caminho_fixo = r"C:\Users\Eder\Desktop\Loterias\Bakup_Loteria.json"
+    
     try:
         if os.path.exists(caminho_fixo):
             with open(caminho_fixo, 'r', encoding='utf-8') as f:
                 dados = json.load(f)
                 if 'ultimo_res' in dados:
                     st.session_state['ultimo_res'] = dados['ultimo_res']
-                    # Atualiza o painel superior com o último sorteio do arquivo
+                    # Sincroniza o radar do sistema com o backup
                     if 'Lotofácil' in dados['ultimo_res']:
-                        ult_conc = max(dados['ultimo_res']['Lotofácil'].keys(), key=int)
-                        st.session_state['num_conc'] = ult_conc
-                        st.session_state['dezenas_conc'] = dados['ultimo_res']['Lotofácil'][ult_conc]
+                        # Pega o número do último concurso salvo
+                        ult_c = max(dados['ultimo_res']['Lotofácil'].keys(), key=int)
+                        st.session_state['num_conc'] = ult_c
+                        st.session_state['dezenas_conc'] = dados['ultimo_res']['Lotofácil'][ult_c]
                     return "Bakup_Loteria.json"
+        else:
+            # Se não achar o arquivo, avisa no log interno (opcional)
+            return None
     except Exception as e:
-        print(f"Erro ao ler backup: {e}")
+        return None
     return None
+
+# --- CHAMADA AUTOMÁTICA (Coloque logo após a definição da função no topo do código) ---
+if 'ultimo_res' not in st.session_state or not st.session_state['ultimo_res']:
+    nome_bkp = carregar_backup_automatico_kadosh()
+    if nome_bkp:
+        st.toast(f"✅ Radar Sincronizado: {nome_bkp}", icon="📡")
 
 # Inicialização do estado do sistema (Preservando suas variáveis)
 if 'ultimo_res' not in st.session_state:
