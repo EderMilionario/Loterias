@@ -1179,7 +1179,7 @@ with abas[0]:
                 </div>
                 """, unsafe_allow_html=True)
 
-            # 4. GERAÇÃO DE JOGOS (Usando sua lógica original de estratégias)
+            # 4. GERAÇÃO DE JOGOS (Agora devidamente alinhado para rodar dentro do botão)
             st.session_state.jogos_gerados = [] # Limpa antes de gerar novos
             
             with st.spinner("🧠 Sincronizando 10 Camadas de IA..."):
@@ -1204,15 +1204,11 @@ with abas[0]:
                     # Geração Padrão
                     st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, v_n_jogos, list(fixas_antes), matriz_afim))
 
-                # Mensagem final de sucesso baseada na lista global que já existe no seu código
+                # Mensagem final de sucesso (Dentro do bloco de geração)
                 if st.session_state.jogos_gerados:
                     st.success(f"✅ {len(st.session_state.jogos_gerados)} Jogos Gerados com o Pool Corrigido pelo Juiz!")
 
-    # --- [FIM DO BLOCO JUIZ FINAL KADOSH] ---
-# --- [FIM DA ATUALIZAÇÃO 4] ---
-    # --- [FIM DO NOVO MOTOR SINCRONIZADO] ---
-
-    # --- EXIBIÇÃO DOS JOGOS (FORA DO IF DO BOTÃO) ---
+    # --- EXIBIÇÃO DOS JOGOS (FORA DO IF DO BOTÃO - PARA FICAR FIXO NA TELA) ---
     if st.session_state.jogos_gerados:
         st.markdown("### 📝 Jogos Preparados")
         for i, j in enumerate(st.session_state.jogos_gerados):
@@ -1239,8 +1235,7 @@ with abas[0]:
         
         st.session_state.jogos_gerados = []
         st.success(f"✅ Jogos salvos com sucesso para o Concurso {ultimo_c + 1}!")
-        st.rerun()
-
+        st.rerun() 
 with abas[1]:
     mostrar_status_backup() 
     st.header("🔍 Painel de Conferência")
