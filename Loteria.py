@@ -15,31 +15,22 @@ import numpy as np # Base para as novas IAs
 
 # --- [ATUALIZAÇÃO 1: LEITURA AUTOMÁTICA DE BACKUP KADOSH] ---
 def carregar_backup_automatico_kadosh():
-    """
-    Busca o arquivo JSON mais recente que contenha o histórico.
-    Popula o st.session_state['ultimo_res'] para que todas as 
-    outras IAs e abas do sistema tenham dados para trabalhar.
-    """
+    # Caminho exato que você forneceu
+    caminho_fixo = r"C:\Users\Eder\Desktop\Loterias\Bakup_Loteria.json"
     try:
-        # Busca qualquer arquivo JSON na pasta (ex: backup_lotofacil.json)
-        arquivos = glob.glob("*.json")
-        if not arquivos:
-            return None
-        
-        # Filtra apenas os que têm estrutura de backup do seu sistema
-        arquivo_recente = max(arquivos, key=os.path.getmtime)
-        
-        with open(arquivo_recente, 'r', encoding='utf-8') as f:
-            dados = json.load(f)
-            # Verifica se é o seu formato de backup (chave 'ultimo_res')
-            if 'ultimo_res' in dados:
-                st.session_state['ultimo_res'] = dados['ultimo_res']
-                # Se houver dados da última loteria selecionada, recupera também
-                if 'num_conc' in dados: st.session_state['num_conc'] = dados['num_conc']
-                if 'dezenas_conc' in dados: st.session_state['dezenas_conc'] = dados['dezenas_conc']
-                return arquivo_recente
-    except:
-        return None
+        if os.path.exists(caminho_fixo):
+            with open(caminho_fixo, 'r', encoding='utf-8') as f:
+                dados = json.load(f)
+                if 'ultimo_res' in dados:
+                    st.session_state['ultimo_res'] = dados['ultimo_res']
+                    # Atualiza o painel superior com o último sorteio do arquivo
+                    if 'Lotofácil' in dados['ultimo_res']:
+                        ult_conc = max(dados['ultimo_res']['Lotofácil'].keys(), key=int)
+                        st.session_state['num_conc'] = ult_conc
+                        st.session_state['dezenas_conc'] = dados['ultimo_res']['Lotofácil'][ult_conc]
+                    return "Bakup_Loteria.json"
+    except Exception as e:
+        print(f"Erro ao ler backup: {e}")
     return None
 
 # Inicialização do estado do sistema (Preservando suas variáveis)
@@ -1162,42 +1153,39 @@ with abas[0]:
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
     # --- [ATUALIZAÇÃO 4: INTEGRAÇÃO FINAL NO BOTÃO DO GERADOR] ---
 
+    # --- [DENTRO DA ABA 0 - BOTÃO GERAR] ---
     if st.button("🚀 GERAR JOGOS COM INTELIGÊNCIA HÍBRIDA (PSO)"):
-        with st.spinner("🧠 KADOSH: Sincronizando 10 Camadas de IA..."):
-            # 1. Identificação da Loteria e Dados do Backup
-            modalidade_ativa = "Lotofácil" # O sistema identifica a aba ativa
-            
-            # 2. Carregar Inteligências de Base (Suas funções originais)
-            matriz_af_gerador = calcular_matriz_afinidade_kadosh(modalidade_ativa)
-            scores_ia_arvores = treinar_e_prever_ia(modalidade_ativa, tamanho=25)
-            
-            # Converte lista da IA para dicionário de pesos (fiel à sua lógica)
-            scores_dict_ia = {d: (1.0 - (i/25)) for i, d in enumerate(scores_ia_arvores)} if scores_ia_arvores else {}
+        # 1. Garante a Matriz de Afinidade (Sua lógica original)
+        matriz_af = st.session_state.get('matriz_ativa')
+        if matriz_af is None:
+            matriz_af = calcular_matriz_afinidade_kadosh(mod)
+            st.session_state['matriz_ativa'] = matriz_af
 
-            # 3. Definição do Pool (Usa sua função de Refinamento Juiz 70/30)
-            # O PSO trabalhará dentro deste Pool escolhido pela IA
-            tamanho_pool = int(re.search(r'\d+', modo_jogo).group())
-            pool_inicial = set(range(1, 26))
+        if not pool or len(pool) < n_dez:
+            st.error("⚠️ Erro: Seu Pool é menor que a quantidade de dezenas por bilhete.")
+        else:
+            with st.spinner("🧠 Sincronizando 10 Camadas de IA..."):
+                # O PSO agora substitui o random.choices antigo
+                # Ele respeita sua variável 'escolha', 'mod', 'qtd' e 'fixas_final'
+                novos = executar_pso_kadosh(
+                    modalidade=mod,
+                    pool_selecionado=pool,
+                    qtd_jogos=qtd,
+                    dezenas_fixas=list(fixas_final),
+                    matriz_afinidade=matriz_af,
+                    estrategia_nome=escolha
+                )
             
-            pool_final_kadosh = refinar_pool_kadosh(
-                pool_inicial, 
-                matriz_af_gerador, 
-                tamanho_pool, 
-                scores_dict_ia
-            )
-
-            # 4. Execução do Maestro PSO (As 10 Inteligências em ação)
-            novos_jogos = executar_pso_kadosh(
-                modalidade=modalidade_ativa,
-                pool_selecionado=pool_final_kadosh,
-                qtd_jogos=qtd_jogos_input,
-                dezenas_fixas=dezenas_fixas,
-                matriz_afinidade=matriz_af_gerador,
-                estrategia_nome=modo_jogo
-            )
-
-            # 5. Armazenamento e Exibição (Preservando st.session_state)
-            st.session_state['jogos_gerados'] = novos_jogos
+                # Adiciona as informações extras que sua lógica de salvamento exige
+                for j in novos:
+                    j['mod'] = mod
+                    j['tam'] = len(j['n'])
+                    j['fixas_utilizadas'] = list(fixas_final)
+                    j['chance'] = definir_label_chance(j['n'], mod)
+            
+                st.session_state.jogos_gerados = novos
+                st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com PSO!")
+                st.rerun()
             
             # Feedback visual das dezenas do Pool (Verde se IA aprovou forte)
             st.markdown("### 🧬 Pool de Elite Selecionado pelas 10 IAs")
