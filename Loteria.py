@@ -1142,22 +1142,25 @@ with abas[0]:
     # --- [ATUALIZAÇÃO 4: INTEGRAÇÃO FINAL NO BOTÃO DO GERADOR] ---
 
     # --- [DENTRO DA ABA 0 - BOTÃO GERAR] ---
+    # --- [INÍCIO DO BLOCO JUIZ FINAL KADOSH CORRIGIDO] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH + 10 IAs)"):
-        # --- [INÍCIO DO BLOCO JUIZ FINAL KADOSH] ---
-        # 1. Acionamento do Juiz Final (10 IAs)
         with st.spinner("⚖️ O Juiz Final (10 IAs) está auditando o Pool e as Fixas..."):
-            # Captura o Pool e Fixas atuais vindos das IAs anteriores
-            pool_antes = set(st.session_state.get('pool_favoritas', []))
+        
+            # AJUSTE AQUI: O seu código usa 'mod' em vez de 'modalidade_alvo'
+            v_mod = mod if 'mod' in locals() else "Lotofácil"
+        
+            # Captura o Pool e Fixas atuais (usando os nomes do seu session_state)
+            pool_antes = set(st.session_state.get('pool_trabalhado_ia', []))
             fixas_antes = set(st.session_state.get('fixas_selecionadas', []))
-    
-            # Executa o Score de Elite (10 camadas)
-            matriz_afim = calcular_matriz_afinidade_kadosh(modalidade_alvo)
-            scores_10_ias = calcular_score_elite_10(modalidade_alvo, list(range(1, 26)), matriz_afim)
-    
-            # REFINAMENTO FINAL DO POOL (O Juiz decide se troca)
-            tamanho_alvo = st.session_state.get('tamanho_pool_ativo', 19)
+        
+            # 1. Executa o Score de Elite usando 'v_mod'
+            matriz_afim = calcular_matriz_afinidade_kadosh(v_mod)
+            scores_10_ias = calcular_score_elite_10(v_mod, list(range(1, 26)), matriz_afim)
+        
+            # 2. REFINAMENTO FINAL (O Juiz decide se troca)
+            # O seu sistema usa n_dez para o tamanho do pool
+            tamanho_alvo = n_dez if 'n_dez' in locals() else 19
             pool_final = refinar_pool_kadosh(list(pool_antes), matriz_afim, tamanho_alvo, scores_ia=scores_10_ias)
-    
             # Identifica Trocas no Pool para destaque visual
             dezenas_removidas = pool_antes - set(pool_final)
             dezenas_inseridas = set(pool_final) - pool_antes
