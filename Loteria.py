@@ -1143,6 +1143,43 @@ with abas[0]:
 
     # --- [DENTRO DA ABA 0 - BOTÃO GERAR] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH + 10 IAs)"):
+        # --- [INÍCIO DO BLOCO JUIZ FINAL KADOSH] ---
+        # 1. Acionamento do Juiz Final (10 IAs)
+        with st.spinner("⚖️ O Juiz Final (10 IAs) está auditando o Pool e as Fixas..."):
+            # Captura o Pool e Fixas atuais vindos das IAs anteriores
+            pool_antes = set(st.session_state.get('pool_favoritas', []))
+            fixas_antes = set(st.session_state.get('fixas_selecionadas', []))
+    
+            # Executa o Score de Elite (10 camadas)
+            matriz_afim = calcular_matriz_afinidade_kadosh(modalidade_alvo)
+            scores_10_ias = calcular_score_elite_10(modalidade_alvo, list(range(1, 26)), matriz_afim)
+    
+            # REFINAMENTO FINAL DO POOL (O Juiz decide se troca)
+            tamanho_alvo = st.session_state.get('tamanho_pool_ativo', 19)
+            pool_final = refinar_pool_kadosh(list(pool_antes), matriz_afim, tamanho_alvo, scores_ia=scores_10_ias)
+    
+            # Identifica Trocas no Pool para destaque visual
+            dezenas_removidas = pool_antes - set(pool_final)
+            dezenas_inseridas = set(pool_final) - pool_antes
+    
+            # Atualiza o estado oficial do sistema com o veredito do Juiz
+            st.session_state['pool_favoritas'] = pool_final
+    
+            # 2. Exibição da Justificativa e Mudança Visual
+            if dezenas_inseridas:
+                st.markdown(f"""
+                <div style="background: #1a1a1a; border: 2px solid #d4af37; padding: 15px; border-radius: 10px; margin: 10px 0;">
+                    <span style="color: #d4af37; font-size: 16px;"><b>⚖️ VEREDITO DO JUIZ FINAL:</b></span><br>
+                    <span style="color: white;">O Pool foi otimizado. Removidas: <del>{', '.join(map(str, dezenas_removidas))}</del> 
+                    | Inseridas: <b style="color: #00f2ff;">{', '.join(map(str, dezenas_inseridas))}</b></span><br>
+                    <small style="color: #888;">Motivo: Afinidade de Entropia e Ciclos superior identificada pelas 10 IAs.</small>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # 3. Geração dos Jogos com o Pool já Corrigido
+            # Aqui o sistema chama sua função PSO ou Matriz usando o st.session_state['pool_favoritas'] atualizado
+            meus_jogos = executar_pso_kadosh(modalidade_alvo, pool_final, qtd_solicitada, list(fixas_antes), matriz_afim)
+        # --- [FIM DO BLOCO JUIZ FINAL KADOSH] ---
         # 1. Garante que a Matriz de Afinidade está carregada (Sua lógica original)
         matriz_af = st.session_state.get('matriz_ativa')
         if matriz_af is None:
