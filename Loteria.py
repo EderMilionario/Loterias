@@ -1142,59 +1142,51 @@ with abas[0]:
     # --- [ATUALIZAÇÃO 4: INTEGRAÇÃO FINAL NO BOTÃO DO GERADOR] ---
 
     # --- [INÍCIO DO BLOCO JUIZ FINAL KADOSH - 100% SINCRONIZADO] ---
+    # --- [INÍCIO DO BLOCO CORRIGIDO] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH + 10 IAs)"):
         with st.spinner("⚖️ O Juiz Final (10 IAs) está auditando o Pool e as Fixas..."):
             
-            # 1. Sincronização
+            # 1. Sincronização de Variáveis
             v_mod = mod if 'mod' in locals() else "Lotofácil"
             v_n_dez = n_dez if 'n_dez' in locals() else 19
             v_n_jogos = n_jogos if 'n_jogos' in locals() else 12
             
             pool_antes = set(st.session_state.get('pool_favoritas', []))
-            fixas_antes = set(st.session_state.get('fixas_selecionadas', []))
+            fixas_antes = list(st.session_state.get('fixas_selecionadas', []))
     
-            # 2. Execução das IAs
+            # 2. Execução das 10 Camadas de IA (Score de Elite)
             matriz_afim = calcular_matriz_afinidade_kadosh(v_mod)
             scores_10_ias = calcular_score_elite_10(v_mod, list(range(1, 26)), matriz_afim)
-            pool_final = refinar_pool_kadosh(list(pool_antes), matriz_afim, v_n_dez, scores_ia=scores_10_ias)
     
-            # 3. Atualização do Pool
-            dezenas_removidas = pool_antes - set(pool_final)
-            dezenas_inseridas = set(pool_final) - pool_antes
+            # 3. Refinamento (O Juiz decide)
+            pool_final = refinar_pool_kadosh(list(pool_antes), matriz_afim, v_n_dez, scores_ia=scores_10_ias)
             st.session_state['pool_favoritas'] = pool_final
-            
-            if dezenas_inseridas:
-                st.markdown(f"""
-                <div style="background: #1a1a1a; border: 2px solid #d4af37; padding: 15px; border-radius: 10px; margin: 10px 0;">
-                    <span style="color: #d4af37; font-size: 16px;"><b>⚖️ VEREDITO DO JUIZ FINAL:</b></span><br>
-                    <span style="color: white;">Removidas: <del style="color: #ff4b4b;">{', '.join(map(str, sorted(dezenas_removidas)))}</del> | Inseridas: <b style="color: #00f2ff;">{', '.join(map(str, sorted(dezenas_inseridas)))}</b></span>
-                </div>
-                """, unsafe_allow_html=True)
-
-            # 4. GERAÇÃO DE JOGOS (AGORA DENTRO DO BOTÃO)
+    
+            # 4. GERAÇÃO REAL DOS JOGOS (Ajustado para o seu código)
             st.session_state.jogos_gerados = [] 
             
-            with st.spinner("🧠 Sincronizando 10 Camadas de IA..."):
+            with st.spinner("🧠 Gerando Jogos com Sincronia de Matriz..."):
                 if fe_escolhido != "Nenhum":
                     if "DIAMANTE" in fe_escolhido:
-                        st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 2, list(fixas_antes), matriz_afim))
-                        st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 10, list(fixas_antes), matriz_afim))
+                        st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 2, fixas_antes, matriz_afim))
+                        st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 10, fixas_antes, matriz_afim))
                     elif "CÉLULA" in fe_escolhido:
-                        st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 1, list(fixas_antes), matriz_afim))
-                        st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 15, list(fixas_antes), matriz_afim))
+                        st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 1, fixas_antes, matriz_afim))
+                        st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 15, fixas_antes, matriz_afim))
                     else:
-                        st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, v_n_jogos, list(fixas_antes), matriz_afim))
+                        st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, v_n_jogos, fixas_antes, matriz_afim))
                 
                 elif est_escolhida == "6. A MARRETA":
-                    st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 1, list(fixas_antes), matriz_afim))
-                    st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 5, list(fixas_antes), matriz_afim))
+                    st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 1, fixas_antes, matriz_afim))
+                    st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 5, fixas_antes, matriz_afim))
                 elif est_escolhida == "10. KADOSH PRESTIGE 20":
-                    st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 36, list(fixas_antes), matriz_afim))
+                    st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, 36, fixas_antes, matriz_afim))
                 else:
-                    st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, v_n_jogos, list(fixas_antes), matriz_afim))
+                    st.session_state.jogos_gerados.extend(executar_pso_kadosh(v_mod, pool_final, v_n_jogos, fixas_antes, matriz_afim))
 
                 if st.session_state.jogos_gerados:
-                    st.success(f"✅ {len(st.session_state.jogos_gerados)} Jogos Gerados!")
+                    st.success(f"✅ {len(st.session_state.jogos_gerados)} Jogos Gerados com Sucesso!")
+    # --- [FIM DO BLOCO CORRIGIDO] ---
             
            
     # --- EXIBIÇÃO DOS JOGOS (FORA DO IF DO BOTÃO - PARA FICAR FIXO NA TELA) ---
