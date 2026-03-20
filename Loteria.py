@@ -1173,18 +1173,18 @@ with abas[0]:
                     dezenas_fixas=list(fixas_final),
                     matriz_afinidade=matriz_af,
                     estrategia_nome=est_escolhida  
-                )
+                 )
                 
-                # Adiciona as informações extras que sua lógica de salvamento exige
-                for j in novos:
-                    j['mod'] = mod
-                    j['tam'] = len(j['n'])
-                    j['fixas_utilizadas'] = list(fixas_final)
-                    j['chance'] = definir_label_chance(j['n'], mod)
+                 # Adiciona as informações extras que sua lógica de salvamento exige
+                 for j in novos:
+                     j['mod'] = mod
+                     j['tam'] = len(j['n'])
+                     j['fixas_utilizadas'] = list(fixas_final)
+                     j['chance'] = definir_label_chance(j['n'], mod)
                 
-                st.session_state.jogos_gerados = novos
-                st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com PSO!")
-                st.rerun()
+                 st.session_state.jogos_gerados = novos
+                 st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com PSO!")
+                 st.rerun()
                 
         # Feedback visual das dezenas do Pool (Verde se IA aprovou forte)
         st.markdown("### 🧬 Pool de Elite Selecionado pelas 10 IAs")
