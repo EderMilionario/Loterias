@@ -1151,40 +1151,57 @@ with abas[0]:
             renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {})) 
 
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
-    # --- [ATUALIZAÇÃO 4: INTEGRAÇÃO FINAL NO BOTÃO DO GERADOR] ---
+    # --- [ CONFIGURAÇÃO DE HIERARQUIA KADOSH ] ---
+        # 1. Iniciamos com os valores dos botões/inputs (Personalizado)
+        qtd_final = qtd
+        n_dez_final = n_dez
+        pool_final = list(pool)  # Pool detectado pelas 10 IAs
 
-    # --- [DENTRO DA ABA 0 - BOTÃO GERAR] ---
-    if st.button("🚀 GERAR JOGOS COM INTELIGÊNCIA HÍBRIDA (PSO)"):
-        # 1. Garante a Matriz de Afinidade (Sua lógica original)
-        matriz_af = st.session_state.get('matriz_ativa')
-        if matriz_af is None:
-             matriz_af = calcular_matriz_afinidade_kadosh(mod)
-             st.session_state['matriz_ativa'] = matriz_af
+        # 2. Prioridade 1: Estratégias do Mapa
+        if est_escolhida in ESTRATEGIA_MAPA and est_escolhida != "Personalizado":
+            config = ESTRATEGIA_MAPA[est_escolhida]
+            n_dez_final = config['dez']
+            qtd_final = config['qtd']
+            # Aqui a estratégia "vence" o que estiver escrito nos inputs da tela.
 
-        if not pool or len(pool) < n_dez:
-            st.error("⚠️ Erro: Seu Pool é menor que a quantidade de dezenas por bilhete.")
-        else:
-            with st.spinner("🧠 Sincronizando 10 Camadas de IA..."):
-                # CORREÇÃO 1: Alterado 'escolha' para 'est_escolhida'
-                 novos = executar_pso_kadosh(
-                    modalidade=mod,
-                    pool_selecionado=pool,
-                    qtd_jogos=qtd,
-                    dezenas_fixas=list(fixas_final),
-                    matriz_afinidade=matriz_af,
-                    estrategia_nome=est_escolhida  
-                 )
+        # 3. Prioridade 2: Matrizes de Fechamento (Se selecionada, ela manda no Pool)
+        if matriz_nome != "Nenhum":
+            if 'matriz_ativa' in st.session_state and st.session_state['matriz_ativa']:
+                # O Pool passa a ser exatamente a matriz calculada
+                pool_final = st.session_state['matriz_ativa']
+                # Garantimos que o jogo gerado pela matriz tenha o tamanho padrão (15 na Lotofácil)
+                n_dez_final = 15 
+            else:
+                st.warning("⚠️ Selecionou Matriz, mas ela não foi processada. Clique em 'Analisar Matriz'.")
+
+        # --- [ BOTÃO DE GERAÇÃO COM VARIÁVEIS FINAIS ] ---
+        if st.button("🚀 GERAR JOGOS COM INTELIGÊNCIA HÍBRIDA (PSO)"):
+            
+            # Validação de segurança para evitar erro de lógica matemática
+            if not pool_final or len(pool_final) < n_dez_final:
+                st.error(f"❌ IMPOSSÍVEL GERAR: O Pool ({len(pool_final)}) é menor que o jogo ({n_dez_final} dezenas).")
+            else:
+                with st.spinner(f"🧠 Sincronizando: {est_escolhida}"):
+                    # O PSO agora recebe os parâmetros CORRETOS do seu mapa
+                    novos = executar_pso_kadosh(
+                        modalidade=mod,
+                        pool_selecionado=pool_final,
+                        qtd_jogos=qtd_final,
+                        dezenas_fixas=list(fixas_final),
+                        matriz_afinidade=st.session_state.get('matriz_ativa'),
+                        estrategia_nome=est_escolhida
+                    )
                 
-                 # Adiciona as informações extras que sua lógica de salvamento exige
-                 for j in novos:
-                     j['mod'] = mod
-                     j['tam'] = len(j['n'])
-                     j['fixas_utilizadas'] = list(fixas_final)
-                     j['chance'] = definir_label_chance(j['n'], mod)
+                    # Adiciona metadados para salvar corretamente
+                    for j in novos:
+                        j['mod'] = mod
+                        j['tam'] = len(j['n'])
+                        j['fixas_utilizadas'] = list(fixas_final)
+                        j['chance'] = definir_label_chance(j['n'], mod)
                 
-                 st.session_state.jogos_gerados = novos
-                 st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com PSO!")
-                 st.rerun()
+                    st.session_state.jogos_gerados = novos
+                    st.success(f"🔥 Sincronia Concluída: {len(novos)} jogos de {n_dez_final} dezenas!")
+                    st.rerun()
                 
         # Feedback visual das dezenas do Pool (Verde se IA aprovou forte)
         st.markdown("### 🧬 Pool de Elite Selecionado pelas 10 IAs")
