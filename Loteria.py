@@ -1141,9 +1141,6 @@ with abas[0]:
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
     # --- [ATUALIZAÇÃO 4: INTEGRAÇÃO FINAL NO BOTÃO DO GERADOR] ---
 
-    # --- [DENTRO DA ABA 0 - BOTÃO GERAR] ---
-    # --- [INÍCIO DO BLOCO JUIZ FINAL KADOSH CORRIGIDO] ---
-    # --- [INÍCIO DO BLOCO JUIZ FINAL KADOSH CORRIGIDO E COMPLETO] ---
     # --- [INÍCIO DO BLOCO JUIZ FINAL KADOSH - 100% SINCRONIZADO] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH + 10 IAs)"):
         with st.spinner("⚖️ O Juiz Final (10 IAs) está auditando o Pool e as Fixas..."):
