@@ -1220,11 +1220,20 @@ with abas[0]:
             # Feedback visual das dezenas do Pool (Verde se IA aprovou forte)
             st.markdown("### 🧬 Pool de Elite Selecionado pelas 10 IAs")
             html_pool = ""
-            for d in range(1, 26):
-                cor = "pool-verde" if d in pool_final_kadosh else "pool-vermelho"
-                # Se a dezena foi trocada pela "Cura de Vácuo", ela ganha brilho extra
-                html_pool += f'<span class="dezena-pool {cor}">{d:02d}</span>'
-            st.markdown(f'<div style="margin-bottom:20px;">{html_pool}</div>', unsafe_allow_html=True)
+            # ESTE É O LOCAL DA LINHA 1224 (Ajustado para o seu código real)
+            cols = st.columns(5)
+            for i in range(5):
+                with cols[i]:
+                    for j in range(5):
+                        d = i * 5 + j + 1
+            
+                        # Aqui está a chave: pegamos o pool que o Juiz Final salvou
+                        pool_atual = st.session_state.get('pool_favoritas', [])
+            
+                        # Define a cor comparando com o que o Juiz decidiu
+                        cor = "pool-verde" if d in pool_atual else "pool-vermelho"
+            
+                        st.markdown(f'<div class="pool-quadrado {cor}">{d:02d}</div>', unsafe_allow_html=True)
 
             st.success(f"✅ {len(novos_jogos)} Jogos Gerados com Sucesso!")
             
