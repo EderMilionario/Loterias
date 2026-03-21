@@ -1052,7 +1052,7 @@ with abas[0]:
 
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
         if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-        import random
+            import random
     
         # 1. SETUP DE SEGURANÇA (Resgatando suas variáveis originais)
         mod = st.session_state.get('modalidade_selecionada', 'Lotofácil')
