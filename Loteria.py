@@ -975,6 +975,7 @@ with abas[0]:
             if mod == "Lotofácil":
                 # BOTÃO 1: IA (Ranking 1000 - Baseado em Redes Neurais/Tendência)
                 if st.button("💎 ATIVAR IA (RANKING 1000)"):
+                    # Chama sua função de treino original
                     pool_ia = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool)
                     if pool_ia:
                         st.session_state.favoritas[mod] = pool_ia
@@ -987,7 +988,7 @@ with abas[0]:
                 "Mega-Sena": 60,
                 "Quina": 80,
                 "Dupla-Sena": 50,
-                "+Milionária": 50
+                "Milionária": 50
             }
             max_v_bt = limites_reais.get(mod, 60)
 
@@ -996,83 +997,99 @@ with abas[0]:
                 st.session_state.favoritas[mod] = list(range(1, max_v_bt + 1))
                 st.rerun()
 
-            # 3. Garante que o volante (seja qual for o componente que você usa) respeite o max_v_bt
-            # Isso impede que a Milionária mostre 60 ou a Quina pare no 60.
-                
         with col_btn2:
             if mod == "Lotofácil":
                 # BOTÃO 3: INTELIGENTE (Baseado em Score de Frequência e Atraso)
                 if st.button("🧠 POOL INTELIGENTE"):
-                    stats_mod = st.session_state.analise_stats.get(mod, {})
-                    if stats_mod:
-                        # Ordena pelo Score e pega exatamente o tamanho necessário
-                        dezenas_ordenadas = sorted(stats_mod.keys(), key=lambda x: stats_mod[x]['score'], reverse=True)
+                    # AJUSTE: Busca no novo motor de especialistas se disponível
+                    stats_ia = st.session_state.get('scores_especialistas', {})
+                    if stats_ia:
+                        # Ordena pela média das 5 IAs (GNN, Transformer, etc)
+                        dezenas_ordenadas = sorted(
+                            [d for d in stats_ia.keys() if d <= max_v_bt], 
+                            key=lambda x: (stats_ia[x]['gnn'] + stats_ia[x]['transformer']) / 2, 
+                            reverse=True
+                        )
                         st.session_state.favoritas[mod] = sorted(dezenas_ordenadas[:tamanho_alvo_pool])
                         st.success(f"🎯 Pool Inteligente: {tamanho_alvo_pool} dezenas!")
                         st.rerun()
-         
+                    else:
+                        st.warning("Execute o Refinamento primeiro para calibrar a IA!")
+
             # BOTÃO 4: REFINAR (Filtro de Elite por Afinidade + IA)
             if mod == "Lotofácil":
                 if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
                     pool_base = st.session_state.favoritas.get(mod, [])
-             
-                    # Se o pool estiver vazio ou menor que o alvo, gera um inicial via IA
+            
                     if len(pool_base) < tamanho_alvo_pool:
                         pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
-         
-                    # 1. Pega a matriz (Estatística/Kadosh com peso nos últimos 35 jogos)
-                    matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
-         
-                    # 2. Pega os scores da IA (Árvores de Decisão)
-                    scores_ia = st.session_state.get('scores_predicao', {})
-         
-                    # 3. O JUIZ: Envia o pool, a matriz, o tamanho alvo e os scores da IA
+ 
+                    # 1. Pega a matriz (Estatística/Kadosh)
+                    matriz_af = st.session_state.get('matriz_ativa')
+                    if matriz_af is None:
+                        matriz_af = calcular_matriz_afinidade_kadosh(mod)
+                        st.session_state['matriz_ativa'] = matriz_af
+ 
+                    # 2. Pega os scores da IA (Híbrido)
+                    # Prioriza o novo motor de 5 IAs que criamos
+                    scores_ia = st.session_state.get('scores_especialistas', st.session_state.get('scores_predicao', {}))
+ 
+                    # 3. O JUIZ: Refinamento Híbrido Kadosh
                     pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, scores_ia)
-         
+ 
                     # 4. Atualiza e recarrega
                     st.session_state.favoritas[mod] = pool_refinado
                     st.success(f"🎯 Refinado para {len(pool_refinado)} dezenas com inteligência híbrida!")
                     st.rerun()
-        # --- CAMPO DE SELEÇÃO (Ocupa a largura total para melhor leitura) ---
+
+        # --- CAMPO DE SELEÇÃO ---
         st.markdown("---")
-        max_dezenas = 26 if mod == "Lotofácil" else 81
+        # Ajuste dinâmico do range para não estourar o volante
+        max_dezenas_volante = max_v_bt + 1
         pool = st.multiselect(
             f"SELECIONE SEU POOL ({mod}):", 
-            range(1, max_dezenas), 
+            range(1, max_dezenas_volante), 
             default=st.session_state.favoritas.get(mod, [])
         )
         st.session_state.favoritas[mod] = pool 
 
-        # --- [SUGESTÃO 3: ANÁLISE DE QUADRANTES NO POOL] ---
+        # --- ANÁLISE DE QUADRANTES NO POOL ---
         if pool and mod == "Lotofácil":
             linhas_p = [0]*5
             for n in pool: 
-                linhas_p[(n-1)//5] += 1
+                if 1 <= n <= 25:
+                    linhas_p[(n-1)//5] += 1
             if any(l == 0 for l in linhas_p):
-                st.warning("⚠️ Atenção: Seu Pool possui linhas vazias! Isso pode reduzir a eficácia dos filtros Kadosh.")
+                st.warning("⚠️ Atenção: Seu Pool possui linhas vazias!")
             with st.expander("📊 Distribuição Geográfica do Pool"):
                 cols_q = st.columns(5)
                 for idx, qtd_l in enumerate(linhas_p):
                     cols_q[idx].metric(f"Linha {idx+1}", f"{qtd_l} dez")
-        
-        # --- SÓ MOSTRA O MODO DE FIXAÇÃO SE FOR LOTOFÁCIL ---
+
+        # --- MODO DE FIXAÇÃO ---
         if mod == "Lotofácil":
             st.markdown("---")
             modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
-    
+
             fixas_final = []
             if modo_fixa == "Manual":
                 fixas_final = st.multiselect("📌 CRAVAR DEZENAS:", options=pool)
             elif modo_fixa == "IA Automática (Score)":
                 qtd_auto = st.slider("Qtd de Cravadas:", 1, 10, 6)
-                if mod in st.session_state.analise_stats:
-                    stats = st.session_state.analise_stats[mod]
-                    melhores_ia = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
+                # Busca scores nas novas IAs (GNN/Transformer)
+                stats = st.session_state.get('scores_especialistas', {})
+                if stats:
+                    # Ordena as dezenas do POOL pela média das IAs
+                    melhores_ia = sorted([n for n in pool], 
+                                         key=lambda x: (stats.get(x, {}).get('gnn', 0) + stats.get(x, {}).get('transformer', 0)), 
+                                         reverse=True)
                     fixas_final = melhores_ia[:qtd_auto]
                     st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
-    
-            # Heatmap também só faz sentido com a visualização da Lotofácil
-            renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {})) 
+                else:
+                    st.info("💡 Use 'Refinar Pool' para ativar a IA Automática de Cravadas.")
+
+            # Renderiza Heatmap
+            renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
      
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
         import random
