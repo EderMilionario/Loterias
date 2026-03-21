@@ -1051,125 +1051,106 @@ with abas[0]:
             renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {})) 
 
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
-    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-        import random  # Garante que o motor de sorteio está ativo
+        if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
+        import random
     
-        # --- [TRAVA DE SEGURANÇA: GARANTE QUE AS VARIÁVEIS EXISTAM] ---
-        # Isso evita o NameError se as variáveis vierem de inputs do Streamlit
+        # 1. SETUP DE SEGURANÇA (Resgatando suas variáveis originais)
         mod = st.session_state.get('modalidade_selecionada', 'Lotofácil')
-        # Tenta pegar as variáveis locais, se não existirem, busca no session_state
-        n_jog_final = locals().get('n_jog', st.session_state.get('n_jog', 10))
-        n_dez_final = locals().get('n_dez', st.session_state.get('n_dez', 15))
-        pool_final = locals().get('pool', st.session_state.get('pool', []))
-        fixas_util_final = locals().get('fixas_final', st.session_state.get('fixas_final', []))
-        # -------------------------------------------------------------
-
-        # 1. Garante que a Matriz de Afinidade está carregada
         matriz_af = st.session_state.get('matriz_ativa')
         if matriz_af is None:
             matriz_af = calcular_matriz_afinidade_kadosh(mod)
             st.session_state['matriz_ativa'] = matriz_af
 
-        if not pool_final or len(pool_final) < n_dez_final:
-            st.error(f"⚠️ Erro: Seu Pool ({len(pool_final)}) é menor que a quantidade de dezenas ({n_dez_final}).")
-        else:
-            novos = []
-        
-            # --- [INJEÇÃO DE INTELIGÊNCIA RL NO SEU LOOP ORIGINAL] ---
-            sucessos, tentativas = 0, 0
-            # Recupera os scores das 5 IAs calculados no Refinamento
-            scores_ia_brain = st.session_state.get('scores_especialistas', {})
+        pool_final = locals().get('pool', st.session_state.get('pool', []))
+        fixas_util_final = locals().get('fixas_final', st.session_state.get('fixas_final', []))
+        scores_ia_brain = st.session_state.get('scores_especialistas', {})
+    
+        # --- [MAPA DE ESTRATÉGIAS KADOSH] ---
+        # Aqui traduzimos suas estratégias para ordens de serviço para a IA
+        servicos_geracao = [] # Lista de (tamanho_dezenas, quantidade_jogos)
 
-            while sucessos < n_jog_final and tentativas < 20000:
-                tentativas += 1
+        if fe_escolhido != "Nenhum":
+            if "DIAMANTE" in fe_escolhido:
+                servicos_geracao = [(16, 2), (15, 10)]
+            elif "CÉLULA" in fe_escolhido:
+                servicos_geracao = [(16, 1), (15, 15)]
+            else:
+                servicos_geracao = [(15, locals().get('qtd', 10))]
+        elif est_escolhida == "6. A MARRETA":
+            servicos_geracao = [(18, 1), (16, 5)]
+        elif est_escolhida == "7. SIMETRIA GEOMÉTRICA":
+            servicos_geracao = [(16, 2), (15, 8)]
+        elif est_escolhida == "10. KADOSH PRESTIGE 20":
+            servicos_geracao = [(15, 36)]
+        elif est_escolhida != "Personalizado" and mod == "Lotofácil":
+            # Pega dados do seu dicionário info_est
+            d_est = info_est.get('dez', 15)
+            q_est = info_est.get('qtd', 1)
+            servicos_geracao = [(d_est, q_est)]
+            if "qtd_15" in info_est:
+                servicos_geracao.append((15, info_est['qtd_15']))
+        else:
+            # Modo Manual/Personalizado
+            servicos_geracao = [(n_dez, qtd)]
+
+        # 2. MOTOR DE INTELIGÊNCIA ARTIFICIAL (RL + CONSELHO DE 5 IAs)
+        novos = []
+    
+        for tam_alvo, qtd_alvo in servicos_geracao:
+            sucessos_lote = 0
+            tentativas_lote = 0
+        
+            while sucessos_lote < qtd_alvo and tentativas_lote < 15000:
+                tentativas_lote += 1
                 jogo_em_construcao = list(fixas_util_final)
-                # Garante que pool_trabalho use números limpos (inteiros)
                 pool_trabalho = [int(n) for n in pool_final if int(n) not in jogo_em_construcao]
             
-                # PREENCHIMENTO DINÂMICO RECOMPENSADO (RL)
-                while len(jogo_em_construcao) < n_dez_final and pool_trabalho:
-                    # Chama sua função de afinidade original
+                while len(jogo_em_construcao) < tam_alvo and pool_trabalho:
+                    # Afinidade Dinâmica
                     pesos_base = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
                 
                     opcoes = list(pesos_base.keys())
                     probabilidades = []
                 
                     for opt in opcoes:
-                        # O "Agente" lê o cérebro das IAs (Sincronizado)
-                        sc_especialista = scores_ia_brain.get(int(opt), {})
+                        sc = scores_ia_brain.get(int(opt), {})
+                        # FUSÃO DAS 5 IAs (GNN, Transformer, HMM, Entropia + Afinidade)
+                        bonus_ia = (sc.get('gnn', 0.5) + sc.get('transformer', 0.5) + 
+                                    sc.get('hmm', 0.5) + sc.get('entropia', 0.5)) / 4
                     
-                        # FUSÃO DAS 4 NOVAS IAs + NEUTRALIDADE (0.5)
-                        bonus_ia = (sc_especialista.get('gnn', 0.5) + 
-                                    sc_especialista.get('transformer', 0.5) + 
-                                    sc_especialista.get('hmm', 0.5) +
-                                    sc_especialista.get('entropia', 0.5)) / 4
-                    
-                        # RECOMPENSA: Afinidade original ajustada pelo "cérebro" das IAs
-                        peso_final = pesos_base[opt] * (1.0 + bonus_ia)
-                        probabilidades.append(max(peso_final, 0.0001)) # Evita peso zero
+                        peso_ia_final = pesos_base[opt] * (1.0 + bonus_ia)
+                        probabilidades.append(max(peso_ia_final, 0.0001))
                 
-                    # Escolha baseada na política de recompensa RL
                     escolha = random.choices(opcoes, weights=probabilidades, k=1)[0]
                     jogo_em_construcao.append(int(escolha))
                     pool_trabalho.remove(escolha)
             
                 comb = sorted(jogo_em_construcao)
             
-                # Evita duplicatas no lote atual
-                if any(set(comb) == set(existente['n']) for existente in novos):
+                # Validação e Duplicidade
+                if any(set(comb) == set(ex['n']) for ex in novos):
                     continue
             
-                # FILTROS KADOSH (Sua validação original flexível)
                 passou = True
                 if mod == "Lotofácil":
-                    passou = validar_kadosh_cirurgico(comb, mod, n_dez_final)
+                    passou = validar_kadosh_cirurgico(comb, mod, tam_alvo)
             
                 if passou:
-                    # Tratamento de variáveis de exibição (Tags)
-                    tag_fe = locals().get('fe_escolhido', 'Nenhum')
-                    tag_est_var = locals().get('est_escolhida', 'Padrao')
-                    tag_final = f"{tag_fe if tag_fe != 'Nenhum' else tag_est_var}"
-                
+                    tag_final = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
                     novos.append({
-                        "mod": mod, 
-                        "n": comb, 
-                        "tam": n_dez_final, 
+                        "mod": mod, "n": comb, "tam": tam_alvo, 
                         "fixas_utilizadas": list(fixas_util_final),
-                        "chance": definir_label_chance(comb, mod), 
-                        "est": tag_final
+                        "chance": definir_label_chance(comb, mod), "est": tag_final
                     })
-                    sucessos += 1
+                    sucessos_lote += 1
 
-        # --- O SEU CÓDIGO CONTINUA DAQUI PARA BAIXO (Exibição de Resultados) ---
-            # 3. LÓGICA DE EXECUÇÃO (Mantendo todas as tuas estratégias originais)
-            if fe_escolhido != "Nenhum":
-                if "DIAMANTE" in fe_escolhido:
-                    processar_geracao(16, 2)
-                    processar_geracao(15, 10)
-                elif "CÉLULA" in fe_escolhido:
-                    processar_geracao(16, 1)
-                    processar_geracao(15, 15)
-                else:
-                    processar_geracao(15, qtd)
-            elif est_escolhida == "6. A MARRETA":
-                processar_geracao(18, 1)
-                processar_geracao(16, 5)
-            elif est_escolhida == "7. SIMETRIA GEOMÉTRICA":
-                processar_geracao(16, 2)
-                processar_geracao(15, 8)
-            elif est_escolhida == "10. KADOSH PRESTIGE 20":
-                processar_geracao(15, 36)
-            elif est_escolhida != "Personalizado" and mod == "Lotofácil":
-                processar_geracao(info_est['dez'], info_est.get('qtd', 1))
-                if "qtd_15" in info_est:
-                    processar_geracao(15, info_est['qtd_15'])
-            else:
-                processar_geracao(n_dez, qtd)
-            
+        # 3. FINALIZAÇÃO E ATUALIZAÇÃO DO SISTEMA
+        if novos:
             st.session_state.jogos_gerados = novos
             st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com sucesso!")
             st.rerun()
-    # --- [FIM DO NOVO MOTOR SINCRONIZADO] ---
+        else:
+            st.error("❌ A IA não conseguiu validar jogos com os filtros atuais. Tente aumentar o Pool.")
 
     # --- EXIBIÇÃO DOS JOGOS (FORA DO IF DO BOTÃO) ---
     if st.session_state.jogos_gerados:
