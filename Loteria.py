@@ -81,11 +81,15 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20):
 
     res_historico = st.session_state.ultimo_res.get(mod_alvo, {})
     
-    if len(res_historico) < 35: 
+    if not res_historico or len(res_historico) < 35: 
         return None
     
-    # 1. Preparação dos Dados (Matriz Binária)
-    chaves_ordenadas = sorted(res_historico.keys(), key=int)
+    # 1. Preparação dos Dados (Matriz Binária) - CORREÇÃO DE ORDENAÇÃO
+    try:
+        chaves_ordenadas = sorted(res_historico.keys(), key=lambda x: int(x))
+    except Exception:
+        chaves_ordenadas = sorted(res_historico.keys())
+
     max_num = 25 if mod_alvo == "Lotofácil" else 80
     matriz = np.zeros((len(chaves_ordenadas), max_num))
     
@@ -137,13 +141,12 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20):
             preds = probabilidades[:, 1]
 
         # --- [5. ATUALIZAÇÃO: SINCRO-CONSELHO KADOSH] ---
-        # Resgatamos as notas das outras IAs já calculadas
         scores_especialistas = st.session_state.get('scores_especialistas', {})
         
         bonus_conselho = []
         for d in range(1, max_num + 1):
             sc = scores_especialistas.get(d, {})
-            # Média do GNN, HMM, Transformer e Entropia (0.5 se vazio)
+            # Recupera as notas do conselho (GNN, HMM, Transf, Entropia)
             nota_conselho = (sc.get('gnn', 0.5) + sc.get('transformer', 0.5) + 
                              sc.get('hmm', 0.5) + sc.get('entropia', 0.5)) / 4
             bonus_conselho.append(nota_conselho)
@@ -196,52 +199,61 @@ def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, po
     if not dezenas_selecionadas or not matriz_afinidade:
         return pesos
     
+    # Pegamos o tamanho real da matriz para não estourar o índice
+    tamanho_matriz = len(matriz_afinidade)
+    
     for d_fixa in dezenas_selecionadas:
         for d_pool in pool_disponivel:
             if d_pool not in dezenas_selecionadas:
-                # O índice da matriz deve ser inteiro
                 idx_f = int(d_fixa)
                 idx_p = int(d_pool)
-                bonus = matriz_afinidade[idx_f][idx_p] * 0.5
-                pesos[d_pool] += bonus
+                
+                # SEGURANÇA: Só acessa se os índices estiverem dentro da matriz
+                if idx_f < tamanho_matriz and idx_p < tamanho_matriz:
+                    bonus = matriz_afinidade[idx_f][idx_p] * 0.5
+                    pesos[d_pool] += bonus
     return pesos
 
 def calcular_matriz_afinidade_kadosh(mod):
     res_db = st.session_state.ultimo_res.get(mod, {})
-    # Mantive sua trava original de segurança
     if len(res_db) < 3: return None
     
-    limite = 26 if mod == "Lotofácil" else 61
-    # Mantive sua estrutura de lista de listas (Python Puro)
+    # AJUSTE DE LIMITE: 26 para Lotofácil (0-25), 81 para Quina/Outros (0-80)
+    limite = 26 if mod == "Lotofácil" else 81 
+    
+    # Estrutura de lista de listas (Python Puro)
     matriz = [[0 for _ in range(limite)] for _ in range(limite)]
     
-    # Ordenação segura das chaves para identificar os recentes
-    chaves_ordenadas = sorted(res_db.keys(), key=lambda x: int(x))
-    ultimos_35 = set(chaves_ordenadas[-35:]) # Uso de set para busca rápida
+    # Ordenação segura das chaves
+    try:
+        chaves_ordenadas = sorted(res_db.keys(), key=lambda x: int(x))
+    except:
+        chaves_ordenadas = sorted(res_db.keys())
+        
+    ultimos_35 = set(chaves_ordenadas[-35:]) 
     
     for conc, sorteio in res_db.items():
-        # Lógica de peso injetada sem mudar a estrutura
+        # Lógica de peso original: 3 para recentes, 1 para antigos
         peso = 3 if conc in ultimos_35 else 1
         
         nums = sorted([int(n) for n in sorteio])
         for i in range(len(nums)):
             for j in range(i + 1, len(nums)):
                 d1, d2 = nums[i], nums[j]
+                # Verifica se as dezenas cabem na matriz criada
                 if d1 < limite and d2 < limite:
                     matriz[d1][d2] += peso
                     matriz[d2][d1] += peso
     return matriz
-
 def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_ia=None):
     import numpy as np
     import streamlit as st
     from math import log2
 
-    # 1. ACESSO AOS DADOS REAIS DO SEU SISTEMA (RESPEITANDO SEU CÓDIGO)
+    # 1. ACESSO AOS DADOS REAIS (RESPEITANDO SEU DICIONÁRIO)
     mod = st.session_state.get('modalidade_selecionada', 'Lotofácil')
     res_db = st.session_state.ultimo_res.get(mod, {})
     
-    # Trava de segurança para não quebrar o Streamlit
     if not matriz_afinidade or not pool_atual or not res_db:
         return sorted(list(pool_atual))
     
@@ -249,71 +261,74 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_i
         scores_ia = {}
 
     # 2. DICIONÁRIO DE NOTAS (O CONSELHO DE ESPECIALISTAS)
-    scores_especialistas = {d: {'gnn': 0.0, 'hmm': 0.0, 'transformer': 0.0, 'entropia': 0.0} for d in range(1, 61)}
+    scores_especialistas = {d: {'gnn': 0.0, 'hmm': 0.0, 'transformer': 0.0, 'entropia': 0.0} for d in range(1, 81)}
 
-    # PREPARAÇÃO PARA O TRANSFORMER (ATENÇÃO SEQUENCIAL)
-    # Pegamos os últimos 10 sorteios reais para ver a "atenção" entre as dezenas
-    historico_ordenado = [sorted([int(n) for n in v]) for k, v in sorted(res_db.items(), key=lambda x: int(x))]
+    # --- [CORREÇÃO CRÍTICA DO ERRO DE TYPEERROR] ---
+    # Ordenamos as CHAVES primeiro, depois pegamos os valores
+    try:
+        chaves_ordenadas = sorted(res_db.keys(), key=lambda x: int(x))
+        historico_ordenado = [sorted([int(n) for n in res_db[k]]) for k in chaves_ordenadas]
+    except:
+        # Fallback caso as chaves não sejam números puros
+        historico_ordenado = [sorted([int(n) for n in v]) for k, v in res_db.items()]
+
     ultimos_10 = historico_ordenado[-10:] if len(historico_ordenado) >= 10 else historico_ordenado
 
     # --- [MOTOR DE INTELIGÊNCIA INTEGRADO] ---
     adj_matrix = np.array(matriz_afinidade)
     max_afim = np.max(adj_matrix) if np.max(adj_matrix) > 0 else 1
 
+    # Loop baseado no tamanho da matriz real (25 para Lotofácil, 80 para Quina)
     for d in range(1, len(adj_matrix)):
-        # A. GNN (Grafos - Influência de Vizinhança)
+        # A. GNN (Grafos)
         conexao_direta = np.sum(adj_matrix[d])
         vizinhos = np.where(adj_matrix[d] > 0)[0]
         influencia_vizinhanca = np.sum(adj_matrix[vizinhos]) if len(vizinhos) > 0 else 0
         scores_especialistas[d]['gnn'] = min((conexao_direta * 0.3 + influencia_vizinhanca * 0.7) / (max_afim * 15 + 1), 1.0)
 
-        # B. HMM (Markov - Probabilidade de Transição de Estado)
+        # B. HMM (Markov)
         scores_especialistas[d]['hmm'] = np.count_nonzero(adj_matrix[d]) / (len(adj_matrix) - 1)
 
-        # C. TRANSFORMER (Attention Score Simplificado)
-        # Verifica quantas vezes a dezena 'd' apareceu logo após padrões nos últimos 10 jogos
+        # C. TRANSFORMER (Attention)
         aparicoes_atencao = sum(1 for jogo in ultimos_10 if d in jogo)
         scores_especialistas[d]['transformer'] = aparicoes_atencao / len(ultimos_10) if ultimos_10 else 0
 
-        # D. ENTROPIA (Shannon - Nível de surpresa/caos da dezena)
+        # D. ENTROPIA (Shannon)
         p_dezena = sum(1 for jogo in historico_ordenado if d in jogo) / (len(historico_ordenado) + 1)
         if 0 < p_dezena < 1:
             ent = -(p_dezena * log2(p_dezena))
             scores_especialistas[d]['entropia'] = min(ent * 2, 1.0)
 
+    # SALVA PARA O GERADOR E TREINADOR USAREM
+    st.session_state['scores_especialistas'] = scores_especialistas
+
     # 3. O JUIZ: FUSÃO FINAL (IA ORIGINAL + MOTOR NOVO)
     def peso_juiz(d):
         d_int = int(d)
+        s_ia = scores_ia.get(d_int, 0.5)
         
-        # Sua lógica original (70/30)
-        s_ia = scores_ia.get(d_int, 0)
+        # Sua lógica de afinidade original
         afim_total = sum(matriz_afinidade[d_int]) / (len(matriz_afinidade[d_int]) + 1)
         estatistica_final = afim_total if afim_total > 0.40 else afim_total * 0.5
         
-        # Notas das Novas IAs
-        s_gnn = scores_especialistas[d_int]['gnn']
-        s_hmm = scores_especialistas[d_int]['hmm']
-        s_trans = scores_especialistas[d_int]['transformer']
-        s_ent = scores_especialistas[d_int]['entropia']
-
-        # PESOS DO CONSELHO:
-        # 40% Sua IA Original | 60% Novas IAs (GNN, Markov, Transformer, Entropia)
-        peso_base = (s_ia * 0.7) + (estatistica_final * 0.3)
-        peso_motor_novo = (s_gnn * 0.3) + (s_hmm * 0.2) + (s_trans * 0.3) + (s_ent * 0.2)
+        # Notas das Novas IAs do conselho
+        sc = scores_especialistas[d_int]
+        peso_motor_novo = (sc['gnn'] * 0.3) + (sc['hmm'] * 0.2) + (sc['transformer'] * 0.3) + (sc['entropia'] * 0.2)
         
+        peso_base = (s_ia * 0.7) + (estatistica_final * 0.3)
         return (peso_base * 0.4) + (peso_motor_novo * 0.6)
 
     # 4. EXECUÇÃO DO REFINAMENTO (REMOÇÃO E CURA)
     pool_refinado = list(pool_atual)
     
-    # Remoção técnica
+    # Remoção técnica até o objetivo
     while len(pool_refinado) > tamanho_objetivo:
-        piores = sorted(pool_refinado, key=peso_juiz)
-        pool_refinado.remove(piores[0])
+        pior_idx = min(range(len(pool_refinado)), key=lambda i: peso_juiz(pool_refinado[i]))
+        pool_refinado.pop(pior_idx)
 
-    # CURA DE VÁCUO: Aumentamos para 4 trocas para maior agressividade das novas IAs
+    # CURA DE VÁCUO (4 Trocas Agressivas)
     dezenas_fora = [d for d in range(1, len(adj_matrix)) if d not in pool_refinado]
-    for _ in range(4): # <--- MUDANÇA CIRÚRGICA AQUI
+    for _ in range(4):
         if not dezenas_fora: break
         pior_no_pool = min(pool_refinado, key=peso_juiz)
         melhor_fora = max(dezenas_fora, key=peso_juiz)
@@ -1037,6 +1052,8 @@ with abas[0]:
 
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
+        import random  # Garante que o motor de sorteio está ativo
+    
         # 1. Garante que a Matriz de Afinidade está carregada
         matriz_af = st.session_state.get('matriz_ativa')
         if matriz_af is None:
@@ -1056,7 +1073,8 @@ with abas[0]:
             while sucessos < n_jog and tentativas < 20000:
                 tentativas += 1
                 jogo_em_construcao = list(fixas_final)
-                pool_trabalho = [n for n in pool if n not in jogo_em_construcao]
+                # Garante que pool_trabalho use números limpos (inteiros)
+                pool_trabalho = [int(n) for n in pool if n not in jogo_em_construcao]
             
                 # PREENCHIMENTO DINÂMICO RECOMPENSADO (RL)
                 while len(jogo_em_construcao) < n_dez and pool_trabalho:
@@ -1067,13 +1085,14 @@ with abas[0]:
                     probabilidades = []
                 
                     for opt in opcoes:
-                        # O "Agente" lê o cérebro das IAs (GNN, Markov, Transformer, Entropia)
-                        # Se não houver score (user não refinou), usamos 0.5 como neutro
+                        # O "Agente" lê o cérebro das IAs
                         sc_especialista = scores_ia_brain.get(opt, {})
+                    
                         # Média das novas IAs para ajustar o peso
                         bonus_ia = (sc_especialista.get('gnn', 0.5) + 
                                     sc_especialista.get('transformer', 0.5) + 
-                                    sc_especialista.get('hmm', 0.5)) / 3
+                                    sc_especialista.get('hmm', 0.5) +
+                                    sc_especialista.get('entropia', 0.5)) / 4
                     
                         # RECOMPENSA: Afinidade original ajustada pela IA
                         peso_final = pesos_base[opt] * (1.0 + bonus_ia)
@@ -1081,7 +1100,7 @@ with abas[0]:
                 
                     # Escolha baseada na política de recompensa RL
                     escolha = random.choices(opcoes, weights=probabilidades, k=1)[0]
-                    jogo_em_construcao.append(escolha)
+                    jogo_em_construcao.append(int(escolha))
                     pool_trabalho.remove(escolha)
             
                 comb = sorted(jogo_em_construcao)
@@ -1090,9 +1109,10 @@ with abas[0]:
                 if any(set(comb) == set(existente['n']) for existente in novos):
                     continue
             
-                # FILTROS KADOSH (Sua validação original)
+                # FILTROS KADOSH (Ajuste para aceitar 15, 16 ou mais dezenas)
                 passou = True
-                if n_dez == 15 and mod == "Lotofácil":
+                if mod == "Lotofácil":
+                    # Removemos a trava do '== 15' para que jogos de 16 tb sejam filtrados
                     passou = validar_kadosh_cirurgico(comb, mod, n_dez)
             
                 if passou:
@@ -1105,8 +1125,6 @@ with abas[0]:
                     sucessos += 1
 
         # --- O SEU CÓDIGO CONTINUA DAQUI PARA BAIXO ---
-        # (Aqui você pode colocar seus st.write, st.table, etc., sem interrupção)
-
             # 3. LÓGICA DE EXECUÇÃO (Mantendo todas as tuas estratégias originais)
             if fe_escolhido != "Nenhum":
                 if "DIAMANTE" in fe_escolhido:
