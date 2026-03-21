@@ -1019,37 +1019,44 @@ with abas[0]:
             # BOTÃO 4: REFINAR (Filtro de Elite por Afinidade + IA)
             if mod == "Lotofácil":
                 if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
-                    pool_base = st.session_state.favoritas.get(mod, [])
-            
-                    if len(pool_base) < tamanho_alvo_pool:
-                        pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
- 
-                    # 1. Pega a matriz (Estatística/Kadosh)
-                    matriz_af = st.session_state.get('matriz_ativa')
-                    if matriz_af is None:
-                        matriz_af = calcular_matriz_afinidade_kadosh(mod)
-                        st.session_state['matriz_ativa'] = matriz_af
- 
-                    # 2. Pega os scores da IA (Híbrido)
-                    # Prioriza o novo motor de 5 IAs que criamos
-                    scores_ia = st.session_state.get('scores_especialistas', st.session_state.get('scores_predicao', {}))
- 
-                    # 3. O JUIZ: Refinamento Híbrido Kadosh
-                    pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, scores_ia)
- 
-                    # 4. Atualiza e recarrega
-                    st.session_state.favoritas[mod] = pool_refinado
-                    st.success(f"🎯 Refinado para {len(pool_refinado)} dezenas com inteligência híbrida!")
-                    st.rerun()
+    pool_base = st.session_state.favoritas.get(mod, [])
+    
+    # 1. Garante que o Pool Base tenha dezenas para refinar
+    if len(pool_base) < tamanho_alvo_pool:
+        pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 5)
+
+    # 2. Sincronização da Matriz
+    matriz_af = st.session_state.get('matriz_ativa')
+    if matriz_af is None:
+        matriz_af = calcular_matriz_afinidade_kadosh(mod)
+        st.session_state['matriz_ativa'] = matriz_af
+
+    # --- [CRITICAL: SINCRONIZA AS 5 IAs AQUI] ---
+    # Chamamos a função de refinamento uma vez com o pool atual para ela 
+    # CALCULAR e SALVAR os scores_especialistas (GNN, HMM, Transformer, Entropia)
+    # Isso garante que o 'scores_ia' abaixo não esteja vazio.
+    pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, st.session_state.get('scores_predicao', {}))
+    
+    # Agora pegamos os scores que a função acabou de calcular e salvar no estado
+    scores_ia_atualizados = st.session_state.get('scores_especialistas', {})
+
+    # 4. Atualiza o estado das favoritas com o resultado do "Juiz"
+    st.session_state.favoritas[mod] = pool_refinado
+    
+    # 5. Feedback visual e REEXECUÇÃO para o volante (multiselect) atualizar na tela
+    st.success(f"🎯 Refinado para {len(pool_refinado)} dezenas com as 5 IAs ativas!")
+    st.rerun()
 
         # --- CAMPO DE SELEÇÃO ---
         st.markdown("---")
-        # Ajuste dinâmico do range para não estourar o volante
         max_dezenas_volante = max_v_bt + 1
+        
+        # [AJUSTE CRÍTICO]: A 'key' dinâmica garante que o multiselect atualize quando a IA refinar o pool
         pool = st.multiselect(
             f"SELECIONE SEU POOL ({mod}):", 
             range(1, max_dezenas_volante), 
-            default=st.session_state.favoritas.get(mod, [])
+            default=st.session_state.favoritas.get(mod, []),
+            key=f"pool_sincronizado_{mod}_{len(st.session_state.favoritas.get(mod, []))}"
         )
         st.session_state.favoritas[mod] = pool 
 
@@ -1059,8 +1066,11 @@ with abas[0]:
             for n in pool: 
                 if 1 <= n <= 25:
                     linhas_p[(n-1)//5] += 1
-            if any(l == 0 for l in linhas_p):
-                st.warning("⚠️ Atenção: Seu Pool possui linhas vazias!")
+            
+            # Só mostra aviso se o pool estiver muito pequeno (menos de 15), para não atrapalhar a IA
+            if any(l == 0 for l in linhas_p) and len(pool) < 16:
+                st.warning("⚠️ Atenção: Linhas vazias detectadas no Pool.")
+                
             with st.expander("📊 Distribuição Geográfica do Pool"):
                 cols_q = st.columns(5)
                 for idx, qtd_l in enumerate(linhas_p):
@@ -1076,17 +1086,19 @@ with abas[0]:
                 fixas_final = st.multiselect("📌 CRAVAR DEZENAS:", options=pool)
             elif modo_fixa == "IA Automática (Score)":
                 qtd_auto = st.slider("Qtd de Cravadas:", 1, 10, 6)
-                # Busca scores nas novas IAs (GNN/Transformer)
+                
+                # Sincronia com as 5 IAs (GNN + Transformer)
                 stats = st.session_state.get('scores_especialistas', {})
                 if stats:
-                    # Ordena as dezenas do POOL pela média das IAs
+                    # Ordena as dezenas do POOL pela média das inteligências
                     melhores_ia = sorted([n for n in pool], 
-                                         key=lambda x: (stats.get(x, {}).get('gnn', 0) + stats.get(x, {}).get('transformer', 0)), 
+                                         key=lambda x: (stats.get(x, {}).get('gnn', 0.5) + 
+                                                       stats.get(x, {}).get('transformer', 0.5)), 
                                          reverse=True)
                     fixas_final = melhores_ia[:qtd_auto]
-                    st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
+                    st.info(f"💎 IA CRAVOU (GNN+TRANSFORMER): {', '.join(map(str, fixas_final))}")
                 else:
-                    st.info("💡 Use 'Refinar Pool' para ativar a IA Automática de Cravadas.")
+                    st.info("💡 Clique em 'Refinar Pool' para calibrar as 5 IAs de Cravadas.")
 
             # Renderiza Heatmap
             renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
