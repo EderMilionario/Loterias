@@ -1193,25 +1193,24 @@ with abas[0]:
         if not pool or len(pool) < n_dez:
             st.error("⚠️ Erro: Seu Pool é menor que a quantidade de dezenas por bilhete.")
         else:
-            # --- [CHAMADA DA TRIPLA FILTRAGEM ATIVA - ELITE 10] ---
-            # Atualiza o pool com as substituições cirúrgicas
+            # --- [CHAMADA DA ELITE 10 - FIEL AO SEU CÓDIGO] ---
+            # A troca ocorre aqui e atualiza a sua variável 'pool'
             pool = aplicar_auditoria_elite_10(mod, pool, matriz_af)
                 
-            # Exibe o relatório de substituições
+            # Relatório de auditoria
             if st.session_state.get('log_substituicoes'):
                 with st.expander("🔍 RELATÓRIO DE AUDITORIA ELITE 10", expanded=True):
                     for motivo in st.session_state['log_substituicoes']:
                         st.write(motivo)
-            # --- [FIM DA INTERVENÇÃO] ---
 
             novos = []
                 
-            # 2. FUNÇÃO DE GERAÇÃO
+            # 2. SUA FUNÇÃO DE GERAÇÃO (Fiel ao seu motor PSO)
             def processar_geracao(tamanho_solicitado, quantidade_pedida):
                 jogos_ia = executar_pso_kadosh(
                     modalidade=mod,
-                    pool_selecionado=pool, # Usa o pool já auditado
-                    qtd_jogos=quantidade_pedida,
+                    pool_selecionado=pool, 
+                    num_jogos=quantidade_pedida,
                     dezenas_fixas=list(fixas_final),
                     matriz_afinidade=matriz_af,
                     estrategia_nome=f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
@@ -1230,7 +1229,7 @@ with abas[0]:
                         "est": tag_est
                     })
 
-            # 3. LÓGICA DE EXECUÇÃO (Matrizes)
+            # 3. LÓGICA DE EXECUÇÃO (Suas Matrizes Originais)
             with st.spinner("🧠 Sincronizando 10 Camadas de IA..."):
                 if fe_escolhido != "Nenhum":
                     if "DIAMANTE" in fe_escolhido:
@@ -1256,25 +1255,24 @@ with abas[0]:
                 else:
                     processar_geracao(n_dez, qtd)
                 
-            # 4. Finalização
+            # 4. FINALIZAÇÃO E FEEDBACK VISUAL DAS DEZENAS
             st.session_state.jogos_gerados = novos
                 
-            # Feedback visual corrigido (Usando a variável 'pool' que é a correta)
             st.markdown("### 🧬 Pool de Elite Selecionado pelas 10 IAs")
             html_pool = ""
-            for d in range(1, 26):
-                # Se a dezena está no pool auditado
+            substituidas = st.session_state.get('dezenas_substituidas', [])
+                
+            # Gera as bolinhas: Verde (Pool), Laranja (Troca IA), Vermelho (Fora)
+            for d in range(1, 26 if mod == "Lotofácil" else 61):
                 if d in pool:
-                    # Se ela foi uma das que a IA TROCOU, fica Laranja. Se já estava, fica Verde.
-                    cor_classe = "background-color: #FF8C00;" if d in st.session_state.get('dezenas_substituidas', []) else "background-color: #28a745;"
+                    cor = "#FF8C00" if d in substituidas else "#28a745"
+                    html_pool += f'<span style="display:inline-block; background-color:{cor}; color:white; border-radius:50%; width:30px; height:30px; line-height:30px; text-align:center; margin:2px; font-weight:bold; border:1px solid black;">{d:02d}</span>'
                 else:
-                    cor_classe = "background-color: #dc3545;" # Vermelho para fora do pool
-
-                html_pool += f'<span style="display:inline-block; {cor_classe} color:white; border-radius:50%; width:30px; height:30px; line-height:30px; text-align:center; margin:2px; font-weight:bold;">{d:02d}</span>'
+                    html_pool += f'<span style="display:inline-block; background-color:#dc3545; color:white; border-radius:50%; width:30px; height:30px; line-height:30px; text-align:center; margin:2px; font-weight:bold; border:1px solid black;">{d:02d}</span>'
                 
             st.markdown(f'<div style="margin-bottom:20px;">{html_pool}</div>', unsafe_allow_html=True)
             st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com 10 IAs!")
-            st.rerun()
+            # O rerun foi removido daqui para você poder ver as bolinhas laranjas na tela!
             
             # O sistema segue para mostrar os jogos abaixo (sua lógica original de display)
 
