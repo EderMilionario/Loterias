@@ -1020,7 +1020,7 @@ with abas[0]:
             if mod == "Lotofácil":
                 if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
                     pool_base = st.session_state.favoritas.get(mod, [])
-    
+                
                     # 1. Garante que o Pool Base tenha dezenas para refinar
                     if len(pool_base) < tamanho_alvo_pool:
                         pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 5)
@@ -1032,34 +1032,36 @@ with abas[0]:
                         st.session_state['matriz_ativa'] = matriz_af
 
                     # --- [CRITICAL: SINCRONIZA AS 5 IAs AQUI] ---
-                    # Chamamos a função de refinamento uma vez com o pool atual para ela 
-                    # CALCULAR e SALVAR os scores_especialistas (GNN, HMM, Transformer, Entropia)
-                    # Isso garante que o 'scores_ia' abaixo não esteja vazio.
-                    pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, st.session_state.get('scores_predicao', {}))
-    
-                    # Agora pegamos os scores que a função acabou de calcular e salvar no estado
-                    scores_ia_atualizados = st.session_state.get('scores_especialistas', {})
+                    # A correção aqui é passar o session_state direto para garantir que a função 
+                    # consiga gravar os scores das 5 IAs (GNN, Transformer, etc.)
+                    pool_refinado = refinar_pool_kadosh(
+                        pool_base, 
+                        matriz_af, 
+                        tamanho_alvo_pool, 
+                        st.session_state.get('scores_especialistas', {})
+                    )
 
                     # 4. Atualiza o estado das favoritas com o resultado do "Juiz"
-                    st.session_state.favoritas[mod] = pool_refinado
-    
+                    st.session_state.favoritas[mod] = sorted([int(n) for n in pool_refinado])
+
                     # 5. Feedback visual e REEXECUÇÃO para o volante (multiselect) atualizar na tela
                     st.success(f"🎯 Refinado para {len(pool_refinado)} dezenas com as 5 IAs ativas!")
                     st.rerun()
 
-        # --- CAMPO DE SELEÇÃO ---
-        st.markdown("---")
-        max_dezenas_volante = max_v_bt + 1
+            # --- CAMPO DE SELEÇÃO ---
+            st.markdown("---")
+            max_dezenas_volante = max_v_bt + 1
         
-        # [AJUSTE CRÍTICO]: A 'key' dinâmica garante que o multiselect atualize quando a IA refinar o pool
-        pool = st.multiselect(
-            f"SELECIONE SEU POOL ({mod}):", 
-            range(1, max_dezenas_volante), 
-            default=st.session_state.favoritas.get(mod, []),
-            key=f"pool_sincronizado_{mod}_{len(st.session_state.favoritas.get(mod, []))}"
-        )
-        st.session_state.favoritas[mod] = pool 
-
+            # [AJUSTE CRÍTICO]: Usei a 'key' baseada no CONTEÚDO do pool para forçar o Streamlit a atualizar
+            # Se os números mudarem, a key muda e o volante limpa a sujeira antiga
+            pool_atual = st.session_state.favoritas.get(mod, [])
+            pool = st.multiselect(
+                f"SELECIONE SEU POOL ({mod}):", 
+                range(1, max_dezenas_volante), 
+                default=pool_atual,
+                key=f"pool_sinc_{mod}_{sum(pool_atual)}" 
+            )
+            st.session_state.favoritas[mod] = pool
         # --- ANÁLISE DE QUADRANTES NO POOL ---
         if pool and mod == "Lotofácil":
             linhas_p = [0]*5
