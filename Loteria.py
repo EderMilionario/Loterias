@@ -4,6 +4,8 @@ import json
 import random
 import re
 import pandas as pd
+import numpy as np          # <--- ADICIONADO (Essencial para as matrizes da IA)
+from math import log2       # <--- ADICIONADO (Essencial para o cálculo de Entropia)
 from collections import Counter
 from itertools import combinations
 from fpdf import FPDF
