@@ -1054,14 +1054,24 @@ with abas[0]:
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
         import random  # Garante que o motor de sorteio está ativo
     
+        # --- [TRAVA DE SEGURANÇA: GARANTE QUE AS VARIÁVEIS EXISTAM] ---
+        # Isso evita o NameError se as variáveis vierem de inputs do Streamlit
+        mod = st.session_state.get('modalidade_selecionada', 'Lotofácil')
+        # Tenta pegar as variáveis locais, se não existirem, busca no session_state
+        n_jog_final = locals().get('n_jog', st.session_state.get('n_jog', 10))
+        n_dez_final = locals().get('n_dez', st.session_state.get('n_dez', 15))
+        pool_final = locals().get('pool', st.session_state.get('pool', []))
+        fixas_util_final = locals().get('fixas_final', st.session_state.get('fixas_final', []))
+        # -------------------------------------------------------------
+
         # 1. Garante que a Matriz de Afinidade está carregada
         matriz_af = st.session_state.get('matriz_ativa')
         if matriz_af is None:
             matriz_af = calcular_matriz_afinidade_kadosh(mod)
             st.session_state['matriz_ativa'] = matriz_af
 
-        if not pool or len(pool) < n_dez:
-            st.error("⚠️ Erro: Seu Pool é menor que a quantidade de dezenas por bilhete.")
+        if not pool_final or len(pool_final) < n_dez_final:
+            st.error(f"⚠️ Erro: Seu Pool ({len(pool_final)}) é menor que a quantidade de dezenas ({n_dez_final}).")
         else:
             novos = []
         
@@ -1070,14 +1080,14 @@ with abas[0]:
             # Recupera os scores das 5 IAs calculados no Refinamento
             scores_ia_brain = st.session_state.get('scores_especialistas', {})
 
-            while sucessos < n_jog and tentativas < 20000:
+            while sucessos < n_jog_final and tentativas < 20000:
                 tentativas += 1
-                jogo_em_construcao = list(fixas_final)
+                jogo_em_construcao = list(fixas_util_final)
                 # Garante que pool_trabalho use números limpos (inteiros)
-                pool_trabalho = [int(n) for n in pool if n not in jogo_em_construcao]
+                pool_trabalho = [int(n) for n in pool_final if int(n) not in jogo_em_construcao]
             
                 # PREENCHIMENTO DINÂMICO RECOMPENSADO (RL)
-                while len(jogo_em_construcao) < n_dez and pool_trabalho:
+                while len(jogo_em_construcao) < n_dez_final and pool_trabalho:
                     # Chama sua função de afinidade original
                     pesos_base = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
                 
@@ -1085,18 +1095,18 @@ with abas[0]:
                     probabilidades = []
                 
                     for opt in opcoes:
-                        # O "Agente" lê o cérebro das IAs
-                        sc_especialista = scores_ia_brain.get(opt, {})
+                        # O "Agente" lê o cérebro das IAs (Sincronizado)
+                        sc_especialista = scores_ia_brain.get(int(opt), {})
                     
-                        # Média das novas IAs para ajustar o peso
+                        # FUSÃO DAS 4 NOVAS IAs + NEUTRALIDADE (0.5)
                         bonus_ia = (sc_especialista.get('gnn', 0.5) + 
                                     sc_especialista.get('transformer', 0.5) + 
                                     sc_especialista.get('hmm', 0.5) +
                                     sc_especialista.get('entropia', 0.5)) / 4
                     
-                        # RECOMPENSA: Afinidade original ajustada pela IA
+                        # RECOMPENSA: Afinidade original ajustada pelo "cérebro" das IAs
                         peso_final = pesos_base[opt] * (1.0 + bonus_ia)
-                        probabilidades.append(peso_final)
+                        probabilidades.append(max(peso_final, 0.0001)) # Evita peso zero
                 
                     # Escolha baseada na política de recompensa RL
                     escolha = random.choices(opcoes, weights=probabilidades, k=1)[0]
@@ -1105,26 +1115,32 @@ with abas[0]:
             
                 comb = sorted(jogo_em_construcao)
             
-                # Evita duplicatas
+                # Evita duplicatas no lote atual
                 if any(set(comb) == set(existente['n']) for existente in novos):
                     continue
             
-                # FILTROS KADOSH (Ajuste para aceitar 15, 16 ou mais dezenas)
+                # FILTROS KADOSH (Sua validação original flexível)
                 passou = True
                 if mod == "Lotofácil":
-                    # Removemos a trava do '== 15' para que jogos de 16 tb sejam filtrados
-                    passou = validar_kadosh_cirurgico(comb, mod, n_dez)
+                    passou = validar_kadosh_cirurgico(comb, mod, n_dez_final)
             
                 if passou:
-                    tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
+                    # Tratamento de variáveis de exibição (Tags)
+                    tag_fe = locals().get('fe_escolhido', 'Nenhum')
+                    tag_est_var = locals().get('est_escolhida', 'Padrao')
+                    tag_final = f"{tag_fe if tag_fe != 'Nenhum' else tag_est_var}"
+                
                     novos.append({
-                        "mod": mod, "n": comb, "tam": n_dez, 
-                        "fixas_utilizadas": list(fixas_final),
-                        "chance": definir_label_chance(comb, mod), "est": tag_est
+                        "mod": mod, 
+                        "n": comb, 
+                        "tam": n_dez_final, 
+                        "fixas_utilizadas": list(fixas_util_final),
+                        "chance": definir_label_chance(comb, mod), 
+                        "est": tag_final
                     })
                     sucessos += 1
 
-        # --- O SEU CÓDIGO CONTINUA DAQUI PARA BAIXO ---
+        # --- O SEU CÓDIGO CONTINUA DAQUI PARA BAIXO (Exibição de Resultados) ---
             # 3. LÓGICA DE EXECUÇÃO (Mantendo todas as tuas estratégias originais)
             if fe_escolhido != "Nenhum":
                 if "DIAMANTE" in fe_escolhido:
