@@ -55,6 +55,47 @@ if 'ultimo_res' not in st.session_state:
         # Toast discreto para confirmar que as 10 IAs já têm dados
         st.toast(f"✅ Histórico carregado via Backup: {backup_nome}")
 
+# --- [NOVA FUNÇÃO: AUDITORIA ELITE 10 - SEM ALTERAR VARIÁVEIS EXISTENTES] ---
+def aplicar_auditoria_elite_10(modalidade, pool_selecionado, matriz_afinidade):
+    if 'log_substituicoes' not in st.session_state:
+        st.session_state['log_substituicoes'] = []
+    if 'dezenas_substituidas' not in st.session_state:
+        st.session_state['dezenas_substituidas'] = []
+    
+    st.session_state['log_substituicoes'] = []
+    st.session_state['dezenas_substituidas'] = []
+    
+    # Usa a lógica de dezenas do seu sistema
+    dezenas_possiveis = list(range(1, 26)) if modalidade == "Lotofácil" else list(range(1, 61))
+    
+    # Chama sua função original de score (Linha 770 do seu código)
+    scores = calcular_score_elite_10(modalidade, dezenas_possiveis, matriz_afinidade)
+    
+    pool_atual = list(pool_selecionado)
+    substituicoes = 0
+    
+    # Limite rigoroso de 3 trocas para pool de 20
+    while substituicoes < 3:
+        fora_do_pool = [d for d in dezenas_possiveis if d not in pool_atual]
+        if not fora_do_pool: break
+            
+        pior_dentro = min(pool_atual, key=lambda d: scores.get(d, 0))
+        melhor_fora = max(fora_do_pool, key=lambda d: scores.get(d, 0))
+        
+        # Só troca se a de fora for superior (Gatilho de Verossimilhança)
+        if scores[melhor_fora] > scores[pior_dentro]:
+            pool_atual.remove(pior_dentro)
+            pool_atual.append(melhor_fora)
+            st.session_state['dezenas_substituidas'].append(melhor_fora)
+            st.session_state['log_substituicoes'].append(
+                f"🔄 Elite 10: Dezena {pior_dentro:02d} saiu -> Dezena {melhor_fora:02d} entrou (Ajuste de Verossimilhança)"
+            )
+            substituicoes += 1
+        else:
+            break
+            
+    return sorted(pool_atual)
+
 # --- [FIM DA ATUALIZAÇÃO 1] ---
 def gerar_pdf_jogos(lista_jogos, loteria_nome):
     from fpdf import FPDF
@@ -1143,7 +1184,7 @@ with abas[0]:
 
     # --- [DENTRO DA ABA 0 - BOTÃO GERAR] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH + 10 IAs)"):
-        # 1. Garante que a Matriz de Afinidade está carregada (Sua lógica original)
+        # 1. Garante que a Matriz de Afinidade está carregada
         matriz_af = st.session_state.get('matriz_ativa')
         if matriz_af is None:
             matriz_af = calcular_matriz_afinidade_kadosh(mod)
@@ -1152,26 +1193,33 @@ with abas[0]:
         if not pool or len(pool) < n_dez:
             st.error("⚠️ Erro: Seu Pool é menor que a quantidade de dezenas por bilhete.")
         else:
+            # --- [CHAMADA DA TRIPLA FILTRAGEM ATIVA - ELITE 10] ---
+            # Atualiza o pool com as substituições cirúrgicas
+            pool = aplicar_auditoria_elite_10(mod, pool, matriz_af)
+                
+            # Exibe o relatório de substituições
+            if st.session_state.get('log_substituicoes'):
+                with st.expander("🔍 RELATÓRIO DE AUDITORIA ELITE 10", expanded=True):
+                    for motivo in st.session_state['log_substituicoes']:
+                        st.write(motivo)
+            # --- [FIM DA INTERVENÇÃO] ---
+
             novos = []
-            
-            # 2. SUA FUNÇÃO ORIGINAL - Agora com Motor PSO de 10 Inteligências
+                
+            # 2. FUNÇÃO DE GERAÇÃO
             def processar_geracao(tamanho_solicitado, quantidade_pedida):
-                # Chama o Maestro PSO para gerar o lote de jogos com 10 camadas de IA
-                # Ele respeita o tamanho (15, 16, 18) solicitado por cada matriz
                 jogos_ia = executar_pso_kadosh(
                     modalidade=mod,
-                    pool_selecionado=pool,
+                    pool_selecionado=pool, # Usa o pool já auditado
                     qtd_jogos=quantidade_pedida,
                     dezenas_fixas=list(fixas_final),
                     matriz_afinidade=matriz_af,
                     estrategia_nome=f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
                 )
-                
+                    
                 for j in jogos_ia:
                     comb = j['n']
-                    # Garante que o jogo tenha exatamente o tamanho que a sua matriz pediu
                     if len(comb) > tamanho_solicitado: comb = comb[:tamanho_solicitado]
-                    
                     tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
                     novos.append({
                         "mod": mod, 
@@ -1182,7 +1230,7 @@ with abas[0]:
                         "est": tag_est
                     })
 
-            # 3. LÓGICA DE EXECUÇÃO ORIGINAL (Fiel ao seu Loterias.py)
+            # 3. LÓGICA DE EXECUÇÃO (Matrizes)
             with st.spinner("🧠 Sincronizando 10 Camadas de IA..."):
                 if fe_escolhido != "Nenhum":
                     if "DIAMANTE" in fe_escolhido:
@@ -1207,22 +1255,26 @@ with abas[0]:
                         processar_geracao(15, info_est['qtd_15'])
                 else:
                     processar_geracao(n_dez, qtd)
-            
+                
             # 4. Finalização
             st.session_state.jogos_gerados = novos
-            st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com 10 IAs!")
-            st.rerun()
-            
-            # Feedback visual das dezenas do Pool (Verde se IA aprovou forte)
+                
+            # Feedback visual corrigido (Usando a variável 'pool' que é a correta)
             st.markdown("### 🧬 Pool de Elite Selecionado pelas 10 IAs")
             html_pool = ""
             for d in range(1, 26):
-                cor = "pool-verde" if d in pool_final_kadosh else "pool-vermelho"
-                # Se a dezena foi trocada pela "Cura de Vácuo", ela ganha brilho extra
-                html_pool += f'<span class="dezena-pool {cor}">{d:02d}</span>'
-            st.markdown(f'<div style="margin-bottom:20px;">{html_pool}</div>', unsafe_allow_html=True)
+                # Se a dezena está no pool auditado
+                if d in pool:
+                    # Se ela foi uma das que a IA TROCOU, fica Laranja. Se já estava, fica Verde.
+                    cor_classe = "background-color: #FF8C00;" if d in st.session_state.get('dezenas_substituidas', []) else "background-color: #28a745;"
+                else:
+                    cor_classe = "background-color: #dc3545;" # Vermelho para fora do pool
 
-            st.success(f"✅ {len(novos_jogos)} Jogos Gerados com Sucesso!")
+                html_pool += f'<span style="display:inline-block; {cor_classe} color:white; border-radius:50%; width:30px; height:30px; line-height:30px; text-align:center; margin:2px; font-weight:bold;">{d:02d}</span>'
+                
+            st.markdown(f'<div style="margin-bottom:20px;">{html_pool}</div>', unsafe_allow_html=True)
+            st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com 10 IAs!")
+            st.rerun()
             
             # O sistema segue para mostrar os jogos abaixo (sua lógica original de display)
 
