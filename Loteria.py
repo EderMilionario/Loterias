@@ -1019,33 +1019,33 @@ with abas[0]:
             # BOTÃO 4: REFINAR (Filtro de Elite por Afinidade + IA)
             if mod == "Lotofácil":
                 if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
-    pool_base = st.session_state.favoritas.get(mod, [])
+                    pool_base = st.session_state.favoritas.get(mod, [])
     
-    # 1. Garante que o Pool Base tenha dezenas para refinar
-    if len(pool_base) < tamanho_alvo_pool:
-        pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 5)
+                    # 1. Garante que o Pool Base tenha dezenas para refinar
+                    if len(pool_base) < tamanho_alvo_pool:
+                        pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 5)
 
-    # 2. Sincronização da Matriz
-    matriz_af = st.session_state.get('matriz_ativa')
-    if matriz_af is None:
-        matriz_af = calcular_matriz_afinidade_kadosh(mod)
-        st.session_state['matriz_ativa'] = matriz_af
+                    # 2. Sincronização da Matriz
+                    matriz_af = st.session_state.get('matriz_ativa')
+                    if matriz_af is None:
+                        matriz_af = calcular_matriz_afinidade_kadosh(mod)
+                        st.session_state['matriz_ativa'] = matriz_af
 
-    # --- [CRITICAL: SINCRONIZA AS 5 IAs AQUI] ---
-    # Chamamos a função de refinamento uma vez com o pool atual para ela 
-    # CALCULAR e SALVAR os scores_especialistas (GNN, HMM, Transformer, Entropia)
-    # Isso garante que o 'scores_ia' abaixo não esteja vazio.
-    pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, st.session_state.get('scores_predicao', {}))
+                    # --- [CRITICAL: SINCRONIZA AS 5 IAs AQUI] ---
+                    # Chamamos a função de refinamento uma vez com o pool atual para ela 
+                    # CALCULAR e SALVAR os scores_especialistas (GNN, HMM, Transformer, Entropia)
+                    # Isso garante que o 'scores_ia' abaixo não esteja vazio.
+                    pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, st.session_state.get('scores_predicao', {}))
     
-    # Agora pegamos os scores que a função acabou de calcular e salvar no estado
-    scores_ia_atualizados = st.session_state.get('scores_especialistas', {})
+                    # Agora pegamos os scores que a função acabou de calcular e salvar no estado
+                    scores_ia_atualizados = st.session_state.get('scores_especialistas', {})
 
-    # 4. Atualiza o estado das favoritas com o resultado do "Juiz"
-    st.session_state.favoritas[mod] = pool_refinado
+                    # 4. Atualiza o estado das favoritas com o resultado do "Juiz"
+                    st.session_state.favoritas[mod] = pool_refinado
     
-    # 5. Feedback visual e REEXECUÇÃO para o volante (multiselect) atualizar na tela
-    st.success(f"🎯 Refinado para {len(pool_refinado)} dezenas com as 5 IAs ativas!")
-    st.rerun()
+                    # 5. Feedback visual e REEXECUÇÃO para o volante (multiselect) atualizar na tela
+                    st.success(f"🎯 Refinado para {len(pool_refinado)} dezenas com as 5 IAs ativas!")
+                    st.rerun()
 
         # --- CAMPO DE SELEÇÃO ---
         st.markdown("---")
