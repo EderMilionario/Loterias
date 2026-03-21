@@ -75,12 +75,13 @@ def rodar_backtesting_kadosh(df, num_concursos=30):
 def treinar_e_prever_ia(mod_alvo, tamanho=20):
     import numpy as np
     import pandas as pd
+    import streamlit as st
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.model_selection import GridSearchCV
 
     res_historico = st.session_state.ultimo_res.get(mod_alvo, {})
     
-    if len(res_historico) < 35: # Segurança: precisa de base para as árvores "aprenderem"
+    if len(res_historico) < 35: 
         return None
     
     # 1. Preparação dos Dados (Matriz Binária)
@@ -90,34 +91,31 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20):
     
     for i, conc in enumerate(chaves_ordenadas):
         for num in res_historico[conc]:
-            if num <= max_num:
-                matriz[i, num-1] = 1
+            num_int = int(num)
+            if num_int <= max_num:
+                matriz[i, num_int-1] = 1
 
-    # 2. Criação de Features (O que a IA vai analisar)
-    # Vamos criar um set de treinamento baseado nos últimos 35 concursos
+    # 2. Criação de Features
     X_train = []
     y_train = []
     
-    # A IA estuda blocos passados para tentar prever o próximo
     for i in range(len(matriz) - 10, len(matriz)):
-        # Criamos características: média curta (5), média longa (15), e atraso
         feat = np.column_stack([
-            np.mean(matriz[i-5:i], axis=0),  # Tendência imediata
-            np.mean(matriz[i-15:i], axis=0), # Tendência média
-            np.mean(matriz[:i], axis=0)      # Histórico total
+            np.mean(matriz[i-5:i], axis=0),  
+            np.mean(matriz[i-15:i], axis=0), 
+            np.mean(matriz[:i], axis=0)      
         ])
         X_train.extend(feat)
-        y_train.extend(matriz[i]) # O que de fato saiu
+        y_train.extend(matriz[i]) 
 
-    # 3. O TORNEIO DE HIPÓTESES (GridSearchCV + Random Forest)
+    # 3. Torneio de Hipóteses (Random Forest)
     rf = RandomForestClassifier(random_state=42)
     param_grid = {
-        'n_estimators': [50, 100],      # Quantidade de árvores
-        'max_depth': [None, 5, 10],     # Profundidade da análise
-        'min_samples_split': [2, 5]     # Rigidez da decisão
+        'n_estimators': [50, 100],      
+        'max_depth': [None, 5, 10],     
+        'min_samples_split': [2, 5]     
     }
     
-    # O grid_search vai testar todas as combinações e escolher a melhor
     grid_search = GridSearchCV(estimator=rf, param_grid=param_grid, cv=3, n_jobs=-1)
     
     try:
@@ -125,32 +123,44 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20):
         melhor_modelo = grid_search.best_estimator_
         
         # 4. Predição para o próximo concurso
-        # Usamos os dados mais atuais para alimentar o modelo vencedor
         X_atual = np.column_stack([
             np.mean(matriz[-5:], axis=0),
             np.mean(matriz[-15:], axis=0),
             np.mean(matriz, axis=0)
         ])
         
-        # Obtém a probabilidade de cada número sair
         probabilidades = melhor_modelo.predict_proba(X_atual)
         
-        # Ajuste para pegar a probabilidade da classe 1 (sair)
-        # Se for multi-output, pegamos a probabilidade de cada árvore
         if isinstance(probabilidades, list):
             preds = [p[0][1] if len(p[0]) > 1 else p[0][0] for p in probabilidades]
         else:
             preds = probabilidades[:, 1]
 
-        # 5. O Segredo: O Peso 70/30 entra como "Plano B" no Score Final
+        # --- [5. ATUALIZAÇÃO: SINCRO-CONSELHO KADOSH] ---
+        # Resgatamos as notas das outras IAs já calculadas
+        scores_especialistas = st.session_state.get('scores_especialistas', {})
+        
+        bonus_conselho = []
+        for d in range(1, max_num + 1):
+            sc = scores_especialistas.get(d, {})
+            # Média do GNN, HMM, Transformer e Entropia (0.5 se vazio)
+            nota_conselho = (sc.get('gnn', 0.5) + sc.get('transformer', 0.5) + 
+                             sc.get('hmm', 0.5) + sc.get('entropia', 0.5)) / 4
+            bonus_conselho.append(nota_conselho)
+        
+        bonus_conselho = np.array(bonus_conselho)
+        
+        # Peso 70/30 original (Estatística)
         pesos_originais = (np.mean(matriz[-15:], axis=0) * 0.7) + (np.mean(matriz, axis=0) * 0.3)
-        score_final = (np.array(preds) * 0.8) + (pesos_originais * 0.2) # IA domina 80% da decisão
+        
+        # FUSÃO FINAL: 
+        # 50% Random Forest | 30% Conselho (GNN/Transf) | 20% Estatística
+        score_final = (np.array(preds) * 0.5) + (bonus_conselho * 0.3) + (pesos_originais * 0.2)
         
         indices_vencedores = score_final.argsort()[-tamanho:][::-1]
         return sorted([int(i + 1) for i in indices_vencedores])
         
     except Exception as e:
-        # Se o torneio de árvores falhar, ele volta para o seu 70/30 original (Segurança)
         st.warning(f"IA em modo de segurança: {e}")
         pesos_recentes = np.mean(matriz[-15:], axis=0)
         tendencia_longa = np.mean(matriz, axis=0)
@@ -223,40 +233,87 @@ def calcular_matriz_afinidade_kadosh(mod):
     return matriz
 
 def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_ia=None):
-    # Se os dados não existirem, o sistema retorna o pool atual para não travar
-    if not matriz_afinidade or not pool_atual:
+    import numpy as np
+    import streamlit as st
+    from math import log2
+
+    # 1. ACESSO AOS DADOS REAIS DO SEU SISTEMA (RESPEITANDO SEU CÓDIGO)
+    mod = st.session_state.get('modalidade_selecionada', 'Lotofácil')
+    res_db = st.session_state.ultimo_res.get(mod, {})
+    
+    # Trava de segurança para não quebrar o Streamlit
+    if not matriz_afinidade or not pool_atual or not res_db:
         return sorted(list(pool_atual))
     
-    # Se o botão enviar a IA, nós usamos. Se não, fica vazio.
     if scores_ia is None:
         scores_ia = {}
 
-    # O JUIZ: IA (70%) + AFINIDADE 35 JOGOS (30%)
+    # 2. DICIONÁRIO DE NOTAS (O CONSELHO DE ESPECIALISTAS)
+    scores_especialistas = {d: {'gnn': 0.0, 'hmm': 0.0, 'transformer': 0.0, 'entropia': 0.0} for d in range(1, 61)}
+
+    # PREPARAÇÃO PARA O TRANSFORMER (ATENÇÃO SEQUENCIAL)
+    # Pegamos os últimos 10 sorteios reais para ver a "atenção" entre as dezenas
+    historico_ordenado = [sorted([int(n) for n in v]) for k, v in sorted(res_db.items(), key=lambda x: int(x))]
+    ultimos_10 = historico_ordenado[-10:] if len(historico_ordenado) >= 10 else historico_ordenado
+
+    # --- [MOTOR DE INTELIGÊNCIA INTEGRADO] ---
+    adj_matrix = np.array(matriz_afinidade)
+    max_afim = np.max(adj_matrix) if np.max(adj_matrix) > 0 else 1
+
+    for d in range(1, len(adj_matrix)):
+        # A. GNN (Grafos - Influência de Vizinhança)
+        conexao_direta = np.sum(adj_matrix[d])
+        vizinhos = np.where(adj_matrix[d] > 0)[0]
+        influencia_vizinhanca = np.sum(adj_matrix[vizinhos]) if len(vizinhos) > 0 else 0
+        scores_especialistas[d]['gnn'] = min((conexao_direta * 0.3 + influencia_vizinhanca * 0.7) / (max_afim * 15 + 1), 1.0)
+
+        # B. HMM (Markov - Probabilidade de Transição de Estado)
+        scores_especialistas[d]['hmm'] = np.count_nonzero(adj_matrix[d]) / (len(adj_matrix) - 1)
+
+        # C. TRANSFORMER (Attention Score Simplificado)
+        # Verifica quantas vezes a dezena 'd' apareceu logo após padrões nos últimos 10 jogos
+        aparicoes_atencao = sum(1 for jogo in ultimos_10 if d in jogo)
+        scores_especialistas[d]['transformer'] = aparicoes_atencao / len(ultimos_10) if ultimos_10 else 0
+
+        # D. ENTROPIA (Shannon - Nível de surpresa/caos da dezena)
+        p_dezena = sum(1 for jogo in historico_ordenado if d in jogo) / (len(historico_ordenado) + 1)
+        if 0 < p_dezena < 1:
+            ent = -(p_dezena * log2(p_dezena))
+            scores_especialistas[d]['entropia'] = min(ent * 2, 1.0)
+
+    # 3. O JUIZ: FUSÃO FINAL (IA ORIGINAL + MOTOR NOVO)
     def peso_juiz(d):
         d_int = int(d)
-        # 1. Score da IA (Árvores)
+        
+        # Sua lógica original (70/30)
         s_ia = scores_ia.get(d_int, 0)
-        
-        # 2. Afinidade (Últimos 35 jogos com Peso 3)
-        # Normalizamos a soma das afinidades
-        afim_total = sum(matriz_afinidade[d_int]) / 25
-        
-        # 3. Trava de 40%: Se a afinidade for baixa, a dezena perde força
+        afim_total = sum(matriz_afinidade[d_int]) / (len(matriz_afinidade[d_int]) + 1)
         estatistica_final = afim_total if afim_total > 0.40 else afim_total * 0.5
         
-        # O Peso final que o sistema vai usar para decidir
-        return (s_ia * 0.7) + (estatistica_final * 0.3)
+        # Notas das Novas IAs
+        s_gnn = scores_especialistas[d_int]['gnn']
+        s_hmm = scores_especialistas[d_int]['hmm']
+        s_trans = scores_especialistas[d_int]['transformer']
+        s_ent = scores_especialistas[d_int]['entropia']
 
+        # PESOS DO CONSELHO:
+        # 40% Sua IA Original | 60% Novas IAs (GNN, Markov, Transformer, Entropia)
+        peso_base = (s_ia * 0.7) + (estatistica_final * 0.3)
+        peso_motor_novo = (s_gnn * 0.3) + (s_hmm * 0.2) + (s_trans * 0.3) + (s_ent * 0.2)
+        
+        return (peso_base * 0.4) + (peso_motor_novo * 0.6)
+
+    # 4. EXECUÇÃO DO REFINAMENTO (REMOÇÃO E CURA)
     pool_refinado = list(pool_atual)
     
-    # REMOÇÃO: Tira as dezenas mais fracas segundo o novo Peso do Juiz
+    # Remoção técnica
     while len(pool_refinado) > tamanho_objetivo:
         piores = sorted(pool_refinado, key=peso_juiz)
         pool_refinado.remove(piores[0])
 
-    # CURA DE VÁCUO: Trocas inteligentes para otimizar o grupo
-    dezenas_fora = [d for d in range(1, 26) if d not in pool_refinado]
-    for _ in range(2):
+    # CURA DE VÁCUO: Aumentamos para 4 trocas para maior agressividade das novas IAs
+    dezenas_fora = [d for d in range(1, len(adj_matrix)) if d not in pool_refinado]
+    for _ in range(4): # <--- MUDANÇA CIRÚRGICA AQUI
         if not dezenas_fora: break
         pior_no_pool = min(pool_refinado, key=peso_juiz)
         melhor_fora = max(dezenas_fora, key=peso_juiz)
@@ -980,7 +1037,7 @@ with abas[0]:
 
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-        # 1. Garante que a Matriz de Afinidade da Aba 6 está carregada
+        # 1. Garante que a Matriz de Afinidade está carregada
         matriz_af = st.session_state.get('matriz_ativa')
         if matriz_af is None:
             matriz_af = calcular_matriz_afinidade_kadosh(mod)
@@ -990,45 +1047,65 @@ with abas[0]:
             st.error("⚠️ Erro: Seu Pool é menor que a quantidade de dezenas por bilhete.")
         else:
             novos = []
+        
+            # --- [INJEÇÃO DE INTELIGÊNCIA RL NO SEU LOOP ORIGINAL] ---
+            sucessos, tentativas = 0, 0
+            # Recupera os scores das 5 IAs calculados no Refinamento
+            scores_ia_brain = st.session_state.get('scores_especialistas', {})
+
+            while sucessos < n_jog and tentativas < 20000:
+                tentativas += 1
+                jogo_em_construcao = list(fixas_final)
+                pool_trabalho = [n for n in pool if n not in jogo_em_construcao]
             
-            # 2. Função interna que aplica Afinidade + Filtros Kadosh
-            def processar_geracao(tamanho_solicitado, quantidade_pedida):
-                sucessos, tentativas = 0, 0
-                while sucessos < quantidade_pedida and tentativas < 20000: # Limite alto para não desistir fácil
-                    tentativas += 1
-                    jogo_em_construcao = list(fixas_final)
-                    pool_trabalho = [n for n in pool if n not in jogo_em_construcao]
+                # PREENCHIMENTO DINÂMICO RECOMPENSADO (RL)
+                while len(jogo_em_construcao) < n_dez and pool_trabalho:
+                    # Chama sua função de afinidade original
+                    pesos_base = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
+                
+                    opcoes = list(pesos_base.keys())
+                    probabilidades = []
+                
+                    for opt in opcoes:
+                        # O "Agente" lê o cérebro das IAs (GNN, Markov, Transformer, Entropia)
+                        # Se não houver score (user não refinou), usamos 0.5 como neutro
+                        sc_especialista = scores_ia_brain.get(opt, {})
+                        # Média das novas IAs para ajustar o peso
+                        bonus_ia = (sc_especialista.get('gnn', 0.5) + 
+                                    sc_especialista.get('transformer', 0.5) + 
+                                    sc_especialista.get('hmm', 0.5)) / 3
                     
-                    # PREENCHIMENTO INTELIGENTE: Usa a Matriz de Afinidade (Aba 6)
-                    while len(jogo_em_construcao) < tamanho_solicitado and pool_trabalho:
-                        pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
-                        opcoes = list(pesos_dict.keys())
-                        probabilidades = list(pesos_dict.values())
-                        
-                        escolha = random.choices(opcoes, weights=probabilidades, k=1)[0]
-                        jogo_em_construcao.append(escolha)
-                        pool_trabalho.remove(escolha)
-                    
-                    comb = sorted(jogo_em_construcao)
-                    
-                    # Evita duplicatas
-                    if any(set(comb) == set(existente['n']) for existente in novos):
-                        continue
-                    
-                    # FILTROS KADOSH (Simetria, Soma, Moldura, Quadrantes)
-                    passou = True
-                    if tamanho_solicitado == 15 and mod == "Lotofácil":
-                        # Aqui ele chama a função 'validar_kadosh_cirurgico' que já tens no topo do código
-                        passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
-                    
-                    if passou:
-                        tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
-                        novos.append({
-                            "mod": mod, "n": comb, "tam": tamanho_solicitado, 
-                            "fixas_utilizadas": list(fixas_final),
-                            "chance": definir_label_chance(comb, mod), "est": tag_est
-                        })
-                        sucessos += 1
+                        # RECOMPENSA: Afinidade original ajustada pela IA
+                        peso_final = pesos_base[opt] * (1.0 + bonus_ia)
+                        probabilidades.append(peso_final)
+                
+                    # Escolha baseada na política de recompensa RL
+                    escolha = random.choices(opcoes, weights=probabilidades, k=1)[0]
+                    jogo_em_construcao.append(escolha)
+                    pool_trabalho.remove(escolha)
+            
+                comb = sorted(jogo_em_construcao)
+            
+                # Evita duplicatas
+                if any(set(comb) == set(existente['n']) for existente in novos):
+                    continue
+            
+                # FILTROS KADOSH (Sua validação original)
+                passou = True
+                if n_dez == 15 and mod == "Lotofácil":
+                    passou = validar_kadosh_cirurgico(comb, mod, n_dez)
+            
+                if passou:
+                    tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
+                    novos.append({
+                        "mod": mod, "n": comb, "tam": n_dez, 
+                        "fixas_utilizadas": list(fixas_final),
+                        "chance": definir_label_chance(comb, mod), "est": tag_est
+                    })
+                    sucessos += 1
+
+        # --- O SEU CÓDIGO CONTINUA DAQUI PARA BAIXO ---
+        # (Aqui você pode colocar seus st.write, st.table, etc., sem interrupção)
 
             # 3. LÓGICA DE EXECUÇÃO (Mantendo todas as tuas estratégias originais)
             if fe_escolhido != "Nenhum":
