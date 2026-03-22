@@ -557,17 +557,14 @@ def jogo_ja_saiu(jogo, mod):
             return True
     return False
 
-def validar_kadosh_cirurgico(jogo, mod, n_dez):
+def validar_kadosh_cirurgico(jogo, mod, n_dez, cenario="NEUTRO"):
     if mod != "Lotofácil": 
         return True
     
     # --- [IA DE VEROSSIMILHANÇA: CALIBRAGEM VIA BACKUP] ---
-    # Recuperamos as médias reais do seu backup para não usar números fixos
-    # Se o backup não estiver pronto, usamos seus padrões de segurança como fallback
     df_hist = st.session_state.get('df_concursos', pd.DataFrame())
     
     if not df_hist.empty:
-        # Analisamos os últimos 20 sorteios para entender a "vontade" atual da Caixa
         ultimos_vinte = df_hist.head(20)
         media_soma_real = ultimos_vinte['Soma'].mean() if 'Soma' in ultimos_vinte.columns else 180
         desvio_soma = ultimos_vinte['Soma'].std() if 'Soma' in ultimos_vinte.columns else 20
@@ -575,11 +572,21 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
         media_soma_real = 185
         desvio_soma = 25
 
-    # 1. Âncoras de Início e Fim (DNA do Sorteio)
-    if not (jogo[0] in [1, 2, 3, 4] and jogo[-1] in [22, 23, 24, 25]): 
+    # --- [NOVO: AJUSTE DE TOLERÂNCIA POR CENÁRIO] ---
+    # Se o cenário for ERRÁTICO, aumentamos a folga para permitir jogos "fora da curva"
+    # Se for ESTÁVEL, apertamos o cerco para focar na média
+    mult_tol = 1.0
+    if cenario == "ERRATICO":
+        mult_tol = 1.4  # Dá 40% mais folga nos filtros
+    elif cenario == "ESTAVEL":
+        mult_tol = 0.8  # Fica 20% mais rigoroso
+    # ------------------------------------------------
+
+    # 1. Âncoras (DNA) - MANTIDO
+    if not (jogo[0] in [1, 2, 3, 4, 5] and jogo[-1] in [21, 22, 23, 24, 25]): 
         return False
 
-    # --- [INÍCIO DA CALIBRAGEM DE QUADRANTES KADOSH] ---
+    # --- [QUADRANTES KADOSH] ---
     q1 = [1, 2, 3, 6, 7, 8, 11, 12, 13]    
     q2 = [4, 5, 9, 10, 14, 15]             
     q3 = [16, 17, 21, 22]                  
@@ -592,12 +599,10 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
         len([n for n in jogo if n in q4])
     ]
 
-    tamanho_pool_real = st.session_state.get('tamanho_pool_ativo', n_dez)
-    
-    # DINÂMICA DE LIMITE FLEXÍVEL (Sincronizada com o tamanho do jogo)
     diff_n = n_dez - 15
-    limite_kadosh = 7 + int(diff_n * 0.5)
-    folga_simetria = 4 + int(diff_n * 0.3)
+    # Aplicamos a tolerância do cenário nos limites de quadrantes
+    limite_kadosh = (7 + int(diff_n * 0.5)) * mult_tol
+    folga_simetria = (4 + int(diff_n * 0.3)) * mult_tol
 
     if any(q < 1 for q in distribuicao) or any(q > limite_kadosh for q in distribuicao):
         return False 
@@ -605,24 +610,25 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
     if (max(distribuicao) - min(distribuicao)) > folga_simetria:
         return False
     
-    # 2. Salto Máximo (Evita buracos impossíveis no sorteio real)
+    # 2. Salto Máximo - MANTIDO
     for i in range(len(jogo)-1):
-        if (jogo[i+1] - jogo[i]) > 6: # Aumentado para 6 para ser fiel à imperfeição real
+        if (jogo[i+1] - jogo[i]) > (6 * mult_tol): 
             return False
 
-    # 3. Equilíbrio de Pares (Dinâmico para 15, 16, 17... dezenas)
+    # 3. Equilíbrio de Pares - DINÂMICO
     pares = len([n for n in jogo if n % 2 == 0])
-    if not ( (6 + int(diff_n*0.4)) <= pares <= (10 + int(diff_n*0.6)) ): 
+    p_min = (6 + int(diff_n*0.4)) / mult_tol
+    p_max = (10 + int(diff_n*0.6)) * mult_tol
+    if not (p_min <= pares <= p_max): 
         return False
 
-    # 4. Sequência de Fibonacci e Primos (Mimetismo de Frequência)
+    # 4. Fibonacci e Primos - MANTIDO
     fibo_ref = [1, 2, 3, 5, 8, 13, 21]
     fibo_count = len([n for n in jogo if n in fibo_ref])
-    if not (2 <= fibo_count <= 5 + int(diff_n*0.6)): 
+    if not (2 <= fibo_count <= (5 + int(diff_n*0.6)) * mult_tol): 
         return False
 
-    # 5. Distribuição de Vizinhos (O Coração do Sorteio Real)
-    # Jogos reais raramente são 100% equilibrados em sequências
+    # 5. Distribuição de Vizinhos - MANTIDO
     vizinhos = 0
     sequencia_max = 1
     atual = 1
@@ -634,22 +640,21 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
         else: 
             atual = 1
     
-    # Filtro de sequências: imita o "amontoado" natural da Caixa
-    if not (3 <= vizinhos <= 9 + diff_n): return False
-    if sequencia_max > 6: return False # Sorteios com mais de 6 seguidos são raríssimos
+    if not (3 <= vizinhos <= (9 + diff_n) * mult_tol): return False
+    if sequencia_max > (6 * mult_tol): return False
 
-    # 6. Geometria de Volante (Linhas e Colunas Adaptativas)
+    # 6. Geometria de Volante - MANTIDO
     linhas = [0]*5
     colunas = [0]*5
     for n in jogo:
         linhas[(n-1)//5] += 1
         colunas[(n-1)%5] += 1
 
-    limite_linha = 4 + int(diff_n * 0.4)
+    limite_linha = (4 + int(diff_n * 0.4)) * mult_tol
     if any(l > limite_linha for l in linhas) or any(c > 5 for c in colunas):
         return False
 
-    # 7. Filtros de Soma, Primos e Moldura (CALIBRADOS PELO BACKUP)
+    # 7. Soma, Primos e Moldura - CALIBRADOS
     soma = sum(jogo)
     primos_list = [2,3,5,7,11,13,17,19,23]
     moldura_list = [1,2,3,4,5,6,10,11,15,16,20,21,22,23,24,25]
@@ -657,17 +662,20 @@ def validar_kadosh_cirurgico(jogo, mod, n_dez):
     primos = len([n for n in jogo if n in primos_list])
     moldura = len([n for n in jogo if n in moldura_list])
     
-    # A soma agora flutua conforme o seu Backup (media_soma_real +/- desvio)
-    min_soma = (media_soma_real - desvio_soma) + (diff_n * 10)
-    max_soma = (media_soma_real + desvio_soma) + (diff_n * 15)
+    # A soma flutua com base no backup e na tolerância do cenário
+    min_soma = ((media_soma_real - desvio_soma) + (diff_n * 10)) / mult_tol
+    max_soma = ((media_soma_real + desvio_soma) + (diff_n * 15)) * mult_tol
     
     if not (min_soma <= soma <= max_soma): return False
     
-    # Primos e Moldura acompanham o crescimento do jogo (16, 17, 18...)
-    if not (4 <= primos <= 7 + int(diff_n * 0.7)): return False
-    if not (8 + int(diff_n * 0.6) <= moldura <= 12 + int(diff_n * 0.8)): return False
+    # Primos e Moldura
+    if not (4 / mult_tol <= primos <= (7 + int(diff_n * 0.7)) * mult_tol): return False
+    
+    mold_min = (8 + int(diff_n * 0.6)) / mult_tol
+    mold_max = (12 + int(diff_n * 0.8)) * mult_tol
+    if not (mold_min <= moldura <= mold_max): return False
 
-    # Filtro Final: O jogo não pode ser uma cópia exata de um sorteio passado
+    # Filtro Final - MANTIDO
     if jogo_ja_saiu(jogo, mod): return False
         
     return True
@@ -1066,138 +1074,138 @@ with abas[0]:
 
     # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
     if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-    # 1. Garante que a Matriz de Afinidade da Aba 6 está carregada
-    matriz_af = st.session_state.get('matriz_ativa')
-    if matriz_af is None:
-        matriz_af = calcular_matriz_afinidade_kadosh(mod)
-        st.session_state['matriz_ativa'] = matriz_af
+        # 1. Garante que a Matriz de Afinidade da Aba 6 está carregada
+        matriz_af = st.session_state.get('matriz_ativa')
+        if matriz_af is None:
+            matriz_af = calcular_matriz_afinidade_kadosh(mod)
+            st.session_state['matriz_ativa'] = matriz_af
 
-    # --- [NOVA INTELIGÊNCIA: DETECÇÃO DE CENÁRIO] ---
-    df_hist_oficial = st.session_state.get('df_resultados')
-    cenario_atual = analisar_cenario_dinamico(df_hist_oficial) if df_hist_oficial is not None else "NEUTRO"
-    # ------------------------------------------------
+        # --- [NOVA INTELIGÊNCIA: DETECÇÃO DE CENÁRIO] ---
+        df_hist_oficial = st.session_state.get('df_resultados')
+        cenario_atual = analisar_cenario_dinamico(df_hist_oficial) if df_hist_oficial is not None else "NEUTRO"
+        # ------------------------------------------------
 
-    if not pool or len(pool) < n_dez:
-        st.error("⚠️ Erro: Seu Pool é menor que a quantidade de dezenas por bilhete.")
-    else:
-        novos = []
+        if not pool or len(pool) < n_dez:
+            st.error("⚠️ Erro: Seu Pool é menor que a quantidade de dezenas por bilhete.")
+        else:
+            novos = []
     
-        # 2. Função interna que aplica Afinidade + Filtros Kadosh
-        def processar_geracao(tamanho_solicitado, quantidade_pedida):
-            sucessos, tentativas = 0, 0
-            while sucessos < quantidade_pedida and tentativas < 25000: # Aumentado levemente para rigor da IA
-                tentativas += 1
-                jogo_em_construcao = list(fixas_final)
-                pool_trabalho = [n for n in pool if n not in jogo_em_construcao]
+            # 2. Função interna que aplica Afinidade + Filtros Kadosh
+            def processar_geracao(tamanho_solicitado, quantidade_pedida):
+                sucessos, tentativas = 0, 0
+                while sucessos < quantidade_pedida and tentativas < 25000: # Aumentado levemente para rigor da IA
+                    tentativas += 1
+                    jogo_em_construcao = list(fixas_final)
+                    pool_trabalho = [n for n in pool if n not in jogo_em_construcao]
             
-                # PREENCHIMENTO INTELIGENTE: Usa a Matriz de Afinidade (Aba 6)
-                while len(jogo_em_construcao) < tamanho_solicitado and pool_trabalho:
-                    pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
-                    opcoes = list(pesos_dict.keys())
-                    probabilidades = list(pesos_dict.values())
+                    # PREENCHIMENTO INTELIGENTE: Usa a Matriz de Afinidade (Aba 6)
+                    while len(jogo_em_construcao) < tamanho_solicitado and pool_trabalho:
+                        pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
+                        opcoes = list(pesos_dict.keys())
+                        probabilidades = list(pesos_dict.values())
                 
-                    escolha = random.choices(opcoes, weights=probabilidades, k=1)[0]
-                    jogo_em_construcao.append(escolha)
-                    pool_trabalho.remove(escolha)
+                        escolha = random.choices(opcoes, weights=probabilidades, k=1)[0]
+                        jogo_em_construcao.append(escolha)
+                        pool_trabalho.remove(escolha)
             
-                comb = sorted(jogo_em_construcao)
+                    comb = sorted(jogo_em_construcao)
             
-                # Evita duplicatas
-                if any(set(comb) == set(existente['n']) for existente in novos):
-                    continue
+                    # Evita duplicatas
+                    if any(set(comb) == set(existente['n']) for existente in novos):
+                        continue
             
-                # FILTROS KADOSH (Simetria, Soma, Moldura, Quadrantes) + CENÁRIO
-                passou = True
-                if mod == "Lotofácil":
-                    # Chamada cirúrgica para a validação dinâmica
-                    passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
+                    # FILTROS KADOSH (Simetria, Soma, Moldura, Quadrantes) + CENÁRIO
+                    passou = True
+                    if mod == "Lotofácil":
+                        # Chamada cirúrgica para a validação dinâmica
+                        passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
                     
-                    # INTEGRAÇÃO DE CENÁRIO: Filtro extra de equilíbrio se o cenário for ESTÁVEL
-                    if passou and cenario_atual == "ESTAVEL":
-                        pares = len([n for n in comb if n % 2 == 0])
-                        if pares < 7 or pares > 9: # Reforça a tendência média no cenário estável
-                            passou = False
+                        # INTEGRAÇÃO DE CENÁRIO: Filtro extra de equilíbrio se o cenário for ESTÁVEL
+                        if passou and cenario_atual == "ESTAVEL":
+                            pares = len([n for n in comb if n % 2 == 0])
+                            if pares < 7 or pares > 9: # Reforça a tendência média no cenário estável
+                                passou = False
             
-                if passou:
-                    tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
-                    novos.append({
-                        "mod": mod, "n": comb, "tam": tamanho_solicitado, 
-                        "fixas_utilizadas": list(fixas_final),
-                        "chance": definir_label_chance(comb, mod), "est": tag_est,
-                        "cenario_ia": cenario_atual # Adicionado para seu controle
-                    })
-                    sucessos += 1
+                    if passou:
+                        tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
+                        novos.append({
+                            "mod": mod, "n": comb, "tam": tamanho_solicitado, 
+                            "fixas_utilizadas": list(fixas_final),
+                            "chance": definir_label_chance(comb, mod), "est": tag_est,
+                            "cenario_ia": cenario_atual # Adicionado para seu controle
+                        })
+                        sucessos += 1
 
-        # 3. LÓGICA DE EXECUÇÃO TOTALMENTE SINCRONIZADA (MAPA + MATRIZES)
-        if fe_escolhido != "Nenhum":
-            if "DIAMANTE" in fe_escolhido:
+            # 3. LÓGICA DE EXECUÇÃO TOTALMENTE SINCRONIZADA (MAPA + MATRIZES)
+            if fe_escolhido != "Nenhum":
+                if "DIAMANTE" in fe_escolhido:
+                    processar_geracao(16, 2)
+                    processar_geracao(15, 10)
+                elif "CÉLULA" in fe_escolhido:
+                    processar_geracao(16, 1)
+                    processar_geracao(15, 15)
+                elif "18-15-14" in fe_escolhido:
+                    processar_geracao(15, qtd)
+                elif "19-15-14" in fe_escolhido:
+                    processar_geracao(15, qtd)
+                elif "20-15-13" in fe_escolhido:
+                    processar_geracao(15, qtd)
+                else:
+                    processar_geracao(15, qtd)
+
+            elif est_escolhida == "1. SNIPER":
+                processar_geracao(15, 8)
+        
+            elif est_escolhida == "2. ESCUDO E ESPADA":
+                processar_geracao(16, 1)
+                processar_geracao(15, 10)
+        
+            elif est_escolhida == "3. EQUILÍBRIO REAL":
                 processar_geracao(16, 2)
                 processar_geracao(15, 10)
-            elif "CÉLULA" in fe_escolhido:
-                processar_geracao(16, 1)
+        
+            elif est_escolhida == "4. ELITE KADOSH":
+                processar_geracao(16, 2)
                 processar_geracao(15, 15)
-            elif "18-15-14" in fe_escolhido:
-                processar_geracao(15, qtd)
-            elif "19-15-14" in fe_escolhido:
-                processar_geracao(15, qtd)
-            elif "20-15-13" in fe_escolhido:
-                processar_geracao(15, qtd)
-            else:
-                processar_geracao(15, qtd)
-
-        elif est_escolhida == "1. SNIPER":
-            processar_geracao(15, 8)
         
-        elif est_escolhida == "2. ESCUDO E ESPADA":
-            processar_geracao(16, 1)
-            processar_geracao(15, 10)
+            elif est_escolhida == "5. INVASÃO":
+                processar_geracao(15, 25)
         
-        elif est_escolhida == "3. EQUILÍBRIO REAL":
-            processar_geracao(16, 2)
-            processar_geracao(15, 10)
+            elif est_escolhida == "6. A MARRETA":
+                processar_geracao(18, 1)
+                processar_geracao(16, 5)
         
-        elif est_escolhida == "4. ELITE KADOSH":
-            processar_geracao(16, 2)
-            processar_geracao(15, 15)
+            elif est_escolhida == "7. SIMETRIA GEOMÉTRICA":
+                processar_geracao(16, 2)
+                processar_geracao(15, 8)
         
-        elif est_escolhida == "5. INVASÃO":
-            processar_geracao(15, 25)
+            elif est_escolhida == "8. RASTREAMENTO DE CICLO":
+                processar_geracao(16, 1)
+                processar_geracao(15, 6)
         
-        elif est_escolhida == "6. A MARRETA":
-            processar_geracao(18, 1)
-            processar_geracao(16, 5)
+            elif est_escolhida == "9. CERCO POR ELIMINAÇÃO":
+                processar_geracao(15, 10)
         
-        elif est_escolhida == "7. SIMETRIA GEOMÉTRICA":
-            processar_geracao(16, 2)
-            processar_geracao(15, 8)
-        
-        elif est_escolhida == "8. RASTREAMENTO DE CICLO":
-            processar_geracao(16, 1)
-            processar_geracao(15, 6)
-        
-        elif est_escolhida == "9. CERCO POR ELIMINAÇÃO":
-            processar_geracao(15, 10)
-        
-        elif est_escolhida == "10. KADOSH PRESTIGE 20":
-            processar_geracao(15, 36)
+            elif est_escolhida == "10. KADOSH PRESTIGE 20":
+                processar_geracao(15, 36)
             
-        elif est_escolhida == "11. FORTE ALIANÇA 22":
-            processar_geracao(16, 2)
-            processar_geracao(15, 20)    
+            elif est_escolhida == "11. FORTE ALIANÇA 22":
+                processar_geracao(16, 2)
+                processar_geracao(15, 20)    
         
-        elif est_escolhida != "Personalizado" and mod == "Lotofácil":
-            processar_geracao(info_est['dez'], info_est.get('qtd', 1))
-            if "qtd_15" in info_est:
-                processar_geracao(15, info_est['qtd_15'])
-            if "qtd_16" in info_est:
-                processar_geracao(16, info_est['qtd_16'])
-        else:
-            processar_geracao(n_dez, qtd)
+            elif est_escolhida != "Personalizado" and mod == "Lotofácil":
+                processar_geracao(info_est['dez'], info_est.get('qtd', 1))
+                if "qtd_15" in info_est:
+                    processar_geracao(15, info_est['qtd_15'])
+                if "qtd_16" in info_est:
+                    processar_geracao(16, info_est['qtd_16'])
+            else:
+                processar_geracao(n_dez, qtd)
     
-        st.session_state.jogos_gerados = novos
-        st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos de elite gerados em cenário {cenario_atual}!")
-        st.rerun()
-    # --- [FIM DO NOVO MOTOR SINCRONIZADO] ---
+            st.session_state.jogos_gerados = novos
+            st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos de elite gerados em cenário {cenario_atual}!")
+            st.rerun()
+        # --- [FIM DO NOVO MOTOR SINCRONIZADO] ---
     # --- EXIBIÇÃO DOS JOGOS (FORA DO IF DO BOTÃO) ---
     if st.session_state.jogos_gerados:
         st.markdown("### 📝 Jogos Preparados")
