@@ -1112,19 +1112,45 @@ with abas[1]:
     mostrar_status_backup() 
     st.header("🔍 Painel de Conferência")
     
-    # 1. CRIA O SELECTBOX PRIMEIRO (Para a variável mod_f existir)
+    # 1. SELEÇÃO DA LOTERIA
     mod_f = st.selectbox(
         "Selecione a Loteria para Conferir", 
         list(st.session_state.custos.keys()), 
         key="f_conf_definitiva"
     )
+
+    # 2. DASHBOARD DE DESEMPENHO FINANCEIRO NO TOPO
+    # (Calculamos rápido antes para exibir os números no topo)
+    jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
+    res_db = st.session_state.ultimo_res.get(mod_f, {})
     
-    # 2. AGORA O BOTÃO DE PDF (Ele já conhece o mod_f aqui)
+    t_gasto, t_premio = 0, 0
+    for jogo in jogos_salvos_atual:
+        tam_j = jogo.get('tam', 15)
+        t_gasto += st.session_state.custos[mod_f].get(tam_j, 0)
+        c_alvo = str(jogo.get('concurso_alvo', ''))
+        sorteio = res_db.get(c_alvo, [])
+        if sorteio:
+            acertos = len(set(jogo['n']) & set(sorteio))
+            t_premio += float(st.session_state.premios[mod_f].get(str(acertos), 0.0))
+
+    saldo = t_premio - t_gasto
+    cor_saldo = "#2ecc71" if saldo >= 0 else "#e74c3c"
+
+    st.markdown(f"""
+    <div style="background: #1e272e; padding: 20px; border-radius: 15px; border: 2px solid #34495e; display: flex; justify-content: space-around; align-items: center; text-align: center; margin-bottom: 25px;">
+        <div><p style="color:#bdc3c7; margin:0; font-size:12px;">INVESTIMENTO</p><h2 style="color:white; margin:0;">R$ {t_gasto:,.2f}</h2></div>
+        <div style="border-left: 1px solid #34495e; height: 40px;"></div>
+        <div><p style="color:#bdc3c7; margin:0; font-size:12px;">RETORNO TOTAL</p><h2 style="color:#f1c40f; margin:0;">R$ {t_premio:,.2f}</h2></div>
+        <div style="border-left: 1px solid #34495e; height: 40px;"></div>
+        <div><p style="color:#bdc3c7; margin:0; font-size:12px;">SALDO LÍQUIDO</p><h2 style="color:{cor_saldo}; margin:0;">R$ {saldo:,.2f}</h2></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 3. BOTÃO DE PDF
     if st.session_state.get('jogos_salvos'):
         try:
-            # Pega os números da chave 'n' conforme seu backup 
             pdf_bytes = gerar_pdf_jogos(st.session_state.jogos_salvos, mod_f)
-            
             st.download_button(
                 label="📥 BAIXAR JOGOS (PDF)",
                 data=pdf_bytes,
@@ -1135,10 +1161,6 @@ with abas[1]:
         except Exception as e:
             st.error(f"Erro no PDF: {e}")
     
-    # 3. FILTRAGEM DOS JOGOS (Agora o mod_f está seguro aqui)
-    jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
-    res_db = st.session_state.ultimo_res.get(mod_f, {})
-
     if not jogos_salvos_atual:
         st.warning(f"Nenhum jogo salvo para {mod_f}. Vá ao Gerador primeiro!")
     else:
@@ -1151,16 +1173,17 @@ with abas[1]:
             st.markdown(f"### 🎯 PERFORMANCE DO SEU POOL (CONCURSO {alvo_p})")
             res_alvo = res_db[alvo_p]
             acertos_p = sum(1 for d in pool_origem if d in res_alvo)
-            h_pool = '<div style="background: #f8f9fa; padding: 20px; border-radius: 15px; border: 2px solid #1e3799; margin-bottom: 20px;">'
+            
+            h_pool = '<div style="background: #000; padding: 20px; border-radius: 15px; border: 1px solid #d4af37; margin-bottom: 25px; box-shadow: 0px 4px 15px rgba(212, 175, 55, 0.2);">'
             for d in sorted(pool_origem):
-                cor_p = "background-color: #28a745; color: white;" if d in res_alvo else "background-color: #dc3545; color: white;"
-                h_pool += f'<span style="display: inline-block; width: 35px; height: 35px; line-height: 35px; text-align: center; border-radius: 50%; margin: 5px; font-weight: bold; {cor_p}">{d:02d}</span>'
-            h_pool += f'<br><br><b style="color: #1e3799;">📊 ACERTOS NO CERCO: {acertos_p}</b></div>'
+                bg = "#27ae60" if d in res_alvo else "#34495e"
+                border = "2px solid #f1c40f" if d in res_alvo else "1px solid #7f8c8d"
+                h_pool += f'<span style="display: inline-block; width: 34px; height: 34px; line-height: 34px; text-align: center; border-radius: 8px; margin: 4px; font-weight: bold; background: {bg}; color: white; border: {border};">{d:02d}</span>'
+            h_pool += f'<br><br><span style="color: #f1c40f; font-size: 18px;">⭐ <b>DEZENAS NO CERCO: {acertos_p} de {len(pool_origem)}</b></span></div>'
             st.markdown(h_pool, unsafe_allow_html=True)
 
         st.markdown("---")
-        st.subheader("📋 Conferência de Bilhetes Individuais")
-        t_gasto, t_premio = 0, 0
+        st.subheader("📋 Bilhetes Estratégicos")
 
         for i, jogo in enumerate(jogos_salvos_atual):
             dezenas_j = jogo['n']
@@ -1168,42 +1191,48 @@ with abas[1]:
             c_alvo = str(jogo.get('concurso_alvo', ''))
             fixas_j = jogo.get('fixas_utilizadas', []) 
             
-            custo_j = st.session_state.custos[mod_f].get(tam_j, 0)
-            t_gasto += custo_j
-            
-            html_dez = ""
             sorteio = res_db.get(c_alvo, [])
+            html_dez = ""
             
             if sorteio:
                 acertos = len(set(dezenas_j) & set(sorteio))
                 v_premio = float(st.session_state.premios[mod_f].get(str(acertos), 0.0))
-                t_premio += v_premio 
                 
+                # Cores baseadas no prêmio
+                estilo_card = "border-left: 8px solid #2ecc71; background: #f0fff4;" if v_premio > 0 else "border-left: 8px solid #95a5a6; background: #fdfdfd;"
+                badge_res = f'<span style="background:#2ecc71; color:white; padding:4px 10px; border-radius:10px;">🏆 GANHOU: R$ {v_premio:,.2f}</span>' if v_premio > 0 else f'<span style="background:#95a5a6; color:white; padding:4px 10px; border-radius:10px;">{acertos} ACERTOS</span>'
+
                 for d in dezenas_j:
-                    c_txt = "#28a745" if d in sorteio else "#000000"
-                    estilo_f = "text-decoration: underline; font-weight: 900;" if d in fixas_j else "font-weight: normal;"
-                    pino = "📌" if (d in fixas_j and d in sorteio) else ""
-                    html_dez += f'<span style="color:{c_txt}; {estilo_f} margin-right:8px; font-size:18px;">{d:02d}{pino}</span>'
+                    is_fixa = d in fixas_j
+                    is_hit = d in sorteio
+                    
+                    # Estilização da Dezena
+                    cor_num = "#27ae60" if is_hit else "#444"
+                    peso = "900" if is_hit else "400"
+                    # Destaque para Fixas: Borda dourada ou sublinhado
+                    decor = "border: 2px solid #d4af37; padding: 2px 4px; border-radius: 5px;" if is_fixa else ""
+                    pino = "📌" if is_fixa else ""
+                    
+                    html_dez += f'<span style="color:{cor_num}; font-weight:{peso}; font-size:18px; margin-right:10px; {decor}">{d:02d}{pino}</span>'
                 
-                res_msg = f"🎯 ACERTOS: {acertos} | 💰 PRÊMIO: R$ {v_premio:,.2f}"
+                msg_final = f"{badge_res} | <span style='color:#666; font-size:12px;'>CONCURSO {c_alvo}</span>"
             else:
+                # Caso aguardando sorteio
+                estilo_card = "border-left: 8px solid #f1c40f; background: #fffdf5;"
                 for d in dezenas_j:
-                    estilo_f = "text-decoration: underline; font-weight: 900;" if d in fixas_j else "font-weight: normal;"
-                    html_dez += f'<span style="color:#000; {estilo_f} margin-right:8px; font-size:18px;">{d:02d}</span>'
-                res_msg = "⏳ Aguardando sorteio..."
+                    decor = "border: 1px solid #d4af37; padding: 2px 4px; border-radius: 5px; background: #fff9e6;" if d in fixas_j else ""
+                    pino = "📌" if d in fixas_j else ""
+                    html_dez += f'<span style="color:#000; font-size:18px; margin-right:10px; {decor}">{d:02d}{pino}</span>'
+                msg_final = f"⏳ <span style='color:#d35400;'>AGUARDANDO SORTEIO {c_alvo}...</span>"
 
             st.markdown(f"""
-            <div style="border-left: 5px solid #1e3799; padding: 15px; background: #f9f9f9; border-radius: 12px; margin-bottom: 10px; border: 1px solid #ddd;">
-                <p style="margin:0; font-size: 12px; color: #444;">JOGO {i+1:02d} | CONCURSO: {c_alvo}</p>
-                <div style="font-family: monospace; margin: 10px 0;">{html_dez}</div>
-                <p style="margin:0; font-size: 14px; color: black;"><b>{res_msg}</b></p>
+            <div style="{estilo_card} padding: 18px; border-radius: 15px; margin-bottom: 12px; box-shadow: 2px 2px 10px rgba(0,0,0,0.05);">
+                <div style="font-family: 'Courier New', monospace; margin-bottom: 10px; line-height: 2;">{html_dez}</div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <b>JOGO {i+1:02d}</b>
+                    <div>{msg_final}</div>
+                </div>
             </div>""", unsafe_allow_html=True)
-
-        st.markdown("---")
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Investimento", f"R$ {t_gasto:,.2f}")
-        col2.metric("Retorno", f"R$ {t_premio:,.2f}")
-        col3.metric("Saldo", f"R$ {t_premio - t_gasto:,.2f}")
 
         if st.button("🗑️ LIMPAR HISTÓRICO"):
             st.session_state.jogos_salvos = []
