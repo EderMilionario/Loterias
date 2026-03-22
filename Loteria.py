@@ -1689,14 +1689,13 @@ with abas[6]:
     res_af = st.session_state.ultimo_res.get(mod_af, {})
     pool_selecionado = st.session_state.favoritas.get(mod_af, [])
     
-    # GARANTE A MATRIZ PARA O BOTÃO REFINAR
+    # Previne erro no botão Refinar da Aba 0
     matriz_calculada = calcular_matriz_afinidade_kadosh(mod_af)
     st.session_state['matriz_ativa'] = matriz_calculada 
     
     if not res_af:
-        st.warning("⚠️ Sem dados de backup. Carregue os resultados na Aba 3.")
+        st.warning("⚠️ Base de dados insuficiente. Carregue o backup na Aba 3.")
     else:
-        # TUDO EXATAMENTE COMO ESTAVA NO SEU ORIGINAL
         dezenas_lista = list(res_af.values())
         total_jogos = len(dezenas_lista)
         
@@ -1713,18 +1712,45 @@ with abas[6]:
 
         st.subheader(f"🔥 Radar de Potência do Pool ({total_jogos} jogos)")
         
-        # (Seus alertas de conexões de elite e conflitos vêm aqui - IGUAIS AO SEU ORIGINAL)
-        
+        # --- ALERTA VISUAL DE CONEXÕES ---
+        cols_pot = st.columns(2)
+        with cols_pot[0]:
+            ouro_no_pool = [f"{r['Par'][0]:02d}-{r['Par'][1]:02d}" for _, r in df_ouro.iterrows() 
+                            if r['Par'][0] in pool_selecionado and r['Par'][1] in pool_selecionado]
+            if ouro_no_pool:
+                st.success(f"💎 **CONEXÕES DE ELITE NO POOL:** {', '.join(ouro_no_pool)}")
+            else:
+                st.info("💡 Nenhuma conexão 'Ouro' no Pool.")
+
+        with cols_pot[1]:
+            vacuo_no_pool = [f"{r['Par'][0]:02d}-{r['Par'][1]:02d}" for _, r in df_vacuo.iterrows() 
+                             if r['Par'][0] in pool_selecionado and r['Par'][1] in pool_selecionado]
+            if vacuo_no_pool:
+                st.error(f"⚠️ **CONFLITOS DE VÁCUO NO POOL:** {', '.join(vacuo_no_pool)}")
+            else:
+                st.success("✅ Pool sem conflitos!")
+
         st.markdown("---")
-        st.subheader("🚫 Pares em Vácuo (Inimigos)")
+
+        # --- AQUI ESTÁ A VISUALIZAÇÃO DOS PARES QUE VOCÊ QUERIA ---
+        st.subheader("🌟 Pares de Ouro (Os que mais saem juntos)")
+        cols_o = st.columns(3)
+        for idx, row in df_ouro.reset_index().iterrows():
+            with cols_o[idx % 3]:
+                st.success(f"✅ {row['Par'][0]:02d} + {row['Par'][1]:02d} \n\n Juntos: {row['Vezes']}x")
+
+        st.markdown("---")
+        st.subheader("🚫 Pares em Vácuo (Inimigos Históricos)")
+        st.warning("Evite usar estas duplas como FIXAS no mesmo bilhete.")
         cols_v = st.columns(3)
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
-                st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
+                st.error(f"❌ {row['Par'][0]:02d} + {row['Par'][1]:02d} \n\n Juntos: {row['Vezes']}x")
 
         st.markdown("---")
-        st.subheader("🏆 Trios de Ouro")
         
+        # --- TRIOS DE OURO ---
+        st.subheader("🏆 Trios de Ouro (Blocos de Alta Potência)")
         contagem_trios = {}
         for jogo in dezenas_lista:
             for trio in combinations(sorted(list(jogo)), 3):
@@ -1737,12 +1763,12 @@ with abas[6]:
             porc_trio = (vezes / total_jogos) * 100
             with cols_t[idx % 2]:
                 st.markdown(f"""
-                <div style="background: linear-gradient(45deg, #d4af37, #f1c40f); color: black; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 2px solid #000;">
-                    <b>TRIO: {trio[0]:02d}-{trio[1]:02d}-{trio[2]:02d}</b><br>
-                    Frequência: {vezes}x ({porc_trio:.2f}%)
-                </div>""", unsafe_allow_html=True)
-        
-        # (O resto do seu código de Trios de Ouro permanece igual abaixo disso)
+                <div style="background: linear-gradient(45deg, #d4af37, #f1c40f); color: black; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 2px solid #000; box-shadow: 3px 3px 0px #000;">
+                    <span style="font-size: 18px;"><b>TRIO: {trio[0]:02d} - {trio[1]:02d} - {trio[2]:02d}</b></span><br>
+                    <hr style="border: 0.1px solid black; margin: 5px 0;">
+                    Frequência: {vezes}x | Afinidade: {porc_trio:.2f}%
+                </div>
+                """, unsafe_allow_html=True)
 # Rodapé informativo
 st.markdown("---")
 st.markdown(
