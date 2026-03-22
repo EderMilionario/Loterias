@@ -1018,40 +1018,30 @@ with abas[0]:
                     pool_base = st.session_state.favoritas.get(mod, [])
                     matriz_af = st.session_state.get('matriz_ativa')
             
-                    # Garante que a matriz exista antes de rodar
                     if matriz_af is None:
                         matriz_af = calcular_matriz_afinidade_kadosh(mod)
                         st.session_state['matriz_ativa'] = matriz_af
             
-                    # CORREÇÃO CRÍTICA: Busca os scores dos especialistas que a IA treinou
-                    scores_ia = st.session_state.get('scores_especialistas', st.session_state.get('scores_predicao', {}))
+                    # Puxa os scores que a IA gerou
+                    scores_ia = st.session_state.get('scores_especialistas', {})
             
-                    # Roda a função de refinamento que você já tem
+                    # Roda a tua função de refinamento
                     pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, scores_ia)
             
-                    # Salva o resultado no estado das favoritas
+                    # Salva e dá o tapa na tela para mostrar
                     st.session_state.favoritas[mod] = sorted([int(n) for n in pool_refinado])
-            
-                    # Forçamos a mudança da key do multiselect com o token aleatório
-                    st.session_state[f"update_{mod}"] = random.randint(0, 99999)
                     st.rerun()
 
                 st.markdown("---")
         
-                # --- SISTEMA DE ATUALIZAÇÃO DO VOLANTE ---
-                pool_data = st.session_state.favoritas.get(mod, [])
-        
-                # Usamos o sufixo aleatório que muda APENAS quando o botão acima é clicado
-                # Isso evita que o multiselect "congele" os valores antigos na tela
-                token_update = st.session_state.get(f"update_{mod}", 0)
-                v_key = f"volante_{mod}_{token_update}"
-
+                # VOLANTE SEM TRAVAS: Volta a visualização original, larga e clicável
                 pool = st.multiselect(
                     f"SELECIONE SEU POOL ({mod}):", 
                     range(1, max_v_bt + 1), 
-                    default=pool_data,
-                    key=v_key
+                    default=st.session_state.favoritas.get(mod, []),
+                    key=f"volante_original_{mod}" # Key estável para não bugar o clique manual
                 )
+                # Salva o que você marcou na mão ou o que a IA escolheu
                 st.session_state.favoritas[mod] = pool
         # --- ANÁLISE DE QUADRANTES (IGUAL AO SEU ORIGINAL) ---
         if pool and mod == "Lotofácil":
