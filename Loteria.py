@@ -1262,7 +1262,11 @@ with abas[1]:
         sorteio = res_db.get(c_alvo, [])
         if sorteio:
             acertos = len(set(jogo['n']) & set(sorteio))
-            t_premio += float(st.session_state.premios[mod_f].get(str(acertos), 0.0))
+            # --- CORREÇÃO: Usa a função de prêmio múltiplo para o cálculo total ---
+            if mod_f == "Lotofácil":
+                t_premio += float(calcular_premio_multiplo_lotofacil(len(jogo['n']), acertos))
+            else:
+                t_premio += float(st.session_state.premios[mod_f].get(str(acertos), 0.0))
 
     saldo = t_premio - t_gasto
     cor_saldo_texto = "#1e8449" if saldo >= 0 else "#a93226"
@@ -1320,7 +1324,12 @@ with abas[1]:
             html_dez = ""
             if sorteio:
                 acertos = len(set(dezenas_j) & set(sorteio))
-                v_premio = float(st.session_state.premios[mod_f].get(str(acertos), 0.0))
+                
+                # --- CORREÇÃO: Chama a função de prêmio múltiplo oficial para cada bilhete ---
+                if mod_f == "Lotofácil":
+                    v_premio = float(calcular_premio_multiplo_lotofacil(len(dezenas_j), acertos))
+                else:
+                    v_premio = float(st.session_state.premios[mod_f].get(str(acertos), 0.0))
                 
                 # --- ESTILO JOGO PREMIADO (DOURADO) ---
                 if v_premio > 0:
@@ -1333,15 +1342,12 @@ with abas[1]:
                 for d in dezenas_j:
                     is_fixa = d in fixas_j
                     is_hit = d in sorteio
-                    # Cores vivas para acertou (Verde) e erro (Cinza)
                     cor_num = "#1e8449" if is_hit else "#9ca3af"
-                    # Moldura para fixas (Borda dourada)
                     borda_fixa = "border: 2px solid #d4af37; padding: 2px; border-radius: 5px; background: white;" if is_fixa else ""
                     html_dez += f'<span style="font-size:20px; font-weight:bold; color:{cor_num}; margin-right:10px; {borda_fixa}">{d:02d}</span>'
                 
                 footer = f"{badge} | {res_fixas_html}"
             else:
-                # --- AGUARDANDO SORTEIO ---
                 estilo_card = "background: #f9fafb; border: 1px dashed #9ca3af;"
                 for d in dezenas_j:
                     borda_fixa = "border: 2px solid #f1c40f; padding: 2px; border-radius: 5px;" if d in fixas_j else ""
