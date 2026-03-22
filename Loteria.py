@@ -1025,18 +1025,18 @@ with abas[0]:
 
         st.markdown("---")
         
-        # --- AQUI ESTÁ O TRUQUE: KEY DINÂMICA ---
-        # A key muda toda vez que a lista de favoritas muda, forçando o Streamlit a redesenhar o volante
-        pool_atual = st.session_state.favoritas.get(mod, [])
-        key_volante = f"volante_{mod}_{len(pool_atual)}_{sum(pool_atual)}"
-        
+     # Criamos uma ID que muda se o conteúdo do pool mudar
+        # Isso força o volante a mostrar os números que a IA escolheu
+        pool_data = st.session_state.favoritas.get(mod, [])
+        v_key = f"volante_{mod}_{sum(pool_data)}_{len(pool_data)}"
+
         pool = st.multiselect(
             f"SELECIONE SEU POOL ({mod}):", 
             range(1, max_v_bt + 1), 
-            default=pool_atual,
-            key=key_volante
+            default=pool_data,
+            key=v_key
         )
-        st.session_state.favoritas[mod] = pool
+        st.session_state.favoritas[mod] = pool 
 
         # --- ANÁLISE DE QUADRANTES (IGUAL AO SEU ORIGINAL) ---
         if pool and mod == "Lotofácil":
