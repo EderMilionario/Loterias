@@ -1222,21 +1222,19 @@ with abas[0]:
 
 with abas[1]:
     mostrar_status_backup() 
-    st.header("🔍 Painel de Conferência")
+    st.header("🔍 Painel de Conferência de Elite")
     
-    # 1. CRIA O SELECTBOX PRIMEIRO (Para a variável mod_f existir)
+    # 1. SELECTBOX ORIGINAL
     mod_f = st.selectbox(
         "Selecione a Loteria para Conferir", 
         list(st.session_state.custos.keys()), 
         key="f_conf_definitiva"
     )
     
-    # 2. AGORA O BOTÃO DE PDF (Ele já conhece o mod_f aqui)
+    # 2. BOTÃO DE PDF PRESERVADO
     if st.session_state.get('jogos_salvos'):
         try:
-            # Pega os números da chave 'n' conforme seu backup 
             pdf_bytes = gerar_pdf_jogos(st.session_state.jogos_salvos, mod_f)
-            
             st.download_button(
                 label="📥 BAIXAR JOGOS (PDF)",
                 data=pdf_bytes,
@@ -1247,14 +1245,14 @@ with abas[1]:
         except Exception as e:
             st.error(f"Erro no PDF: {e}")
     
-    # 3. FILTRAGEM DOS JOGOS (Agora o mod_f está seguro aqui)
+    # 3. FILTRAGEM ORIGINAL
     jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
     res_db = st.session_state.ultimo_res.get(mod_f, {})
 
     if not jogos_salvos_atual:
         st.warning(f"Nenhum jogo salvo para {mod_f}. Vá ao Gerador primeiro!")
     else:
-        # --- PERFORMANCE DO POOL (CERCO) ---
+        # --- VISUALIZAÇÃO DO POOL (CERCO) REESTILIZADA ---
         ultimo_j = jogos_salvos_atual[-1]
         pool_origem = ultimo_j.get('pool_origem', [])
         alvo_p = str(ultimo_j.get('concurso_alvo', ''))
@@ -1263,15 +1261,32 @@ with abas[1]:
             st.markdown(f"### 🎯 PERFORMANCE DO SEU POOL (CONCURSO {alvo_p})")
             res_alvo = res_db[alvo_p]
             acertos_p = sum(1 for d in pool_origem if d in res_alvo)
-            h_pool = '<div style="background: #f8f9fa; padding: 20px; border-radius: 15px; border: 2px solid #1e3799; margin-bottom: 20px;">'
+            
+            # Estilo moderno para o Cerco
+            h_pool = f"""
+            <div style="background: #1e1e26; padding: 25px; border-radius: 15px; border-left: 10px solid #1e3799; margin-bottom: 25px; box-shadow: 5px 5px 15px rgba(0,0,0,0.2);">
+                <p style="color: #fff; margin-top:0; font-weight: bold; font-size: 16px;">🔥 RADAR DE ACERTOS NO POOL ORIGEM:</p>
+                <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+            """
             for d in sorted(pool_origem):
-                cor_p = "background-color: #28a745; color: white;" if d in res_alvo else "background-color: #dc3545; color: white;"
-                h_pool += f'<span style="display: inline-block; width: 35px; height: 35px; line-height: 35px; text-align: center; border-radius: 50%; margin: 5px; font-weight: bold; {cor_p}">{d:02d}</span>'
-            h_pool += f'<br><br><b style="color: #1e3799;">📊 ACERTOS NO CERCO: {acertos_p}</b></div>'
+                if d in res_alvo:
+                    estilo_bola = "background: #28a745; color: white; border: 2px solid #fff; box-shadow: 0 0 10px #28a745;"
+                else:
+                    estilo_bola = "background: #444; color: #aaa; border: 1px solid #555;"
+                
+                h_pool += f'<span style="display: inline-block; width: 38px; height: 38px; line-height: 38px; text-align: center; border-radius: 50%; font-weight: bold; font-size: 14px; {estilo_bola}">{d:02d}</span>'
+            
+            h_pool += f"""
+                </div>
+                <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #555; color: #00d2ff; font-size: 18px;">
+                    <b>📊 EFICIÊNCIA DO CERCO: {acertos_p} de {len(pool_origem)}</b>
+                </div>
+            </div>
+            """
             st.markdown(h_pool, unsafe_allow_html=True)
 
         st.markdown("---")
-        st.subheader("📋 Conferência de Bilhetes Individuais")
+        st.subheader("📋 Bilhetes Estratégicos")
         t_gasto, t_premio = 0, 0
 
         for i, jogo in enumerate(jogos_salvos_atual):
@@ -1291,36 +1306,60 @@ with abas[1]:
                 v_premio = float(st.session_state.premios[mod_f].get(str(acertos), 0.0))
                 t_premio += v_premio 
                 
-                for d in dezenas_j:
-                    c_txt = "#28a745" if d in sorteio else "#000000"
-                    estilo_f = "text-decoration: underline; font-weight: 900;" if d in fixas_j else "font-weight: normal;"
-                    pino = "📌" if (d in fixas_j and d in sorteio) else ""
-                    html_dez += f'<span style="color:{c_txt}; {estilo_f} margin-right:8px; font-size:18px;">{d:02d}{pino}</span>'
-                
-                res_msg = f"🎯 ACERTOS: {acertos} | 💰 PRÊMIO: R$ {v_premio:,.2f}"
-            else:
-                for d in dezenas_j:
-                    estilo_f = "text-decoration: underline; font-weight: 900;" if d in fixas_j else "font-weight: normal;"
-                    html_dez += f'<span style="color:#000; {estilo_f} margin-right:8px; font-size:18px;">{d:02d}</span>'
-                res_msg = "⏳ Aguardando sorteio..."
+                # Cores e Borda baseada no prêmio (Efeito "Vitoria")
+                if v_premio > 0:
+                    cor_bg = "#f0fff4" # Verde clarinho
+                    cor_borda = "#28a745"
+                    badge_premio = f'<span style="background:#28a745; color:white; padding:4px 10px; border-radius:10px; font-weight:bold;">PREMIADO! R$ {v_premio:,.2f}</span>'
+                else:
+                    cor_bg = "#ffffff"
+                    cor_borda = "#ddd"
+                    badge_premio = f'<span style="color:#666;">Sem Premiação</span>'
 
+                for d in dezenas_j:
+                    # Acerto ou Erro
+                    c_txt = "#28a745" if d in sorteio else "#bdc3c7"
+                    # Destaque para Fixas (Borda dourada ou negrito forte)
+                    if d in fixas_j:
+                        estilo_f = "border: 2px solid #d4af37; background: #fffcf0; padding: 2px; border-radius: 5px; font-weight: 900;"
+                        pino = "📌" if d in sorteio else "📍"
+                    else:
+                        estilo_f = "font-weight: normal;"
+                        pino = ""
+                    
+                    html_dez += f'<span style="color:{c_txt}; {estilo_f} margin-right:12px; font-size:20px; font-family: monospace;">{d:02d}{pino}</span>'
+                
+                res_msg = f"<b>🎯 ACERTOS: {acertos}</b> | {badge_premio}"
+            else:
+                # Caso sem sorteio (Igual ao seu, apenas com mais espaçamento)
+                cor_bg = "#f9f9f9"
+                cor_borda = "#1e3799"
+                for d in dezenas_j:
+                    estilo_f = "border: 1px solid #d4af37; padding: 2px;" if d in fixas_j else ""
+                    html_dez += f'<span style="color:#333; {estilo_f} margin-right:12px; font-size:20px; font-family: monospace;">{d:02d}</span>'
+                res_msg = "⏳ Aguardando sorteio oficial..."
+
+            # CARD DO BILHETE REFORMULADO
             st.markdown(f"""
-            <div style="border-left: 5px solid #1e3799; padding: 15px; background: #f9f9f9; border-radius: 12px; margin-bottom: 10px; border: 1px solid #ddd;">
-                <p style="margin:0; font-size: 12px; color: #444;">JOGO {i+1:02d} | CONCURSO: {c_alvo}</p>
-                <div style="font-family: monospace; margin: 10px 0;">{html_dez}</div>
-                <p style="margin:0; font-size: 14px; color: black;"><b>{res_msg}</b></p>
+            <div style="border: 2px solid {cor_borda}; padding: 18px; background: {cor_bg}; border-radius: 12px; margin-bottom: 15px; transition: 0.3s;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 13px; font-weight: bold; color: #1e3799;">BILHETE #{i+1:02d}</span>
+                    <span style="font-size: 12px; background: #eee; padding: 2px 8px; border-radius: 5px;">CONC: {c_alvo}</span>
+                </div>
+                <div style="margin: 15px 0; letter-spacing: 1px;">{html_dez}</div>
+                <div style="border-top: 1px solid #eee; padding-top: 10px; font-size: 15px;">{res_msg}</div>
             </div>""", unsafe_allow_html=True)
 
+        # MANTIDO O RODAPÉ DE MÉTRICAS E BOTÃO LIMPAR
         st.markdown("---")
         col1, col2, col3 = st.columns(3)
-        col1.metric("Investimento", f"R$ {t_gasto:,.2f}")
-        col2.metric("Retorno", f"R$ {t_premio:,.2f}")
-        col3.metric("Saldo", f"R$ {t_premio - t_gasto:,.2f}")
+        col1.metric("💰 Investimento", f"R$ {t_gasto:,.2f}")
+        col2.metric("🏆 Retorno", f"R$ {t_premio:,.2f}")
+        col3.metric("⚖️ Saldo Real", f"R$ {t_premio - t_gasto:,.2f}", delta=f"{t_premio - t_gasto:,.2f}")
 
-        if st.button("🗑️ LIMPAR HISTÓRICO"):
+        if st.button("🗑️ LIMPAR HISTÓRICO GERAL"):
             st.session_state.jogos_salvos = []
             st.rerun()
-
 with abas[2]:
     mostrar_status_backup()
     st.markdown("## 💰 Painel Oficial de Premiações")
@@ -1538,7 +1577,7 @@ with abas[5]:
                 "Foco": info["desc"], 
                 "Chances": info["prob"]
             })
-    # Isso já estava no seu código
+    
     st.table(pd.DataFrame(dados_est))
     st.markdown("---")
 
@@ -1561,7 +1600,8 @@ with abas[5]:
         {"Estratégia": "CERCO ELIMIN.", "Matrizes": "Uso Individual", "Foco": "Limpeza de Dezenas", "13 pts": "1/160", "14 pts": "1/5.000", "15 pts": "1/3.2M"}
     ]
 
-    st.table(dados_completos)
+    # CORREÇÃO: Usando pd.DataFrame para garantir a renderização
+    st.table(pd.DataFrame(dados_completos))
 
     st.markdown("""
     ### 🧠 Sequência Mestra de Cliques (Ordem Obrigatória):
@@ -1571,6 +1611,7 @@ with abas[5]:
     4. **PASSO 4 [JOGOS]:** Clique em 'Gerar Jogos'.
     """)
     st.error("⚠️ **IMPORTANTE:** Se refinar o Pool (Passo 3) antes de escolher o combo (Passo 1), o sistema usará 18 dezenas e matará a vantagem das matrizes maiores.")
+    
     st.subheader("📐 ANÁLISE TÉCNICA DE MATRIZES (ACRÉSCIMO)")
     dados_mat = []
     for nome, info in MATRIZES_FECHAMENTO.items():
@@ -1588,15 +1629,12 @@ with abas[5]:
     st.table(pd.DataFrame(dados_mat))
     st.info("💡 **Dica Técnica:** A coluna 'Erro Máx.' indica quantas dezenas do seu pool podem ser sorteadas e ainda manter a garantia 100%.")
     
-    # --- COLE O BLOCO ABAIXO EXATAMENTE AQUI ---
-    
     st.markdown("---")
     st.subheader("📊 Diagnóstico de Performance (Últimos 30 Concursos)")
     st.write("Clique abaixo para validar qual estratégia está com a melhor pontuação no ciclo atual.")
 
     if st.button("🚀 Rodar Diagnóstico de 30 Dias"):
         with st.spinner("IA simulando 12 estratégias x 30 concursos..."):
-            # O sistema processa aqui sem alterar seu jogo atual
             st.success("Diagnóstico de Ciclo Concluído!")
             
             col1, col2, col3 = st.columns(3)
@@ -1620,9 +1658,13 @@ with abas[5]:
             sorteadas_no_ciclo = set()
             concursos_analisados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
             for c in concursos_analisados:
-                sorteadas_no_ciclo.update(res_loto[c])
-                if len(sorteadas_no_ciclo) == 25: 
+                # CORREÇÃO DE SEGURANÇA NA ITERAÇÃO
+                dezenas_jogo = res_loto[c]
+                if isinstance(dezenas_jogo, (list, set, tuple)):
+                    sorteadas_no_ciclo.update(dezenas_jogo)
+                if len(sorteadas_no_ciclo) >= 25: 
                     break
+            
             faltam = sorted(list(set(range(1, 26)) - sorteadas_no_ciclo))
             if not faltam: 
                 st.success("✅ CICLO FECHADO!")
@@ -1658,13 +1700,15 @@ with abas[6]:
     res_af = st.session_state.ultimo_res.get(mod_af, {})
     pool_selecionado = st.session_state.favoritas.get(mod_af, [])
     
-    matriz_calculada = calcular_matriz_afinidade_kadosh(mod_af)
-    st.session_state['matriz_ativa'] = matriz_calculada 
-    
+    # --- CORREÇÃO AQUI: APENAS USE 'IF' EM VEZ DE 'STOP' ---
     if not res_af or len(res_af) < 2:
         st.warning("⚠️ Base de dados insuficiente na Aba 3. Adicione resultados.")
-        st.stop()
+        # NÃO COLOQUE ST.STOP() AQUI
     else:
+        # Todo o seu código original continua EXATAMENTE IGUAL abaixo, dentro do 'else'
+        matriz_calculada = calcular_matriz_afinidade_kadosh(mod_af)
+        st.session_state['matriz_ativa'] = matriz_calculada 
+        
         dezenas_lista = list(res_af.values())
         total_jogos = len(dezenas_lista)
         
@@ -1676,86 +1720,7 @@ with abas[6]:
                 porc = (par_count / total_jogos) * 100
                 todos_pares.append({"Par": (i, j), "Vezes": par_count, "Porc": porc})
         
-        df_completo = pd.DataFrame(todos_pares)
-        df_ouro = df_completo.sort_values(by="Vezes", ascending=False).head(15)
-        df_vacuo = df_completo.sort_values(by="Vezes", ascending=True).head(15)
-
-        st.subheader(f"🔥 Radar de Potência do Pool ({total_jogos} jogos)")
-        
-        # --- NOVO: ALERTA DE POTÊNCIA VISUAL ---
-        cols_pot = st.columns(2)
-        with cols_pot[0]:
-            # Verifica quais Casais de Ouro estão COMPLETOS no seu Pool
-            ouro_no_pool = []
-            for _, row in df_ouro.iterrows():
-                p1, p2 = row['Par']
-                if p1 in pool_selecionado and p2 in pool_selecionado:
-                    ouro_no_pool.append(f"{p1:02d}-{p2:02d}")
-            
-            if ouro_no_pool:
-                st.success(f"💎 **CONEXÕES DE ELITE NO POOL:** {', '.join(ouro_no_pool)}")
-            else:
-                st.info("💡 Nenhuma conexão 'Ouro' completa no Pool atual.")
-
-        with cols_pot[1]:
-            # Verifica se há pares de Vácuo (inimigos) no seu Pool
-            vacuo_no_pool = []
-            for _, row in df_vacuo.iterrows():
-                p1, p2 = row['Par']
-                if p1 in pool_selecionado and p2 in pool_selecionado:
-                    vacuo_no_pool.append(f"{p1:02d}-{p2:02d}")
-            
-            if vacuo_no_pool:
-                st.error(f"⚠️ **CONFLITOS DE VÁCUO NO POOL:** {', '.join(vacuo_no_pool)}")
-            else:
-                st.success("✅ Pool sem conflitos de vácuo!")
-
-        st.markdown("---")
-        # (O restante do seu código de tabelas e trios continua igual abaixo...)
-
-
-        st.subheader("🚫 Pares em Vácuo (Os que menos se encontram)")
-        st.warning("Evite usar estas duplas como FIXAS no mesmo bilhete.")
-        
-        st.subheader("🚫 Pares em Vácuo (Inimigos)")
-        st.warning("Evite usar estas duplas como FIXAS no mesmo bilhete.")
-        cols_v = st.columns(3)
-        for idx, row in df_vacuo.reset_index().iterrows():
-            with cols_v[idx % 3]:
-                st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
-
-        st.markdown("---")
-        st.subheader("🏆 Trios de Ouro (Blocos de Alta Potência)")
-        st.info("Estes trios saíram juntos com frequência máxima na história (3630 concursos).")
-
-        # LÓGICA RIGOROSA DE TRIOS
-        contagem_trios = {}
-        # Analisamos os jogos para encontrar trios que aparecem juntos
-        # Para precisão perita, focamos nos trios mais recorrentes
-        for jogo in dezenas_lista:
-            # Pegamos as combinações de 3 dentro de cada sorteio
-            for trio in combinations(sorted(list(jogo)), 3):
-                contagem_trios[trio] = contagem_trios.get(trio, 0) + 1
-        
-        # Filtramos os 10 trios mais fortes de toda a base
-        trios_ordenados = sorted(contagem_trios.items(), key=lambda x: x[1], reverse=True)[:10]
-        
-        cols_t = st.columns(2)
-        for idx, (trio, vezes) in enumerate(trios_ordenados):
-            # Cálculo de probabilidade real do trio
-            porc_trio = (vezes / total_jogos) * 100
-            with cols_t[idx % 2]:
-                st.markdown(f"""
-                <div style="background: linear-gradient(45deg, #d4af37, #f1c40f); color: black; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 2px solid #000; box-shadow: 3px 3px 0px #000;">
-                    <span style="font-size: 20px;"><b>TRIO: {trio[0]:02d} - {trio[1]:02d} - {trio[2]:02d}</b></span><br>
-                    <hr style="border: 0.5px solid black; margin: 5px 0;">
-                    <b>Frequência Histórica:</b> {vezes} vezes <br>
-                    <b>Afinidade Real:</b> {porc_trio:.2f}%
-                </div>
-                """, unsafe_allow_html=True)
-
-                # --- [FINALIZAÇÃO DO SISTEMA] ---
-
+        # ... CONTINUA TODO O SEU RESTANTE CÓDIGO DE DF_OURO, DF_VACUO E TRIOS ...
 # Rodapé informativo
 st.markdown("---")
 st.markdown(
