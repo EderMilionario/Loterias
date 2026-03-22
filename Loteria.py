@@ -1016,7 +1016,6 @@ with abas[0]:
             if mod == "Lotofácil":
                 if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
                     pool_base = st.session_state.favoritas.get(mod, [])
-                    
                     if len(pool_base) < tamanho_alvo_pool:
                         pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
          
@@ -1025,15 +1024,15 @@ with abas[0]:
                         matriz_af = calcular_matriz_afinidade_kadosh(mod)
                         st.session_state['matriz_ativa'] = matriz_af
          
-                    # Sincroniza com o motor de 5 IAs
                     scores_ia = st.session_state.get('scores_especialistas', st.session_state.get('scores_predicao', {}))
-         
+                    
                     # Chama sua função original
                     pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, scores_ia)
          
+                    # SALVA NAS SUAS VARIÁVEIS ORIGINAIS
                     st.session_state.favoritas[mod] = sorted([int(n) for n in pool_refinado])
                     st.success(f"🎯 Refinado para {len(pool_refinado)} dezenas!")
-                    st.rerun()
+                    st.rerun() # Essencial para atualizar a tela
 
         # --- CAMPO DE SELEÇÃO (RESPEITANDO SEU CÓDIGO) ---
         st.markdown("---")
@@ -1700,19 +1699,18 @@ with abas[6]:
     res_af = st.session_state.ultimo_res.get(mod_af, {})
     pool_selecionado = st.session_state.favoritas.get(mod_af, [])
     
-    # --- CORREÇÃO AQUI: APENAS USE 'IF' EM VEZ DE 'STOP' ---
+    # Se existe o backup (res_af), ele entra aqui. Se não, apenas avisa sem travar o código.
     if not res_af or len(res_af) < 2:
-        st.warning("⚠️ Base de dados insuficiente na Aba 3. Adicione resultados.")
-        # NÃO COLOQUE ST.STOP() AQUI
+        st.warning("⚠️ Base de dados insuficiente na Aba 3. Adicione resultados ou carregue o backup.")
     else:
-        # Todo o seu código original continua EXATAMENTE IGUAL abaixo, dentro do 'else'
+        # Usa sua função original de matriz
         matriz_calculada = calcular_matriz_afinidade_kadosh(mod_af)
         st.session_state['matriz_ativa'] = matriz_calculada 
         
+        # Converte os resultados para lista (Lógica original do seu TXT)
         dezenas_lista = list(res_af.values())
         total_jogos = len(dezenas_lista)
         
-        matriz = {}
         todos_pares = []
         for i in range(1, 26):
             for j in range(i + 1, 26):
@@ -1720,7 +1718,36 @@ with abas[6]:
                 porc = (par_count / total_jogos) * 100
                 todos_pares.append({"Par": (i, j), "Vezes": par_count, "Porc": porc})
         
-        # ... CONTINUA TODO O SEU RESTANTE CÓDIGO DE DF_OURO, DF_VACUO E TRIOS ...
+        df_completo = pd.DataFrame(todos_pares)
+        df_ouro = df_completo.sort_values(by="Vezes", ascending=False).head(15)
+        df_vacuo = df_completo.sort_values(by="Vezes", ascending=True).head(15)
+
+        st.subheader(f"🔥 Radar de Potência do Pool ({total_jogos} jogos)")
+        
+        cols_pot = st.columns(2)
+        with cols_pot[0]:
+            ouro_no_pool = []
+            for _, row in df_ouro.iterrows():
+                p1, p2 = row['Par']
+                if p1 in pool_selecionado and p2 in pool_selecionado:
+                    ouro_no_pool.append(f"{p1:02d}-{p2:02d}")
+            if ouro_no_pool:
+                st.success(f"💎 **CONEXÕES DE ELITE NO POOL:** {', '.join(ouro_no_pool)}")
+            else:
+                st.info("💡 Nenhuma conexão 'Ouro' completa no Pool atual.")
+
+        with cols_pot[1]:
+            vacuo_no_pool = []
+            for _, row in df_vacuo.iterrows():
+                p1, p2 = row['Par']
+                if p1 in pool_selecionado and p2 in pool_selecionado:
+                    vacuo_no_pool.append(f"{p1:02d}-{p2:02d}")
+            if vacuo_no_pool:
+                st.error(f"⚠️ **CONFLITOS DE VÁCUO NO POOL:** {', '.join(vacuo_no_pool)}")
+            else:
+                st.success("✅ Pool sem conflitos de vácuo!")
+        
+        # (O resto do seu código de Trios de Ouro permanece igual abaixo disso)
 # Rodapé informativo
 st.markdown("---")
 st.markdown(
