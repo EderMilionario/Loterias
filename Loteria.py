@@ -4,19 +4,10 @@ import json
 import random
 import re
 import pandas as pd
-import numpy as np          # <--- ADICIONADO (Essencial para as matrizes da IA)
-from math import log2       # <--- ADICIONADO (Essencial para o cálculo de Entropia)
 from collections import Counter
 from itertools import combinations
 from fpdf import FPDF
 import io
-# Bloqueio de segurança contra "Giro Infinito"
-if 'ultimo_res' not in st.session_state:
-    st.session_state.ultimo_res = {}
-if 'scores_especialistas' not in st.session_state:
-    st.session_state.scores_especialistas = {d: {'gnn':0.5, 'hmm':0.5, 'transformer':0.5, 'entropia':0.5} for d in range(1, 81)}
-if 'matriz_ativa' not in st.session_state:
-    st.session_state.matriz_ativa = None
 
 def gerar_pdf_jogos(lista_jogos, loteria_nome):
     from fpdf import FPDF
@@ -84,51 +75,49 @@ def rodar_backtesting_kadosh(df, num_concursos=30):
 def treinar_e_prever_ia(mod_alvo, tamanho=20):
     import numpy as np
     import pandas as pd
-    import streamlit as st
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.model_selection import GridSearchCV
 
     res_historico = st.session_state.ultimo_res.get(mod_alvo, {})
     
-    if not res_historico or len(res_historico) < 35: 
+    if len(res_historico) < 35: # Segurança: precisa de base para as árvores "aprenderem"
         return None
     
-    # 1. Preparação dos Dados (Matriz Binária) - CORREÇÃO DE ORDENAÇÃO
-    try:
-        chaves_ordenadas = sorted(res_historico.keys(), key=lambda x: int(x))
-    except Exception:
-        chaves_ordenadas = sorted(res_historico.keys())
-
+    # 1. Preparação dos Dados (Matriz Binária)
+    chaves_ordenadas = sorted(res_historico.keys(), key=int)
     max_num = 25 if mod_alvo == "Lotofácil" else 80
     matriz = np.zeros((len(chaves_ordenadas), max_num))
     
     for i, conc in enumerate(chaves_ordenadas):
         for num in res_historico[conc]:
-            num_int = int(num)
-            if num_int <= max_num:
-                matriz[i, num_int-1] = 1
+            if num <= max_num:
+                matriz[i, num-1] = 1
 
-    # 2. Criação de Features
+    # 2. Criação de Features (O que a IA vai analisar)
+    # Vamos criar um set de treinamento baseado nos últimos 35 concursos
     X_train = []
     y_train = []
     
+    # A IA estuda blocos passados para tentar prever o próximo
     for i in range(len(matriz) - 10, len(matriz)):
+        # Criamos características: média curta (5), média longa (15), e atraso
         feat = np.column_stack([
-            np.mean(matriz[i-5:i], axis=0),  
-            np.mean(matriz[i-15:i], axis=0), 
-            np.mean(matriz[:i], axis=0)      
+            np.mean(matriz[i-5:i], axis=0),  # Tendência imediata
+            np.mean(matriz[i-15:i], axis=0), # Tendência média
+            np.mean(matriz[:i], axis=0)      # Histórico total
         ])
         X_train.extend(feat)
-        y_train.extend(matriz[i]) 
+        y_train.extend(matriz[i]) # O que de fato saiu
 
-    # 3. Torneio de Hipóteses (Random Forest)
+    # 3. O TORNEIO DE HIPÓTESES (GridSearchCV + Random Forest)
     rf = RandomForestClassifier(random_state=42)
     param_grid = {
-        'n_estimators': [50, 100],      
-        'max_depth': [None, 5, 10],     
-        'min_samples_split': [2, 5]     
+        'n_estimators': [50, 100],      # Quantidade de árvores
+        'max_depth': [None, 5, 10],     # Profundidade da análise
+        'min_samples_split': [2, 5]     # Rigidez da decisão
     }
     
+    # O grid_search vai testar todas as combinações e escolher a melhor
     grid_search = GridSearchCV(estimator=rf, param_grid=param_grid, cv=3, n_jobs=-1)
     
     try:
@@ -136,43 +125,32 @@ def treinar_e_prever_ia(mod_alvo, tamanho=20):
         melhor_modelo = grid_search.best_estimator_
         
         # 4. Predição para o próximo concurso
+        # Usamos os dados mais atuais para alimentar o modelo vencedor
         X_atual = np.column_stack([
             np.mean(matriz[-5:], axis=0),
             np.mean(matriz[-15:], axis=0),
             np.mean(matriz, axis=0)
         ])
         
+        # Obtém a probabilidade de cada número sair
         probabilidades = melhor_modelo.predict_proba(X_atual)
         
+        # Ajuste para pegar a probabilidade da classe 1 (sair)
+        # Se for multi-output, pegamos a probabilidade de cada árvore
         if isinstance(probabilidades, list):
             preds = [p[0][1] if len(p[0]) > 1 else p[0][0] for p in probabilidades]
         else:
             preds = probabilidades[:, 1]
 
-        # --- [5. ATUALIZAÇÃO: SINCRO-CONSELHO KADOSH] ---
-        scores_especialistas = st.session_state.get('scores_especialistas', {})
-        
-        bonus_conselho = []
-        for d in range(1, max_num + 1):
-            sc = scores_especialistas.get(d, {})
-            # Recupera as notas do conselho (GNN, HMM, Transf, Entropia)
-            nota_conselho = (sc.get('gnn', 0.5) + sc.get('transformer', 0.5) + 
-                             sc.get('hmm', 0.5) + sc.get('entropia', 0.5)) / 4
-            bonus_conselho.append(nota_conselho)
-        
-        bonus_conselho = np.array(bonus_conselho)
-        
-        # Peso 70/30 original (Estatística)
+        # 5. O Segredo: O Peso 70/30 entra como "Plano B" no Score Final
         pesos_originais = (np.mean(matriz[-15:], axis=0) * 0.7) + (np.mean(matriz, axis=0) * 0.3)
-        
-        # FUSÃO FINAL: 
-        # 50% Random Forest | 30% Conselho (GNN/Transf) | 20% Estatística
-        score_final = (np.array(preds) * 0.5) + (bonus_conselho * 0.3) + (pesos_originais * 0.2)
+        score_final = (np.array(preds) * 0.8) + (pesos_originais * 0.2) # IA domina 80% da decisão
         
         indices_vencedores = score_final.argsort()[-tamanho:][::-1]
         return sorted([int(i + 1) for i in indices_vencedores])
         
     except Exception as e:
+        # Se o torneio de árvores falhar, ele volta para o seu 70/30 original (Segurança)
         st.warning(f"IA em modo de segurança: {e}")
         pesos_recentes = np.mean(matriz[-15:], axis=0)
         tendencia_longa = np.mean(matriz, axis=0)
@@ -208,157 +186,78 @@ def calcular_pesos_afinidade_dinamica(dezenas_selecionadas, matriz_afinidade, po
     if not dezenas_selecionadas or not matriz_afinidade:
         return pesos
     
-    # Pegamos o tamanho real da matriz para não estourar o índice
-    tamanho_matriz = len(matriz_afinidade)
-    
     for d_fixa in dezenas_selecionadas:
         for d_pool in pool_disponivel:
             if d_pool not in dezenas_selecionadas:
+                # O índice da matriz deve ser inteiro
                 idx_f = int(d_fixa)
                 idx_p = int(d_pool)
-                
-                # SEGURANÇA: Só acessa se os índices estiverem dentro da matriz
-                if idx_f < tamanho_matriz and idx_p < tamanho_matriz:
-                    bonus = matriz_afinidade[idx_f][idx_p] * 0.5
-                    pesos[d_pool] += bonus
+                bonus = matriz_afinidade[idx_f][idx_p] * 0.5
+                pesos[d_pool] += bonus
     return pesos
 
 def calcular_matriz_afinidade_kadosh(mod):
     res_db = st.session_state.ultimo_res.get(mod, {})
+    # Mantive sua trava original de segurança
     if len(res_db) < 3: return None
     
-    # AJUSTE DE LIMITE: 26 para Lotofácil (0-25), 81 para Quina/Outros (0-80)
-    limite = 26 if mod == "Lotofácil" else 81 
-    
-    # Estrutura de lista de listas (Python Puro)
+    limite = 26 if mod == "Lotofácil" else 61
+    # Mantive sua estrutura de lista de listas (Python Puro)
     matriz = [[0 for _ in range(limite)] for _ in range(limite)]
     
-    # Ordenação segura das chaves
-    try:
-        chaves_ordenadas = sorted(res_db.keys(), key=lambda x: int(x))
-    except:
-        chaves_ordenadas = sorted(res_db.keys())
-        
-    ultimos_35 = set(chaves_ordenadas[-35:]) 
+    # Ordenação segura das chaves para identificar os recentes
+    chaves_ordenadas = sorted(res_db.keys(), key=lambda x: int(x))
+    ultimos_35 = set(chaves_ordenadas[-35:]) # Uso de set para busca rápida
     
     for conc, sorteio in res_db.items():
-        # Lógica de peso original: 3 para recentes, 1 para antigos
+        # Lógica de peso injetada sem mudar a estrutura
         peso = 3 if conc in ultimos_35 else 1
         
         nums = sorted([int(n) for n in sorteio])
         for i in range(len(nums)):
             for j in range(i + 1, len(nums)):
                 d1, d2 = nums[i], nums[j]
-                # Verifica se as dezenas cabem na matriz criada
                 if d1 < limite and d2 < limite:
                     matriz[d1][d2] += peso
                     matriz[d2][d1] += peso
     return matriz
+
 def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_ia=None):
-    import numpy as np
-    import streamlit as st
-    from math import log2
-
-    # 1. ACESSO AOS DADOS REAIS (RESPEITANDO SEU DICIONÁRIO)
-    mod = st.session_state.get('modalidade_selecionada', 'Lotofácil')
-    res_db = st.session_state.ultimo_res.get(mod, {})
+    # Se os dados não existirem, o sistema retorna o pool atual para não travar
+    if not matriz_afinidade or not pool_atual:
+        return sorted(list(pool_atual))
     
-    # GARANTE A MATRIZ: Se vier nula, busca no estado global
-    if matriz_afinidade is None:
-        matriz_afinidade = st.session_state.get('matriz_ativa')
-
-    if not matriz_afinidade or not pool_atual or not res_db:
-        return sorted(list([int(n) for n in pool_atual]))
-    
+    # Se o botão enviar a IA, nós usamos. Se não, fica vazio.
     if scores_ia is None:
-        # Puxa os scores treinados pelo motor de IA
-        scores_ia = st.session_state.get('scores_especialistas', {})
+        scores_ia = {}
 
-    # 2. DICIONÁRIO DE NOTAS (O CONSELHO DE ESPECIALISTAS)
-    scores_especialistas = {d: {'gnn': 0.5, 'hmm': 0.5, 'transformer': 0.5, 'entropia': 0.5} for d in range(1, 81)}
-
-    # --- [CORREÇÃO CRÍTICA DO HISTÓRICO] ---
-    try:
-        chaves_ordenadas = sorted(res_db.keys(), key=lambda x: int(x))
-        historico_ordenado = [sorted([int(n) for n in res_db[k]]) for k in chaves_ordenadas]
-    except:
-        historico_ordenado = [sorted([int(n) for n in v]) for k, v in res_db.items()]
-
-    if not historico_ordenado:
-        return sorted(list([int(n) for n in pool_atual]))
-
-    ultimos_10 = historico_ordenado[-10:] if len(historico_ordenado) >= 10 else historico_ordenado
-
-    # --- [MOTOR DE INTELIGÊNCIA INTEGRADO] ---
-    adj_matrix = np.array(matriz_afinidade)
-    tamanho_real_matriz = len(adj_matrix)
-    max_afim = np.max(adj_matrix) if np.max(adj_matrix) > 0 else 1
-
-    for d in range(1, tamanho_real_matriz):
-        # A. GNN (Grafos)
-        conexao_direta = np.sum(adj_matrix[d])
-        vizinhos = np.where(adj_matrix[d] > 0)[0]
-        influencia_vizinhanca = np.sum(adj_matrix[vizinhos]) if len(vizinhos) > 0 else 0
-        scores_especialistas[d]['gnn'] = min((conexao_direta * 0.3 + influencia_vizinhanca * 0.7) / (max_afim * 15 + 1), 1.0)
-
-        # B. HMM (Markov)
-        scores_especialistas[d]['hmm'] = np.count_nonzero(adj_matrix[d]) / (tamanho_real_matriz - 1)
-
-        # C. TRANSFORMER (Attention)
-        aparicoes_atencao = sum(1 for jogo in ultimos_10 if d in jogo)
-        scores_especialistas[d]['transformer'] = aparicoes_atencao / len(ultimos_10) if ultimos_10 else 0
-
-        # D. ENTROPIA (Shannon)
-        p_dezena = sum(1 for jogo in historico_ordenado if d in jogo) / (len(historico_ordenado) + 1)
-        if 0 < p_dezena < 1:
-            ent = -(p_dezena * log2(p_dezena))
-            scores_especialistas[d]['entropia'] = min(ent * 2, 1.0)
-        else:
-            scores_especialistas[d]['entropia'] = 0.5
-
-    # Atualiza o estado para que os botões de IA também vejam estes dados
-    st.session_state['scores_especialistas'] = scores_especialistas
-
-    # 3. O JUIZ: FUSÃO FINAL (Onde a lógica se une)
+    # O JUIZ: IA (70%) + AFINIDADE 35 JOGOS (30%)
     def peso_juiz(d):
-        try:
-            d_int = int(d)
-            if d_int >= tamanho_real_matriz: return 0.0
-            
-            # Trata scores_ia se for dicionário (múltiplas IAs) ou valor único
-            val_ia_bruto = scores_ia.get(d_int, 0.5)
-            if isinstance(val_ia_bruto, dict):
-                s_ia = sum(val_ia_bruto.values()) / len(val_ia_bruto)
-            else:
-                s_ia = val_ia_bruto
-            
-            # Estatística de afinidade original
-            linha_matriz = matriz_afinidade[d_int]
-            afim_total = sum(linha_matriz) / (len(linha_matriz) + 1)
-            estatistica_final = afim_total if afim_total > 0.40 else afim_total * 0.5
-            
-            # Pesos do novo motor
-            sc = scores_especialistas[d_int]
-            peso_motor_novo = (sc['gnn'] * 0.3) + (sc['hmm'] * 0.2) + (sc['transformer'] * 0.3) + (sc['entropia'] * 0.2)
-            
-            # Fusão: 40% Base/Estatística + 60% IA Avançada
-            peso_base = (s_ia * 0.7) + (estatistica_final * 0.3)
-            return (peso_base * 0.4) + (peso_motor_novo * 0.6)
-        except:
-            return 0.1
+        d_int = int(d)
+        # 1. Score da IA (Árvores)
+        s_ia = scores_ia.get(d_int, 0)
+        
+        # 2. Afinidade (Últimos 35 jogos com Peso 3)
+        # Normalizamos a soma das afinidades
+        afim_total = sum(matriz_afinidade[d_int]) / 25
+        
+        # 3. Trava de 40%: Se a afinidade for baixa, a dezena perde força
+        estatistica_final = afim_total if afim_total > 0.40 else afim_total * 0.5
+        
+        # O Peso final que o sistema vai usar para decidir
+        return (s_ia * 0.7) + (estatistica_final * 0.3)
 
-    # 4. EXECUÇÃO DO REFINAMENTO (REMOÇÃO E CURA)
-    pool_refinado = [int(n) for n in pool_atual if int(n) < tamanho_real_matriz]
+    pool_refinado = list(pool_atual)
     
-    # Fase de Corte: Remove os elos mais fracos
+    # REMOÇÃO: Tira as dezenas mais fracas segundo o novo Peso do Juiz
     while len(pool_refinado) > tamanho_objetivo:
-        pior_idx = min(range(len(pool_refinado)), key=lambda i: peso_juiz(pool_refinado[i]))
-        pool_refinado.pop(pior_idx)
+        piores = sorted(pool_refinado, key=peso_juiz)
+        pool_refinado.remove(piores[0])
 
-    # Fase de Cura: Troca dezenas ruins por dezenas de elite que ficaram fora
-    dezenas_fora = [d for d in range(1, tamanho_real_matriz) if d not in pool_refinado]
-    for _ in range(4): # 4 ciclos de substituição agressiva
-        if not dezenas_fora or not pool_refinado: break
+    # CURA DE VÁCUO: Trocas inteligentes para otimizar o grupo
+    dezenas_fora = [d for d in range(1, 26) if d not in pool_refinado]
+    for _ in range(2):
+        if not dezenas_fora: break
         pior_no_pool = min(pool_refinado, key=peso_juiz)
         melhor_fora = max(dezenas_fora, key=peso_juiz)
         
@@ -978,220 +877,188 @@ with abas[0]:
 
         with col_btn1:
             if mod == "Lotofácil":
-                # BOTÃO 1: IA (Ranking 1000)
+                # BOTÃO 1: IA (Ranking 1000 - Baseado em Redes Neurais/Tendência)
                 if st.button("💎 ATIVAR IA (RANKING 1000)"):
                     pool_ia = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool)
                     if pool_ia:
-                        st.session_state.favoritas[mod] = sorted([int(n) for n in pool_ia])
+                        st.session_state.favoritas[mod] = pool_ia
                         st.success(f"🚀 IA configurada para {tamanho_alvo_pool} dezenas!")
                         st.rerun()
 
-            # Limites reais preservados do seu código
+            # 1. Define os limites primeiro para o sistema não se perder
             limites_reais = {
                 "Lotofácil": 25,
                 "Mega-Sena": 60,
                 "Quina": 80,
                 "Dupla-Sena": 50,
-                "Milionária": 50
+                "+Milionária": 50
             }
             max_v_bt = limites_reais.get(mod, 60)
 
+            # 2. O botão utiliza a variável definida acima
             if st.button("✅ SELECIONAR TODO VOLANTE"):
                 st.session_state.favoritas[mod] = list(range(1, max_v_bt + 1))
                 st.rerun()
 
+            # 3. Garante que o volante (seja qual for o componente que você usa) respeite o max_v_bt
+            # Isso impede que a Milionária mostre 60 ou a Quina pare no 60.
+                
         with col_btn2:
             if mod == "Lotofácil":
-                # BOTÃO 3: INTELIGENTE
+                # BOTÃO 3: INTELIGENTE (Baseado em Score de Frequência e Atraso)
                 if st.button("🧠 POOL INTELIGENTE"):
-                    stats_ia = st.session_state.get('scores_especialistas', {})
-                    if stats_ia:
-                        dezenas_ordenadas = sorted(
-                            [d for d in stats_ia.keys() if d <= max_v_bt], 
-                            key=lambda x: (stats_ia[x].get('gnn', 0.5) + stats_ia[x].get('transformer', 0.5)) / 2, 
-                            reverse=True
-                        )
+                    stats_mod = st.session_state.analise_stats.get(mod, {})
+                    if stats_mod:
+                        # Ordena pelo Score e pega exatamente o tamanho necessário
+                        dezenas_ordenadas = sorted(stats_mod.keys(), key=lambda x: stats_mod[x]['score'], reverse=True)
                         st.session_state.favoritas[mod] = sorted(dezenas_ordenadas[:tamanho_alvo_pool])
-                        # Criamos um gatilho para mudar a key do volante
-                        st.session_state[f"update_{mod}"] = random.randint(0, 99999)
+                        st.success(f"🎯 Pool Inteligente: {tamanho_alvo_pool} dezenas!")
                         st.rerun()
-
-                # BOTÃO 4: REFINAR (DEPOIS DA IA)
+         
+            # BOTÃO 4: REFINAR (Filtro de Elite por Afinidade + IA)
+            if mod == "Lotofácil":
                 if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
                     pool_base = st.session_state.favoritas.get(mod, [])
-                    matriz_af = st.session_state.get('matriz_ativa')
-            
-                    # 1. Garante que a matriz exista antes de rodar o refinamento
-                    if matriz_af is None:
-                        matriz_af = calcular_matriz_afinidade_kadosh(mod)
-                        st.session_state['matriz_ativa'] = matriz_af
-            
-                    # 2. Puxa os scores que a tua IA gerou (GNN, Transformer, etc.)
-                    scores_ia = st.session_state.get('scores_especialistas', {})
-            
-                    # 3. Roda a tua função de refinamento kadosh
+             
+                    # Se o pool estiver vazio ou menor que o alvo, gera um inicial via IA
+                    if len(pool_base) < tamanho_alvo_pool:
+                        pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
+         
+                    # 1. Pega a matriz (Estatística/Kadosh com peso nos últimos 35 jogos)
+                    matriz_af = st.session_state.get('matriz_ativa') or calcular_matriz_afinidade_kadosh(mod)
+         
+                    # 2. Pega os scores da IA (Árvores de Decisão)
+                    scores_ia = st.session_state.get('scores_predicao', {})
+         
+                    # 3. O JUIZ: Envia o pool, a matriz, o tamanho alvo e os scores da IA
                     pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, scores_ia)
-            
-                    # 4. Salva o novo pool e força o Streamlit a redesenhar a página
-                    st.session_state.favoritas[mod] = sorted([int(n) for n in pool_refinado])
+         
+                    # 4. Atualiza e recarrega
+                    st.session_state.favoritas[mod] = pool_refinado
+                    st.success(f"🎯 Refinado para {len(pool_refinado)} dezenas com inteligência híbrida!")
                     st.rerun()
+        # --- CAMPO DE SELEÇÃO (Ocupa a largura total para melhor leitura) ---
+        st.markdown("---")
+        max_dezenas = 26 if mod == "Lotofácil" else 81
+        pool = st.multiselect(
+            f"SELECIONE SEU POOL ({mod}):", 
+            range(1, max_dezenas), 
+            default=st.session_state.favoritas.get(mod, [])
+        )
+        st.session_state.favoritas[mod] = pool 
 
-                st.markdown("---")
-        
-                # --- VOLANTE ORIGINAL (VISUALIZAÇÃO LARGA E CLICÁVEL) ---
-                # Mantemos uma key que identifique a modalidade para não bugar entre jogos
-                pool_data = st.session_state.favoritas.get(mod, [])
-        
-                pool = st.multiselect(
-                    f"SELECIONE SEU POOL ({mod}):", 
-                    range(1, max_v_bt + 1), 
-                    default=pool_data,
-                    key=f"volante_original_{mod}" 
-                )
-        
-                # Sincroniza o que o usuário clica com o estado das favoritas
-                st.session_state.favoritas[mod] = pool
-        # --- ANÁLISE DE QUADRANTES (IGUAL AO SEU ORIGINAL) ---
+        # --- [SUGESTÃO 3: ANÁLISE DE QUADRANTES NO POOL] ---
         if pool and mod == "Lotofácil":
             linhas_p = [0]*5
             for n in pool: 
-                if 1 <= n <= 25:
-                    linhas_p[(n-1)//5] += 1
+                linhas_p[(n-1)//5] += 1
             if any(l == 0 for l in linhas_p):
-                st.warning("⚠️ Atenção: Seu Pool possui linhas vazias!")
+                st.warning("⚠️ Atenção: Seu Pool possui linhas vazias! Isso pode reduzir a eficácia dos filtros Kadosh.")
             with st.expander("📊 Distribuição Geográfica do Pool"):
                 cols_q = st.columns(5)
                 for idx, qtd_l in enumerate(linhas_p):
                     cols_q[idx].metric(f"Linha {idx+1}", f"{qtd_l} dez")
-
-        # --- MODO DE FIXAÇÃO ---
+        
+        # --- SÓ MOSTRA O MODO DE FIXAÇÃO SE FOR LOTOFÁCIL ---
         if mod == "Lotofácil":
             st.markdown("---")
             modo_fixa = st.radio("MODO DE FIXAÇÃO:", ["Sem Fixas", "Manual", "IA Automática (Score)"], horizontal=True)
-
+    
             fixas_final = []
             if modo_fixa == "Manual":
                 fixas_final = st.multiselect("📌 CRAVAR DEZENAS:", options=pool)
             elif modo_fixa == "IA Automática (Score)":
                 qtd_auto = st.slider("Qtd de Cravadas:", 1, 10, 6)
-                stats = st.session_state.get('scores_especialistas', {})
-                if stats:
-                    melhores_ia = sorted([n for n in pool], 
-                                         key=lambda x: (stats.get(x, {}).get('gnn', 0) + stats.get(x, {}).get('transformer', 0)), 
-                                         reverse=True)
+                if mod in st.session_state.analise_stats:
+                    stats = st.session_state.analise_stats[mod]
+                    melhores_ia = sorted([n for n in pool], key=lambda x: stats.get(x, {}).get('score', 0), reverse=True)
                     fixas_final = melhores_ia[:qtd_auto]
                     st.info(f"💎 IA CRAVOU: {', '.join(map(str, fixas_final))}")
-                else:
-                    st.info("💡 Use 'Refinar Pool' para ativar a IA Automática de Cravadas.")
-
-            renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {}))
-     
-    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
-        import random
     
-        # 1. SETUP DE SEGURANÇA (Resgatando suas variáveis originais)
-        mod = st.session_state.get('modalidade_selecionada', 'Lotofácil')
+            # Heatmap também só faz sentido com a visualização da Lotofácil
+            renderizar_heatmap(mod, st.session_state.ultimo_res.get(mod, {})) 
+
+    # --- [INÍCIO DO NOVO MOTOR SINCRONIZADO] ---
+    if st.button("🚀 GERAR JOGOS (SINCRO-MATRIZ KADOSH)"):
+        # 1. Garante que a Matriz de Afinidade da Aba 6 está carregada
         matriz_af = st.session_state.get('matriz_ativa')
         if matriz_af is None:
             matriz_af = calcular_matriz_afinidade_kadosh(mod)
             st.session_state['matriz_ativa'] = matriz_af
 
-        pool_final = locals().get('pool', st.session_state.get('pool', []))
-        fixas_util_final = locals().get('fixas_final', st.session_state.get('fixas_final', []))
-        scores_ia_brain = st.session_state.get('scores_especialistas', {})
-    
-        # --- [MAPEAMENTO INTEGRAL DE ESTRATÉGIAS E MATRIZES] ---
-        servicos_geracao = [] 
-
-        # PRIORIDADE 1: Matrizes de Fechamento (Se selecionadas)
-        if fe_escolhido != "Nenhum":
-            if "DIAMANTE" in fe_escolhido:
-                servicos_geracao = [(16, 2), (15, 10)]
-            elif "CÉLULA" in fe_escolhido:
-                servicos_geracao = [(16, 1), (15, 15)]
-            elif "18-15-14" in fe_escolhido:
-                servicos_geracao = [(15, 24)] # Qtd técnica para garantir 14 nas 18
-            elif "19-15-14" in fe_escolhido:
-                servicos_geracao = [(15, 32)]
-            elif "20-15-13" in fe_escolhido:
-                servicos_geracao = [(15, 42)]
-            else:
-                servicos_geracao = [(15, locals().get('qtd', 10))]
-
-        # PRIORIDADE 2: Mapa de Estratégias (Se Fechamento for "Nenhum")
+        if not pool or len(pool) < n_dez:
+            st.error("⚠️ Erro: Seu Pool é menor que a quantidade de dezenas por bilhete.")
         else:
-            info_est = ESTRATEGIA_MAPA.get(est_escolhida, ESTRATEGIA_MAPA["Personalizado"])
-            d_principal = info_est.get('dez', 15)
-            q_principal = info_est.get('qtd', 10)
-        
-            # Adiciona o lote principal da estratégia
-            servicos_geracao.append((d_principal, q_principal))
-        
-            # Adiciona lotes secundários (Ex: dezenas extras de 16 ou 15 conforme seu MAPA)
-            if "qtd_15" in info_est:
-                servicos_geracao.append((15, info_est['qtd_15']))
-            if "qtd_16" in info_est:
-                servicos_geracao.append((16, info_est['qtd_16']))
-
-        # 2. MOTOR DE INTELIGÊNCIA ARTIFICIAL (FUSÃO DAS 5 IAs)
-        novos = []
-    
-        for tam_alvo, qtd_alvo in servicos_geracao:
-            sucessos_lote = 0
-            tentativas_lote = 0
-        
-            while sucessos_lote < qtd_alvo and tentativas_lote < 15000:
-                tentativas_lote += 1
-                jogo_em_construcao = list(fixas_util_final)
-                pool_trabalho = [int(n) for n in pool_final if int(n) not in jogo_em_construcao]
+            novos = []
             
-                while len(jogo_em_construcao) < tam_alvo and pool_trabalho:
-                    # Afinidade Dinâmica Original
-                    pesos_base = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
-                
-                    opcoes = list(pesos_base.keys())
-                    probabilidades = []
-                
-                    for opt in opcoes:
-                        sc = scores_ia_brain.get(int(opt), {'gnn':0.5, 'transformer':0.5, 'hmm':0.5, 'entropia':0.5})
-                        # FUSÃO DAS 5 IAs (O Conselho de Especialistas)
-                        bonus_ia = (sc.get('gnn', 0.5) + sc.get('transformer', 0.5) + 
-                                    sc.get('hmm', 0.5) + sc.get('entropia', 0.5)) / 4
+            # 2. Função interna que aplica Afinidade + Filtros Kadosh
+            def processar_geracao(tamanho_solicitado, quantidade_pedida):
+                sucessos, tentativas = 0, 0
+                while sucessos < quantidade_pedida and tentativas < 20000: # Limite alto para não desistir fácil
+                    tentativas += 1
+                    jogo_em_construcao = list(fixas_final)
+                    pool_trabalho = [n for n in pool if n not in jogo_em_construcao]
                     
-                        peso_ia_final = pesos_base[opt] * (1.0 + bonus_ia)
-                        probabilidades.append(max(peso_ia_final, 0.0001))
-                
-                    escolha = random.choices(opcoes, weights=probabilidades, k=1)[0]
-                    jogo_em_construcao.append(int(escolha))
-                    pool_trabalho.remove(escolha)
-            
-                comb = sorted(jogo_em_construcao)
-            
-                # Validação de Duplicidade
-                if any(set(comb) == set(ex['n']) for ex in novos):
-                    continue
-            
-                # Validação Kadosh (Filtros)
-                passou = True
-                if mod == "Lotofácil":
-                    passou = validar_kadosh_cirurgico(comb, mod, tam_alvo)
-            
-                if passou:
-                    tag_final = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
-                    novos.append({
-                        "mod": mod, "n": comb, "tam": tam_alvo, 
-                        "fixas_utilizadas": list(fixas_util_final),
-                        "chance": definir_label_chance(comb, mod), "est": tag_final
-                    })
-                    sucessos_lote += 1
+                    # PREENCHIMENTO INTELIGENTE: Usa a Matriz de Afinidade (Aba 6)
+                    while len(jogo_em_construcao) < tamanho_solicitado and pool_trabalho:
+                        pesos_dict = calcular_pesos_afinidade_dinamica(jogo_em_construcao, matriz_af, pool_trabalho)
+                        opcoes = list(pesos_dict.keys())
+                        probabilidades = list(pesos_dict.values())
+                        
+                        escolha = random.choices(opcoes, weights=probabilidades, k=1)[0]
+                        jogo_em_construcao.append(escolha)
+                        pool_trabalho.remove(escolha)
+                    
+                    comb = sorted(jogo_em_construcao)
+                    
+                    # Evita duplicatas
+                    if any(set(comb) == set(existente['n']) for existente in novos):
+                        continue
+                    
+                    # FILTROS KADOSH (Simetria, Soma, Moldura, Quadrantes)
+                    passou = True
+                    if tamanho_solicitado == 15 and mod == "Lotofácil":
+                        # Aqui ele chama a função 'validar_kadosh_cirurgico' que já tens no topo do código
+                        passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
+                    
+                    if passou:
+                        tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
+                        novos.append({
+                            "mod": mod, "n": comb, "tam": tamanho_solicitado, 
+                            "fixas_utilizadas": list(fixas_final),
+                            "chance": definir_label_chance(comb, mod), "est": tag_est
+                        })
+                        sucessos += 1
 
-        # 3. FINALIZAÇÃO
-        if novos:
+            # 3. LÓGICA DE EXECUÇÃO (Mantendo todas as tuas estratégias originais)
+            if fe_escolhido != "Nenhum":
+                if "DIAMANTE" in fe_escolhido:
+                    processar_geracao(16, 2)
+                    processar_geracao(15, 10)
+                elif "CÉLULA" in fe_escolhido:
+                    processar_geracao(16, 1)
+                    processar_geracao(15, 15)
+                else:
+                    processar_geracao(15, qtd)
+            elif est_escolhida == "6. A MARRETA":
+                processar_geracao(18, 1)
+                processar_geracao(16, 5)
+            elif est_escolhida == "7. SIMETRIA GEOMÉTRICA":
+                processar_geracao(16, 2)
+                processar_geracao(15, 8)
+            elif est_escolhida == "10. KADOSH PRESTIGE 20":
+                processar_geracao(15, 36)
+            elif est_escolhida != "Personalizado" and mod == "Lotofácil":
+                processar_geracao(info_est['dez'], info_est.get('qtd', 1))
+                if "qtd_15" in info_est:
+                    processar_geracao(15, info_est['qtd_15'])
+            else:
+                processar_geracao(n_dez, qtd)
+            
             st.session_state.jogos_gerados = novos
             st.success(f"🔥 Sincronia Kadosh: {len(novos)} jogos gerados com sucesso!")
             st.rerun()
-        else:
-            st.error("❌ A IA não validou jogos. Tente reduzir os filtros ou aumentar o Pool.")   
+    # --- [FIM DO NOVO MOTOR SINCRONIZADO] ---
 
     # --- EXIBIÇÃO DOS JOGOS (FORA DO IF DO BOTÃO) ---
     if st.session_state.jogos_gerados:
@@ -1224,19 +1091,21 @@ with abas[0]:
 
 with abas[1]:
     mostrar_status_backup() 
-    st.header("🔍 Painel de Conferência de Elite")
+    st.header("🔍 Painel de Conferência")
     
-    # 1. SELECTBOX ORIGINAL
+    # 1. CRIA O SELECTBOX PRIMEIRO (Para a variável mod_f existir)
     mod_f = st.selectbox(
         "Selecione a Loteria para Conferir", 
         list(st.session_state.custos.keys()), 
         key="f_conf_definitiva"
     )
     
-    # 2. BOTÃO DE PDF PRESERVADO
+    # 2. AGORA O BOTÃO DE PDF (Ele já conhece o mod_f aqui)
     if st.session_state.get('jogos_salvos'):
         try:
+            # Pega os números da chave 'n' conforme seu backup 
             pdf_bytes = gerar_pdf_jogos(st.session_state.jogos_salvos, mod_f)
+            
             st.download_button(
                 label="📥 BAIXAR JOGOS (PDF)",
                 data=pdf_bytes,
@@ -1247,14 +1116,14 @@ with abas[1]:
         except Exception as e:
             st.error(f"Erro no PDF: {e}")
     
-    # 3. FILTRAGEM ORIGINAL
+    # 3. FILTRAGEM DOS JOGOS (Agora o mod_f está seguro aqui)
     jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
     res_db = st.session_state.ultimo_res.get(mod_f, {})
 
     if not jogos_salvos_atual:
         st.warning(f"Nenhum jogo salvo para {mod_f}. Vá ao Gerador primeiro!")
     else:
-        # --- VISUALIZAÇÃO DO POOL (CERCO) REESTILIZADA ---
+        # --- PERFORMANCE DO POOL (CERCO) ---
         ultimo_j = jogos_salvos_atual[-1]
         pool_origem = ultimo_j.get('pool_origem', [])
         alvo_p = str(ultimo_j.get('concurso_alvo', ''))
@@ -1263,32 +1132,15 @@ with abas[1]:
             st.markdown(f"### 🎯 PERFORMANCE DO SEU POOL (CONCURSO {alvo_p})")
             res_alvo = res_db[alvo_p]
             acertos_p = sum(1 for d in pool_origem if d in res_alvo)
-            
-            # Estilo moderno para o Cerco
-            h_pool = f"""
-            <div style="background: #1e1e26; padding: 25px; border-radius: 15px; border-left: 10px solid #1e3799; margin-bottom: 25px; box-shadow: 5px 5px 15px rgba(0,0,0,0.2);">
-                <p style="color: #fff; margin-top:0; font-weight: bold; font-size: 16px;">🔥 RADAR DE ACERTOS NO POOL ORIGEM:</p>
-                <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-            """
+            h_pool = '<div style="background: #f8f9fa; padding: 20px; border-radius: 15px; border: 2px solid #1e3799; margin-bottom: 20px;">'
             for d in sorted(pool_origem):
-                if d in res_alvo:
-                    estilo_bola = "background: #28a745; color: white; border: 2px solid #fff; box-shadow: 0 0 10px #28a745;"
-                else:
-                    estilo_bola = "background: #444; color: #aaa; border: 1px solid #555;"
-                
-                h_pool += f'<span style="display: inline-block; width: 38px; height: 38px; line-height: 38px; text-align: center; border-radius: 50%; font-weight: bold; font-size: 14px; {estilo_bola}">{d:02d}</span>'
-            
-            h_pool += f"""
-                </div>
-                <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #555; color: #00d2ff; font-size: 18px;">
-                    <b>📊 EFICIÊNCIA DO CERCO: {acertos_p} de {len(pool_origem)}</b>
-                </div>
-            </div>
-            """
+                cor_p = "background-color: #28a745; color: white;" if d in res_alvo else "background-color: #dc3545; color: white;"
+                h_pool += f'<span style="display: inline-block; width: 35px; height: 35px; line-height: 35px; text-align: center; border-radius: 50%; margin: 5px; font-weight: bold; {cor_p}">{d:02d}</span>'
+            h_pool += f'<br><br><b style="color: #1e3799;">📊 ACERTOS NO CERCO: {acertos_p}</b></div>'
             st.markdown(h_pool, unsafe_allow_html=True)
 
         st.markdown("---")
-        st.subheader("📋 Bilhetes Estratégicos")
+        st.subheader("📋 Conferência de Bilhetes Individuais")
         t_gasto, t_premio = 0, 0
 
         for i, jogo in enumerate(jogos_salvos_atual):
@@ -1308,60 +1160,36 @@ with abas[1]:
                 v_premio = float(st.session_state.premios[mod_f].get(str(acertos), 0.0))
                 t_premio += v_premio 
                 
-                # Cores e Borda baseada no prêmio (Efeito "Vitoria")
-                if v_premio > 0:
-                    cor_bg = "#f0fff4" # Verde clarinho
-                    cor_borda = "#28a745"
-                    badge_premio = f'<span style="background:#28a745; color:white; padding:4px 10px; border-radius:10px; font-weight:bold;">PREMIADO! R$ {v_premio:,.2f}</span>'
-                else:
-                    cor_bg = "#ffffff"
-                    cor_borda = "#ddd"
-                    badge_premio = f'<span style="color:#666;">Sem Premiação</span>'
-
                 for d in dezenas_j:
-                    # Acerto ou Erro
-                    c_txt = "#28a745" if d in sorteio else "#bdc3c7"
-                    # Destaque para Fixas (Borda dourada ou negrito forte)
-                    if d in fixas_j:
-                        estilo_f = "border: 2px solid #d4af37; background: #fffcf0; padding: 2px; border-radius: 5px; font-weight: 900;"
-                        pino = "📌" if d in sorteio else "📍"
-                    else:
-                        estilo_f = "font-weight: normal;"
-                        pino = ""
-                    
-                    html_dez += f'<span style="color:{c_txt}; {estilo_f} margin-right:12px; font-size:20px; font-family: monospace;">{d:02d}{pino}</span>'
+                    c_txt = "#28a745" if d in sorteio else "#000000"
+                    estilo_f = "text-decoration: underline; font-weight: 900;" if d in fixas_j else "font-weight: normal;"
+                    pino = "📌" if (d in fixas_j and d in sorteio) else ""
+                    html_dez += f'<span style="color:{c_txt}; {estilo_f} margin-right:8px; font-size:18px;">{d:02d}{pino}</span>'
                 
-                res_msg = f"<b>🎯 ACERTOS: {acertos}</b> | {badge_premio}"
+                res_msg = f"🎯 ACERTOS: {acertos} | 💰 PRÊMIO: R$ {v_premio:,.2f}"
             else:
-                # Caso sem sorteio (Igual ao seu, apenas com mais espaçamento)
-                cor_bg = "#f9f9f9"
-                cor_borda = "#1e3799"
                 for d in dezenas_j:
-                    estilo_f = "border: 1px solid #d4af37; padding: 2px;" if d in fixas_j else ""
-                    html_dez += f'<span style="color:#333; {estilo_f} margin-right:12px; font-size:20px; font-family: monospace;">{d:02d}</span>'
-                res_msg = "⏳ Aguardando sorteio oficial..."
+                    estilo_f = "text-decoration: underline; font-weight: 900;" if d in fixas_j else "font-weight: normal;"
+                    html_dez += f'<span style="color:#000; {estilo_f} margin-right:8px; font-size:18px;">{d:02d}</span>'
+                res_msg = "⏳ Aguardando sorteio..."
 
-            # CARD DO BILHETE REFORMULADO
             st.markdown(f"""
-            <div style="border: 2px solid {cor_borda}; padding: 18px; background: {cor_bg}; border-radius: 12px; margin-bottom: 15px; transition: 0.3s;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <span style="font-size: 13px; font-weight: bold; color: #1e3799;">BILHETE #{i+1:02d}</span>
-                    <span style="font-size: 12px; background: #eee; padding: 2px 8px; border-radius: 5px;">CONC: {c_alvo}</span>
-                </div>
-                <div style="margin: 15px 0; letter-spacing: 1px;">{html_dez}</div>
-                <div style="border-top: 1px solid #eee; padding-top: 10px; font-size: 15px;">{res_msg}</div>
+            <div style="border-left: 5px solid #1e3799; padding: 15px; background: #f9f9f9; border-radius: 12px; margin-bottom: 10px; border: 1px solid #ddd;">
+                <p style="margin:0; font-size: 12px; color: #444;">JOGO {i+1:02d} | CONCURSO: {c_alvo}</p>
+                <div style="font-family: monospace; margin: 10px 0;">{html_dez}</div>
+                <p style="margin:0; font-size: 14px; color: black;"><b>{res_msg}</b></p>
             </div>""", unsafe_allow_html=True)
 
-        # MANTIDO O RODAPÉ DE MÉTRICAS E BOTÃO LIMPAR
         st.markdown("---")
         col1, col2, col3 = st.columns(3)
-        col1.metric("💰 Investimento", f"R$ {t_gasto:,.2f}")
-        col2.metric("🏆 Retorno", f"R$ {t_premio:,.2f}")
-        col3.metric("⚖️ Saldo Real", f"R$ {t_premio - t_gasto:,.2f}", delta=f"{t_premio - t_gasto:,.2f}")
+        col1.metric("Investimento", f"R$ {t_gasto:,.2f}")
+        col2.metric("Retorno", f"R$ {t_premio:,.2f}")
+        col3.metric("Saldo", f"R$ {t_premio - t_gasto:,.2f}")
 
-        if st.button("🗑️ LIMPAR HISTÓRICO GERAL"):
+        if st.button("🗑️ LIMPAR HISTÓRICO"):
             st.session_state.jogos_salvos = []
             st.rerun()
+
 with abas[2]:
     mostrar_status_backup()
     st.markdown("## 💰 Painel Oficial de Premiações")
@@ -1579,7 +1407,7 @@ with abas[5]:
                 "Foco": info["desc"], 
                 "Chances": info["prob"]
             })
-    
+    # Isso já estava no seu código
     st.table(pd.DataFrame(dados_est))
     st.markdown("---")
 
@@ -1602,8 +1430,7 @@ with abas[5]:
         {"Estratégia": "CERCO ELIMIN.", "Matrizes": "Uso Individual", "Foco": "Limpeza de Dezenas", "13 pts": "1/160", "14 pts": "1/5.000", "15 pts": "1/3.2M"}
     ]
 
-    # CORREÇÃO: Usando pd.DataFrame para garantir a renderização
-    st.table(pd.DataFrame(dados_completos))
+    st.table(dados_completos)
 
     st.markdown("""
     ### 🧠 Sequência Mestra de Cliques (Ordem Obrigatória):
@@ -1613,7 +1440,6 @@ with abas[5]:
     4. **PASSO 4 [JOGOS]:** Clique em 'Gerar Jogos'.
     """)
     st.error("⚠️ **IMPORTANTE:** Se refinar o Pool (Passo 3) antes de escolher o combo (Passo 1), o sistema usará 18 dezenas e matará a vantagem das matrizes maiores.")
-    
     st.subheader("📐 ANÁLISE TÉCNICA DE MATRIZES (ACRÉSCIMO)")
     dados_mat = []
     for nome, info in MATRIZES_FECHAMENTO.items():
@@ -1631,12 +1457,15 @@ with abas[5]:
     st.table(pd.DataFrame(dados_mat))
     st.info("💡 **Dica Técnica:** A coluna 'Erro Máx.' indica quantas dezenas do seu pool podem ser sorteadas e ainda manter a garantia 100%.")
     
+    # --- COLE O BLOCO ABAIXO EXATAMENTE AQUI ---
+    
     st.markdown("---")
     st.subheader("📊 Diagnóstico de Performance (Últimos 30 Concursos)")
     st.write("Clique abaixo para validar qual estratégia está com a melhor pontuação no ciclo atual.")
 
     if st.button("🚀 Rodar Diagnóstico de 30 Dias"):
         with st.spinner("IA simulando 12 estratégias x 30 concursos..."):
+            # O sistema processa aqui sem alterar seu jogo atual
             st.success("Diagnóstico de Ciclo Concluído!")
             
             col1, col2, col3 = st.columns(3)
@@ -1660,13 +1489,9 @@ with abas[5]:
             sorteadas_no_ciclo = set()
             concursos_analisados = sorted(res_loto.keys(), key=lambda x: int(x), reverse=True)
             for c in concursos_analisados:
-                # CORREÇÃO DE SEGURANÇA NA ITERAÇÃO
-                dezenas_jogo = res_loto[c]
-                if isinstance(dezenas_jogo, (list, set, tuple)):
-                    sorteadas_no_ciclo.update(dezenas_jogo)
-                if len(sorteadas_no_ciclo) >= 25: 
+                sorteadas_no_ciclo.update(res_loto[c])
+                if len(sorteadas_no_ciclo) == 25: 
                     break
-            
             faltam = sorted(list(set(range(1, 26)) - sorteadas_no_ciclo))
             if not faltam: 
                 st.success("✅ CICLO FECHADO!")
@@ -1702,16 +1527,17 @@ with abas[6]:
     res_af = st.session_state.ultimo_res.get(mod_af, {})
     pool_selecionado = st.session_state.favoritas.get(mod_af, [])
     
-    # Previne erro no botão Refinar da Aba 0
     matriz_calculada = calcular_matriz_afinidade_kadosh(mod_af)
     st.session_state['matriz_ativa'] = matriz_calculada 
     
-    if not res_af:
-        st.warning("⚠️ Base de dados insuficiente. Carregue o backup na Aba 3.")
+    if not res_af or len(res_af) < 2:
+        st.warning("⚠️ Base de dados insuficiente na Aba 3. Adicione resultados.")
+        st.stop()
     else:
         dezenas_lista = list(res_af.values())
         total_jogos = len(dezenas_lista)
         
+        matriz = {}
         todos_pares = []
         for i in range(1, 26):
             for j in range(i + 1, 26):
@@ -1725,63 +1551,80 @@ with abas[6]:
 
         st.subheader(f"🔥 Radar de Potência do Pool ({total_jogos} jogos)")
         
-        # --- ALERTA VISUAL DE CONEXÕES ---
+        # --- NOVO: ALERTA DE POTÊNCIA VISUAL ---
         cols_pot = st.columns(2)
         with cols_pot[0]:
-            ouro_no_pool = [f"{r['Par'][0]:02d}-{r['Par'][1]:02d}" for _, r in df_ouro.iterrows() 
-                            if r['Par'][0] in pool_selecionado and r['Par'][1] in pool_selecionado]
+            # Verifica quais Casais de Ouro estão COMPLETOS no seu Pool
+            ouro_no_pool = []
+            for _, row in df_ouro.iterrows():
+                p1, p2 = row['Par']
+                if p1 in pool_selecionado and p2 in pool_selecionado:
+                    ouro_no_pool.append(f"{p1:02d}-{p2:02d}")
+            
             if ouro_no_pool:
                 st.success(f"💎 **CONEXÕES DE ELITE NO POOL:** {', '.join(ouro_no_pool)}")
             else:
-                st.info("💡 Nenhuma conexão 'Ouro' no Pool.")
+                st.info("💡 Nenhuma conexão 'Ouro' completa no Pool atual.")
 
         with cols_pot[1]:
-            vacuo_no_pool = [f"{r['Par'][0]:02d}-{r['Par'][1]:02d}" for _, r in df_vacuo.iterrows() 
-                             if r['Par'][0] in pool_selecionado and r['Par'][1] in pool_selecionado]
+            # Verifica se há pares de Vácuo (inimigos) no seu Pool
+            vacuo_no_pool = []
+            for _, row in df_vacuo.iterrows():
+                p1, p2 = row['Par']
+                if p1 in pool_selecionado and p2 in pool_selecionado:
+                    vacuo_no_pool.append(f"{p1:02d}-{p2:02d}")
+            
             if vacuo_no_pool:
                 st.error(f"⚠️ **CONFLITOS DE VÁCUO NO POOL:** {', '.join(vacuo_no_pool)}")
             else:
-                st.success("✅ Pool sem conflitos!")
+                st.success("✅ Pool sem conflitos de vácuo!")
 
         st.markdown("---")
+        # (O restante do seu código de tabelas e trios continua igual abaixo...)
 
-        # --- AQUI ESTÁ A VISUALIZAÇÃO DOS PARES QUE VOCÊ QUERIA ---
-        st.subheader("🌟 Pares de Ouro (Os que mais saem juntos)")
-        cols_o = st.columns(3)
-        for idx, row in df_ouro.reset_index().iterrows():
-            with cols_o[idx % 3]:
-                st.success(f"✅ {row['Par'][0]:02d} + {row['Par'][1]:02d} \n\n Juntos: {row['Vezes']}x")
 
-        st.markdown("---")
-        st.subheader("🚫 Pares em Vácuo (Inimigos Históricos)")
+        st.subheader("🚫 Pares em Vácuo (Os que menos se encontram)")
+        st.warning("Evite usar estas duplas como FIXAS no mesmo bilhete.")
+        
+        st.subheader("🚫 Pares em Vácuo (Inimigos)")
         st.warning("Evite usar estas duplas como FIXAS no mesmo bilhete.")
         cols_v = st.columns(3)
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
-                st.error(f"❌ {row['Par'][0]:02d} + {row['Par'][1]:02d} \n\n Juntos: {row['Vezes']}x")
+                st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
 
         st.markdown("---")
-        
-        # --- TRIOS DE OURO ---
         st.subheader("🏆 Trios de Ouro (Blocos de Alta Potência)")
+        st.info("Estes trios saíram juntos com frequência máxima na história (3630 concursos).")
+
+        # LÓGICA RIGOROSA DE TRIOS
         contagem_trios = {}
+        # Analisamos os jogos para encontrar trios que aparecem juntos
+        # Para precisão perita, focamos nos trios mais recorrentes
         for jogo in dezenas_lista:
+            # Pegamos as combinações de 3 dentro de cada sorteio
             for trio in combinations(sorted(list(jogo)), 3):
                 contagem_trios[trio] = contagem_trios.get(trio, 0) + 1
         
+        # Filtramos os 10 trios mais fortes de toda a base
         trios_ordenados = sorted(contagem_trios.items(), key=lambda x: x[1], reverse=True)[:10]
         
         cols_t = st.columns(2)
         for idx, (trio, vezes) in enumerate(trios_ordenados):
+            # Cálculo de probabilidade real do trio
             porc_trio = (vezes / total_jogos) * 100
             with cols_t[idx % 2]:
                 st.markdown(f"""
                 <div style="background: linear-gradient(45deg, #d4af37, #f1c40f); color: black; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 2px solid #000; box-shadow: 3px 3px 0px #000;">
-                    <span style="font-size: 18px;"><b>TRIO: {trio[0]:02d} - {trio[1]:02d} - {trio[2]:02d}</b></span><br>
-                    <hr style="border: 0.1px solid black; margin: 5px 0;">
-                    Frequência: {vezes}x | Afinidade: {porc_trio:.2f}%
+                    <span style="font-size: 20px;"><b>TRIO: {trio[0]:02d} - {trio[1]:02d} - {trio[2]:02d}</b></span><br>
+                    <hr style="border: 0.5px solid black; margin: 5px 0;">
+                    <b>Frequência Histórica:</b> {vezes} vezes <br>
+                    <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
+
+                # --- [FINALIZAÇÃO DO SISTEMA] ---
+
 # Rodapé informativo
 st.markdown("---")
 st.markdown(
