@@ -995,7 +995,7 @@ with abas[0]:
                 st.session_state.favoritas[mod] = list(range(1, max_v_bt + 1))
                 st.rerun()
 
-        with col_btn2:
+      with col_btn2:
             if mod == "Lotofácil":
                 # BOTÃO 3: INTELIGENTE
                 if st.button("🧠 POOL INTELIGENTE"):
@@ -1010,29 +1010,32 @@ with abas[0]:
                         st.success(f"🎯 Pool Inteligente: {tamanho_alvo_pool} dezenas!")
                         st.rerun()
                     else:
-                        st.warning("Execute o Refinamento primeiro para calibrar a IA!")
+                        st.warning("Ative a IA primeiro para calibrar os scores!")
 
-            # BOTÃO 4: REFINAR (Onde estava o erro de sincronia)
-            if mod == "Lotofácil":
+                # BOTÃO 4: REFINAR (Sincronizado com o motor de 5 IAs)
                 if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
                     pool_base = st.session_state.favoritas.get(mod, [])
-                    if len(pool_base) < tamanho_alvo_pool:
+                    
+                    # Se não tem pool, ele treina a IA primeiro (Garante que não fica vazio)
+                    if not pool_base or len(pool_base) < tamanho_alvo_pool:
                         pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
          
+                    # Pega a matriz da Aba 6 (Se não existir, calcula na hora para não dar erro)
                     matriz_af = st.session_state.get('matriz_ativa')
                     if matriz_af is None:
                         matriz_af = calcular_matriz_afinidade_kadosh(mod)
                         st.session_state['matriz_ativa'] = matriz_af
          
+                    # Pega os scores das 5 IAs (Scores originais do seu código)
                     scores_ia = st.session_state.get('scores_especialistas', st.session_state.get('scores_predicao', {}))
                     
-                    # Chama sua função original
+                    # EXECUTA O REFINAMENTO (Função original do seu código)
                     pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, scores_ia)
          
-                    # SALVA NAS SUAS VARIÁVEIS ORIGINAIS
+                    # SALVA E FORÇA O STREAMLIT A ATUALIZAR O VOLANTE
                     st.session_state.favoritas[mod] = sorted([int(n) for n in pool_refinado])
                     st.success(f"🎯 Refinado para {len(pool_refinado)} dezenas!")
-                    st.rerun() # Essencial para atualizar a tela
+                    st.rerun() 
 
         # --- CAMPO DE SELEÇÃO (RESPEITANDO SEU CÓDIGO) ---
         st.markdown("---")
