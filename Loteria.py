@@ -4,10 +4,14 @@ import json
 import random
 import re
 import pandas as pd
+import numpy as np  # Adicionar aqui
+import io
+import unicodedata
 from collections import Counter
 from itertools import combinations
 from fpdf import FPDF
-import io
+from sklearn.ensemble import RandomForestClassifier # Garante a IA de Floresta
+from sklearn.model_selection import GridSearchCV    # Garante o Torneio de Hipóteses
 
 def gerar_pdf_jogos(lista_jogos, loteria_nome):
     from fpdf import FPDF
