@@ -1119,7 +1119,7 @@ with abas[1]:
         key="f_conf_definitiva"
     )
 
-    # 2. DASHBOARD FINANCEIRO (TROCA DO PRETO POR AZUL MARINHO ESCURO)
+    # 2. DASHBOARD FINANCEIRO (CINZA PRATA PREMIUM - ALTA VISIBILIDADE)
     jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
     res_db = st.session_state.ultimo_res.get(mod_f, {})
     
@@ -1134,15 +1134,15 @@ with abas[1]:
             t_premio += float(st.session_state.premios[mod_f].get(str(acertos), 0.0))
 
     saldo = t_premio - t_gasto
-    cor_saldo = "#2ecc71" if saldo >= 0 else "#e74c3c"
+    cor_saldo_texto = "#1e8449" if saldo >= 0 else "#a93226"
 
     st.markdown(f"""
-    <div style="background: linear-gradient(145deg, #0f172a, #1e293b); padding: 25px; border-radius: 15px; border: 2px solid #d4af37; display: flex; justify-content: space-around; align-items: center; text-align: center; margin-bottom: 25px; box-shadow: 0px 10px 20px rgba(0,0,0,0.2);">
-        <div><p style="color:#d4af37; margin:0; font-size:13px; font-weight:bold; letter-spacing:1px;">INVESTIMENTO</p><h2 style="color:white; margin:0;">R$ {t_gasto:,.2f}</h2></div>
-        <div style="border-left: 1px solid #334155; height: 50px;"></div>
-        <div><p style="color:#d4af37; margin:0; font-size:13px; font-weight:bold; letter-spacing:1px;">RETORNO TOTAL</p><h2 style="color:#f1c40f; margin:0;">R$ {t_premio:,.2f}</h2></div>
-        <div style="border-left: 1px solid #334155; height: 50px;"></div>
-        <div><p style="color:#d4af37; margin:0; font-size:13px; font-weight:bold; letter-spacing:1px;">SALDO LÍQUIDO</p><h2 style="color:{cor_saldo}; margin:0;">R$ {saldo:,.2f}</h2></div>
+    <div style="background: #e5e7eb; padding: 25px; border-radius: 15px; border: 3px solid #d4af37; display: flex; justify-content: space-around; align-items: center; text-align: center; margin-bottom: 25px; box-shadow: 4px 4px 10px rgba(0,0,0,0.1);">
+        <div><p style="color:#4b5563; margin:0; font-size:14px; font-weight:bold;">INVESTIMENTO</p><h2 style="color:#111827; margin:0;">R$ {t_gasto:,.2f}</h2></div>
+        <div style="border-left: 2px solid #9ca3af; height: 50px;"></div>
+        <div><p style="color:#b8860b; margin:0; font-size:14px; font-weight:bold;">RETORNO TOTAL</p><h2 style="color:#856404; margin:0;">R$ {t_premio:,.2f}</h2></div>
+        <div style="border-left: 2px solid #9ca3af; height: 50px;"></div>
+        <div><p style="color:#4b5563; margin:0; font-size:14px; font-weight:bold;">SALDO LÍQUIDO</p><h2 style="color:{cor_saldo_texto}; margin:0;">R$ {saldo:,.2f}</h2></div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1150,29 +1150,28 @@ with abas[1]:
     if st.session_state.get('jogos_salvos'):
         try:
             pdf_bytes = gerar_pdf_jogos(st.session_state.jogos_salvos, mod_f)
-            st.download_button(label="📥 BAIXAR JOGOS (PDF)", data=pdf_bytes, file_name=f"jogos_{mod_f}.pdf", mime="application/pdf", key="btn_pdf_vfinal_estavel")
+            st.download_button(label="📥 BAIXAR JOGOS (PDF)", data=pdf_bytes, file_name=f"jogos_{mod_f}.pdf", mime="application/pdf")
         except: pass
     
     if not jogos_salvos_atual:
-        st.warning(f"Nenhum jogo salvo para {mod_f}. Vá ao Gerador primeiro!")
+        st.warning(f"Nenhum jogo salvo para {mod_f}.")
     else:
-        # --- PERFORMANCE DO POOL (CERCO - TROCA DO PRETO POR AZUL MARINHO) ---
+        # --- PERFORMANCE DO POOL (CINZA CLARO COM NÚMEROS NÍTIDOS) ---
         ultimo_j = jogos_salvos_atual[-1]
         pool_origem = ultimo_j.get('pool_origem', [])
         alvo_p = str(ultimo_j.get('concurso_alvo', ''))
         
         if pool_origem and alvo_p in res_db:
-            st.markdown(f"### 🎯 DESEMPENHO DO CERCO (POOL)")
+            st.markdown(f"### 🎯 DESEMPENHO DO POOL")
             res_alvo = res_db[alvo_p]
             acertos_p = sum(1 for d in pool_origem if d in res_alvo)
             
-            h_pool = '<div style="background: #0f172a; padding: 20px; border-radius: 15px; border: 2px solid #d4af37; margin-bottom: 25px; box-shadow: 0px 4px 15px rgba(0,0,0,0.2);">'
+            h_pool = '<div style="background: #f3f4f6; padding: 20px; border-radius: 15px; border: 2px solid #d4af37; margin-bottom: 25px;">'
             for d in sorted(pool_origem):
-                bg = "#27ae60" if d in res_alvo else "#334155"
-                txt = "#ffffff" if d in res_alvo else "#cbd5e1"
-                border = "2px solid #f1c40f" if d in res_alvo else "1px solid #475569"
-                h_pool += f'<span style="display: inline-block; width: 34px; height: 34px; line-height: 34px; text-align: center; border-radius: 8px; margin: 4px; font-weight: bold; background: {bg}; color: {txt}; border: {border};">{d:02d}</span>'
-            h_pool += f'<br><br><span style="color: #f1c40f; font-size: 18px; font-weight:bold;">🔥 ACERTOS DENTRO DO POOL: {acertos_p} de {len(pool_origem)}</span></div>'
+                bg = "#27ae60" if d in res_alvo else "#ffffff"
+                txt = "#ffffff" if d in res_alvo else "#374151"
+                h_pool += f'<span style="display: inline-block; width: 34px; height: 34px; line-height: 34px; text-align: center; border-radius: 8px; margin: 4px; font-weight: bold; background: {bg}; color: {txt}; border: 1px solid #d1d5db;">{d:02d}</span>'
+            h_pool += f'<p style="margin-top:15px; color:#111827; font-size:18px;"><b>Acertos no Cerco: <span style="color:#1e8449;">{acertos_p} de {len(pool_origem)}</span></b></p></div>'
             st.markdown(h_pool, unsafe_allow_html=True)
 
         st.markdown("---")
@@ -1180,43 +1179,50 @@ with abas[1]:
 
         for i, jogo in enumerate(jogos_salvos_atual):
             dezenas_j = jogo['n']
-            tam_j = jogo.get('tam', 15)
             c_alvo = str(jogo.get('concurso_alvo', ''))
             fixas_j = jogo.get('fixas_utilizadas', []) 
             sorteio = res_db.get(c_alvo, [])
             
             fixas_batidas = [f for f in fixas_j if f in sorteio]
-            res_fixas = f"📌 Fixas: {len(fixas_batidas)}/{len(fixas_j)}" if fixas_j else "Sem Fixas"
+            res_fixas_html = f"<b style='color:#b8860b;'>📌 Fixas: {len(fixas_batidas)}/{len(fixas_j)}</b>" if fixas_j else ""
             
             html_dez = ""
             if sorteio:
                 acertos = len(set(dezenas_j) & set(sorteio))
                 v_premio = float(st.session_state.premios[mod_f].get(str(acertos), 0.0))
-                estilo_card = "border-left: 10px solid #2ecc71; background: #f0fff4;" if v_premio > 0 else "border-left: 10px solid #95a5a6; background: #ffffff;"
-                badge_res = f'<span style="background:#2ecc71; color:white; padding:4px 12px; border-radius:20px; font-weight:bold;">🏆 GANHOU: R$ {v_premio:,.2f}</span>' if v_premio > 0 else f'<span style="background:#34495e; color:white; padding:4px 12px; border-radius:20px;">{acertos} ACERTOS</span>'
+                
+                # --- ESTILO JOGO PREMIADO (DOURADO) ---
+                if v_premio > 0:
+                    estilo_card = "background: linear-gradient(135deg, #fff9e6 0%, #f7e7ce 100%); border: 2px solid #d4af37;"
+                    badge = f'<span style="background:#d4af37; color:black; padding:5px 15px; border-radius:20px; font-weight:900;">🏆 PREMIADO: R$ {v_premio:,.2f}</span>'
+                else:
+                    estilo_card = "background: #ffffff; border: 1px solid #d1d5db;"
+                    badge = f'<span style="background:#6b7280; color:white; padding:5px 15px; border-radius:20px;">{acertos} ACERTOS</span>'
 
                 for d in dezenas_j:
                     is_fixa = d in fixas_j
                     is_hit = d in sorteio
-                    cor_num = "#27ae60" if is_hit else "#444"
-                    peso = "900" if is_hit else "400"
-                    decor = "border: 2px solid #d4af37; padding: 2px; border-radius: 4px; background: #fff9e6;" if is_fixa else ""
-                    html_dez += f'<span style="color:{cor_num}; font-weight:{peso}; font-size:18px; margin-right:8px; {decor}">{d:02d}{"📍" if is_fixa else ""}</span>'
+                    # Cores vivas para acertou (Verde) e erro (Cinza)
+                    cor_num = "#1e8449" if is_hit else "#9ca3af"
+                    # Moldura para fixas (Borda dourada)
+                    borda_fixa = "border: 2px solid #d4af37; padding: 2px; border-radius: 5px; background: white;" if is_fixa else ""
+                    html_dez += f'<span style="font-size:20px; font-weight:bold; color:{cor_num}; margin-right:10px; {borda_fixa}">{d:02d}</span>'
                 
-                status_txt = f"{badge_res} | <span style='color:#d4af37; font-weight:bold;'>{res_fixas}</span>"
+                footer = f"{badge} | {res_fixas_html}"
             else:
-                estilo_card = "border-left: 10px solid #f1c40f; background: #fffdf5;"
+                # --- AGUARDANDO SORTEIO ---
+                estilo_card = "background: #f9fafb; border: 1px dashed #9ca3af;"
                 for d in dezenas_j:
-                    decor = "border: 2px solid #f1c40f; padding: 2px; border-radius: 4px; background: #fff9e6;" if d in fixas_j else ""
-                    html_dez += f'<span style="color:#000; font-size:18px; margin-right:8px; {decor}">{d:02d}{"📍" if d in fixas_j else ""}</span>'
-                status_txt = f"⏳ Aguardando Concurso {c_alvo} | <span style='color:#7f8c8d;'>{res_fixas}</span>"
+                    borda_fixa = "border: 2px solid #f1c40f; padding: 2px; border-radius: 5px;" if d in fixas_j else ""
+                    html_dez += f'<span style="font-size:20px; color:#374151; margin-right:10px; {borda_fixa}">{d:02d}</span>'
+                footer = f"⏳ Aguardando Sorteio {c_alvo} | {res_fixas_html}"
 
             st.markdown(f"""
-            <div style="{estilo_card} padding: 20px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0px 4px 10px rgba(0,0,0,0.08); border-top: 1px solid #eee; border-right: 1px solid #eee;">
-                <div style="font-family: 'Courier New', monospace; margin-bottom: 12px; line-height: 2;">{html_dez}</div>
-                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 10px;">
-                    <span style="font-size: 14px; font-weight:bold; color:#2c3e50;">JOGO {i+1:02d}</span>
-                    <div>{status_txt}</div>
+            <div style="{estilo_card} padding: 20px; border-radius: 12px; margin-bottom: 15px; box-shadow: 2px 2px 8px rgba(0,0,0,0.05);">
+                <div style="margin-bottom: 15px;">{html_dez}</div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight:bold; color:#111827;">JOGO {i+1:02d}</span>
+                    <div>{footer}</div>
                 </div>
             </div>""", unsafe_allow_html=True)
 
