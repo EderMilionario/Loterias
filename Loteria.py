@@ -995,7 +995,7 @@ with abas[0]:
                 st.session_state.favoritas[mod] = list(range(1, max_v_bt + 1))
                 st.rerun()
 
-      with col_btn2:
+        with col_btn2:
             if mod == "Lotofácil":
                 # BOTÃO 3: INTELIGENTE
                 if st.button("🧠 POOL INTELIGENTE"):
