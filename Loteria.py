@@ -1119,8 +1119,7 @@ with abas[1]:
         key="f_conf_definitiva"
     )
 
-    # 2. DASHBOARD DE DESEMPENHO FINANCEIRO NO TOPO
-    # (Calculamos rápido antes para exibir os números no topo)
+    # 2. DASHBOARD DE DESEMPENHO (FUNDO CLARO E LIMPO)
     jogos_salvos_atual = [j for j in st.session_state.jogos_salvos if j['mod'] == mod_f]
     res_db = st.session_state.ultimo_res.get(mod_f, {})
     
@@ -1135,15 +1134,15 @@ with abas[1]:
             t_premio += float(st.session_state.premios[mod_f].get(str(acertos), 0.0))
 
     saldo = t_premio - t_gasto
-    cor_saldo = "#2ecc71" if saldo >= 0 else "#e74c3c"
+    cor_texto_saldo = "#27ae60" if saldo >= 0 else "#c0392b"
 
     st.markdown(f"""
-    <div style="background: #1e272e; padding: 20px; border-radius: 15px; border: 2px solid #34495e; display: flex; justify-content: space-around; align-items: center; text-align: center; margin-bottom: 25px;">
-        <div><p style="color:#bdc3c7; margin:0; font-size:12px;">INVESTIMENTO</p><h2 style="color:white; margin:0;">R$ {t_gasto:,.2f}</h2></div>
-        <div style="border-left: 1px solid #34495e; height: 40px;"></div>
-        <div><p style="color:#bdc3c7; margin:0; font-size:12px;">RETORNO TOTAL</p><h2 style="color:#f1c40f; margin:0;">R$ {t_premio:,.2f}</h2></div>
-        <div style="border-left: 1px solid #34495e; height: 40px;"></div>
-        <div><p style="color:#bdc3c7; margin:0; font-size:12px;">SALDO LÍQUIDO</p><h2 style="color:{cor_saldo}; margin:0;">R$ {saldo:,.2f}</h2></div>
+    <div style="background: #ffffff; padding: 20px; border-radius: 15px; border: 1px solid #dee2e6; display: flex; justify-content: space-around; align-items: center; text-align: center; margin-bottom: 25px; box-shadow: 0px 4px 12px rgba(0,0,0,0.05);">
+        <div><p style="color:#7f8c8d; margin:0; font-size:13px; font-weight:bold;">INVESTIMENTO</p><h2 style="color:#2c3e50; margin:0;">R$ {t_gasto:,.2f}</h2></div>
+        <div style="border-left: 1px solid #eee; height: 40px;"></div>
+        <div><p style="color:#7f8c8d; margin:0; font-size:13px; font-weight:bold;">RETORNO</p><h2 style="color:#f39c12; margin:0;">R$ {t_premio:,.2f}</h2></div>
+        <div style="border-left: 1px solid #eee; height: 40px;"></div>
+        <div><p style="color:#7f8c8d; margin:0; font-size:13px; font-weight:bold;">SALDO ATUAL</p><h2 style="color:{cor_texto_saldo}; margin:0;">R$ {saldo:,.2f}</h2></div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1151,88 +1150,77 @@ with abas[1]:
     if st.session_state.get('jogos_salvos'):
         try:
             pdf_bytes = gerar_pdf_jogos(st.session_state.jogos_salvos, mod_f)
-            st.download_button(
-                label="📥 BAIXAR JOGOS (PDF)",
-                data=pdf_bytes,
-                file_name=f"jogos_{mod_f}.pdf",
-                mime="application/pdf",
-                key="btn_pdf_vfinal_estavel"
-            )
-        except Exception as e:
-            st.error(f"Erro no PDF: {e}")
+            st.download_button(label="📥 BAIXAR JOGOS (PDF)", data=pdf_bytes, file_name=f"jogos_{mod_f}.pdf", mime="application/pdf")
+        except: pass
     
     if not jogos_salvos_atual:
-        st.warning(f"Nenhum jogo salvo para {mod_f}. Vá ao Gerador primeiro!")
+        st.warning(f"Nenhum jogo salvo para {mod_f}.")
     else:
-        # --- PERFORMANCE DO POOL (CERCO) ---
+        # --- PERFORMANCE DO POOL (FUNDO CLARO) ---
         ultimo_j = jogos_salvos_atual[-1]
         pool_origem = ultimo_j.get('pool_origem', [])
         alvo_p = str(ultimo_j.get('concurso_alvo', ''))
         
         if pool_origem and alvo_p in res_db:
-            st.markdown(f"### 🎯 PERFORMANCE DO SEU POOL (CONCURSO {alvo_p})")
+            st.markdown(f"### 🎯 Performance do Pool (Cerco)")
             res_alvo = res_db[alvo_p]
             acertos_p = sum(1 for d in pool_origem if d in res_alvo)
             
-            h_pool = '<div style="background: #000; padding: 20px; border-radius: 15px; border: 1px solid #d4af37; margin-bottom: 25px; box-shadow: 0px 4px 15px rgba(212, 175, 55, 0.2);">'
+            h_pool = '<div style="background: #f8f9fa; padding: 20px; border-radius: 15px; border: 1px solid #ced4da; margin-bottom: 25px;">'
             for d in sorted(pool_origem):
-                bg = "#27ae60" if d in res_alvo else "#34495e"
-                border = "2px solid #f1c40f" if d in res_alvo else "1px solid #7f8c8d"
-                h_pool += f'<span style="display: inline-block; width: 34px; height: 34px; line-height: 34px; text-align: center; border-radius: 8px; margin: 4px; font-weight: bold; background: {bg}; color: white; border: {border};">{d:02d}</span>'
-            h_pool += f'<br><br><span style="color: #f1c40f; font-size: 18px;">⭐ <b>DEZENAS NO CERCO: {acertos_p} de {len(pool_origem)}</b></span></div>'
+                bg = "#28a745" if d in res_alvo else "#ffffff"
+                txt = "#ffffff" if d in res_alvo else "#6c757d"
+                h_pool += f'<span style="display: inline-block; width: 32px; height: 32px; line-height: 32px; text-align: center; border-radius: 6px; margin: 3px; font-weight: bold; background: {bg}; color: {txt}; border: 1px solid #dee2e6;">{d:02d}</span>'
+            h_pool += f'<p style="margin-top:15px; color:#2c3e50; font-weight:bold;">Acertos no Cerco: {acertos_p} de {len(pool_origem)}</p></div>'
             st.markdown(h_pool, unsafe_allow_html=True)
 
         st.markdown("---")
-        st.subheader("📋 Bilhetes Estratégicos")
+        st.subheader("📋 Bilhetes e Desempenho de Fixas")
 
         for i, jogo in enumerate(jogos_salvos_atual):
             dezenas_j = jogo['n']
             tam_j = jogo.get('tam', 15)
             c_alvo = str(jogo.get('concurso_alvo', ''))
             fixas_j = jogo.get('fixas_utilizadas', []) 
-            
             sorteio = res_db.get(c_alvo, [])
-            html_dez = ""
             
+            # Cálculo de desempenho das FIXAS
+            fixas_certas = [f for f in fixas_j if f in sorteio]
+            desempenho_fixas = f"{len(fixas_certas)}/{len(fixas_j)}" if fixas_j else "N/A"
+            
+            html_dez = ""
             if sorteio:
                 acertos = len(set(dezenas_j) & set(sorteio))
                 v_premio = float(st.session_state.premios[mod_f].get(str(acertos), 0.0))
+                cor_borda = "#2ecc71" if v_premio > 0 else "#bdc3c7"
                 
-                # Cores baseadas no prêmio
-                estilo_card = "border-left: 8px solid #2ecc71; background: #f0fff4;" if v_premio > 0 else "border-left: 8px solid #95a5a6; background: #fdfdfd;"
-                badge_res = f'<span style="background:#2ecc71; color:white; padding:4px 10px; border-radius:10px;">🏆 GANHOU: R$ {v_premio:,.2f}</span>' if v_premio > 0 else f'<span style="background:#95a5a6; color:white; padding:4px 10px; border-radius:10px;">{acertos} ACERTOS</span>'
-
                 for d in dezenas_j:
                     is_fixa = d in fixas_j
                     is_hit = d in sorteio
-                    
-                    # Estilização da Dezena
-                    cor_num = "#27ae60" if is_hit else "#444"
-                    peso = "900" if is_hit else "400"
-                    # Destaque para Fixas: Borda dourada ou sublinhado
-                    decor = "border: 2px solid #d4af37; padding: 2px 4px; border-radius: 5px;" if is_fixa else ""
-                    pino = "📌" if is_fixa else ""
-                    
-                    html_dez += f'<span style="color:{cor_num}; font-weight:{peso}; font-size:18px; margin-right:10px; {decor}">{d:02d}{pino}</span>'
+                    # Visual: Círculo verde se acertou, cinza se errou. Borda dourada se for FIXA.
+                    bg_n = "#2ecc71" if is_hit else "#f8f9fa"
+                    txt_n = "#fff" if is_hit else "#95a5a6"
+                    borda_n = "3px solid #f1c40f" if is_fixa else "1px solid #dee2e6"
+                    html_dez += f'<span style="display:inline-block; width:30px; height:30px; line-height:30px; text-align:center; border-radius:50%; background:{bg_n}; color:{txt_n}; border:{borda_n}; margin-right:5px; font-size:14px; font-weight:bold;">{d:02d}</span>'
                 
-                msg_final = f"{badge_res} | <span style='color:#666; font-size:12px;'>CONCURSO {c_alvo}</span>"
+                res_info = f"<b>{acertos} ACERTOS</b> | Prêmio: R$ {v_premio:,.2f}"
             else:
-                # Caso aguardando sorteio
-                estilo_card = "border-left: 8px solid #f1c40f; background: #fffdf5;"
+                cor_borda = "#f1c40f"
                 for d in dezenas_j:
-                    decor = "border: 1px solid #d4af37; padding: 2px 4px; border-radius: 5px; background: #fff9e6;" if d in fixas_j else ""
-                    pino = "📌" if d in fixas_j else ""
-                    html_dez += f'<span style="color:#000; font-size:18px; margin-right:10px; {decor}">{d:02d}{pino}</span>'
-                msg_final = f"⏳ <span style='color:#d35400;'>AGUARDANDO SORTEIO {c_alvo}...</span>"
+                    borda_n = "3px solid #f1c40f" if d in fixas_j else "1px solid #dee2e6"
+                    html_dez += f'<span style="display:inline-block; width:30px; height:30px; line-height:30px; text-align:center; border-radius:50%; background:#fff; color:#000; border:{borda_n}; margin-right:5px; font-size:14px;">{d:02d}</span>'
+                res_info = "⏳ Aguardando Sorteio"
 
             st.markdown(f"""
-            <div style="{estilo_card} padding: 18px; border-radius: 15px; margin-bottom: 12px; box-shadow: 2px 2px 10px rgba(0,0,0,0.05);">
-                <div style="font-family: 'Courier New', monospace; margin-bottom: 10px; line-height: 2;">{html_dez}</div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <b>JOGO {i+1:02d}</b>
-                    <div>{msg_final}</div>
+            <div style="border: 1px solid #dee2e6; border-left: 10px solid {cor_borda}; padding: 15px; border-radius: 10px; background: white; margin-bottom: 15px; box-shadow: 2px 2px 5px rgba(0,0,0,0.02);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span style="font-size:12px; color:#7f8c8d;">JOGO {i+1:02d} - CONCURSO {c_alvo}</span>
+                    <span style="font-size:12px; color:#f39c12; font-weight:bold;">📌 FIXAS: {desempenho_fixas}</span>
                 </div>
-            </div>""", unsafe_allow_html=True)
+                <div style="margin-bottom: 10px;">{html_dez}</div>
+                <div style="font-size:14px; color:#2c3e50;">{res_info}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
         if st.button("🗑️ LIMPAR HISTÓRICO"):
             st.session_state.jogos_salvos = []
