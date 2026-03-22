@@ -1334,7 +1334,8 @@ with abas[1]:
                 # --- ESTILO JOGO PREMIADO (DOURADO) ---
                 if v_premio > 0:
                     estilo_card = "background: linear-gradient(135deg, #fff9e6 0%, #f7e7ce 100%); border: 2px solid #d4af37;"
-                    badge = f'<span style="background:#d4af37; color:black; padding:5px 15px; border-radius:20px; font-weight:900;">🏆 PREMIADO: R$ {v_premio:,.2f}</span>'
+                    # AJUSTE SOLICITADO: Agora mostra o valor e a quantidade de acertos juntos
+                    badge = f'<span style="background:#d4af37; color:black; padding:5px 15px; border-radius:20px; font-weight:900;">🏆 PREMIADO: R$ {v_premio:,.2f} ({acertos} ACERTOS)</span>'
                 else:
                     estilo_card = "background: #ffffff; border: 1px solid #d1d5db;"
                     badge = f'<span style="background:#6b7280; color:white; padding:5px 15px; border-radius:20px;">{acertos} ACERTOS</span>'
