@@ -263,7 +263,7 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_i
     mod = st.session_state.get('modalidade_selecionada', 'Lotofácil')
     res_db = st.session_state.ultimo_res.get(mod, {})
     
-    # CORREÇÃO: Se a matriz não existir, tentamos buscar a que está no state antes de desistir
+    # GARANTE A MATRIZ: Se vier nula, busca no estado global
     if matriz_afinidade is None:
         matriz_afinidade = st.session_state.get('matriz_ativa')
 
@@ -271,7 +271,7 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_i
         return sorted(list([int(n) for n in pool_atual]))
     
     if scores_ia is None:
-        # Pega os scores reais que a IA gerou no treino, senão usa vazio
+        # Puxa os scores treinados pelo motor de IA
         scores_ia = st.session_state.get('scores_especialistas', {})
 
     # 2. DICIONÁRIO DE NOTAS (O CONSELHO DE ESPECIALISTAS)
@@ -316,29 +316,32 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_i
         else:
             scores_especialistas[d]['entropia'] = 0.5
 
-    # SALVA PARA O GERADOR E TREINADOR USAREM
+    # Atualiza o estado para que os botões de IA também vejam estes dados
     st.session_state['scores_especialistas'] = scores_especialistas
 
-    # 3. O JUIZ: FUSÃO FINAL
+    # 3. O JUIZ: FUSÃO FINAL (Onde a lógica se une)
     def peso_juiz(d):
         try:
             d_int = int(d)
             if d_int >= tamanho_real_matriz: return 0.0
             
-            # CORREÇÃO: Trata se o score_ia vier como dict ou float
+            # Trata scores_ia se for dicionário (múltiplas IAs) ou valor único
             val_ia_bruto = scores_ia.get(d_int, 0.5)
             if isinstance(val_ia_bruto, dict):
                 s_ia = sum(val_ia_bruto.values()) / len(val_ia_bruto)
             else:
                 s_ia = val_ia_bruto
             
+            # Estatística de afinidade original
             linha_matriz = matriz_afinidade[d_int]
             afim_total = sum(linha_matriz) / (len(linha_matriz) + 1)
             estatistica_final = afim_total if afim_total > 0.40 else afim_total * 0.5
             
+            # Pesos do novo motor
             sc = scores_especialistas[d_int]
             peso_motor_novo = (sc['gnn'] * 0.3) + (sc['hmm'] * 0.2) + (sc['transformer'] * 0.3) + (sc['entropia'] * 0.2)
             
+            # Fusão: 40% Base/Estatística + 60% IA Avançada
             peso_base = (s_ia * 0.7) + (estatistica_final * 0.3)
             return (peso_base * 0.4) + (peso_motor_novo * 0.6)
         except:
@@ -347,14 +350,14 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_i
     # 4. EXECUÇÃO DO REFINAMENTO (REMOÇÃO E CURA)
     pool_refinado = [int(n) for n in pool_atual if int(n) < tamanho_real_matriz]
     
+    # Fase de Corte: Remove os elos mais fracos
     while len(pool_refinado) > tamanho_objetivo:
-        # Remove a dezena que o Juiz der a menor nota
         pior_idx = min(range(len(pool_refinado)), key=lambda i: peso_juiz(pool_refinado[i]))
         pool_refinado.pop(pior_idx)
 
-    # CURA DE VÁCUO (Trocas Agressivas)
+    # Fase de Cura: Troca dezenas ruins por dezenas de elite que ficaram fora
     dezenas_fora = [d for d in range(1, tamanho_real_matriz) if d not in pool_refinado]
-    for _ in range(4):
+    for _ in range(4): # 4 ciclos de substituição agressiva
         if not dezenas_fora or not pool_refinado: break
         pior_no_pool = min(pool_refinado, key=peso_juiz)
         melhor_fora = max(dezenas_fora, key=peso_juiz)
@@ -1018,30 +1021,35 @@ with abas[0]:
                     pool_base = st.session_state.favoritas.get(mod, [])
                     matriz_af = st.session_state.get('matriz_ativa')
             
+                    # 1. Garante que a matriz exista antes de rodar o refinamento
                     if matriz_af is None:
                         matriz_af = calcular_matriz_afinidade_kadosh(mod)
                         st.session_state['matriz_ativa'] = matriz_af
             
-                    # Puxa os scores que a IA gerou
+                    # 2. Puxa os scores que a tua IA gerou (GNN, Transformer, etc.)
                     scores_ia = st.session_state.get('scores_especialistas', {})
             
-                    # Roda a tua função de refinamento
+                    # 3. Roda a tua função de refinamento kadosh
                     pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, scores_ia)
             
-                    # Salva e dá o tapa na tela para mostrar
+                    # 4. Salva o novo pool e força o Streamlit a redesenhar a página
                     st.session_state.favoritas[mod] = sorted([int(n) for n in pool_refinado])
                     st.rerun()
 
                 st.markdown("---")
         
-                # VOLANTE SEM TRAVAS: Volta a visualização original, larga e clicável
+                # --- VOLANTE ORIGINAL (VISUALIZAÇÃO LARGA E CLICÁVEL) ---
+                # Mantemos uma key que identifique a modalidade para não bugar entre jogos
+                pool_data = st.session_state.favoritas.get(mod, [])
+        
                 pool = st.multiselect(
                     f"SELECIONE SEU POOL ({mod}):", 
                     range(1, max_v_bt + 1), 
-                    default=st.session_state.favoritas.get(mod, []),
-                    key=f"volante_original_{mod}" # Key estável para não bugar o clique manual
+                    default=pool_data,
+                    key=f"volante_original_{mod}" 
                 )
-                # Salva o que você marcou na mão ou o que a IA escolheu
+        
+                # Sincroniza o que o usuário clica com o estado das favoritas
                 st.session_state.favoritas[mod] = pool
         # --- ANÁLISE DE QUADRANTES (IGUAL AO SEU ORIGINAL) ---
         if pool and mod == "Lotofácil":
