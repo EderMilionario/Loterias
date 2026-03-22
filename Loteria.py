@@ -1007,6 +1007,8 @@ with abas[0]:
                             reverse=True
                         )
                         st.session_state.favoritas[mod] = sorted(dezenas_ordenadas[:tamanho_alvo_pool])
+                        # Criamos um gatilho para mudar a key do volante
+                        st.session_state[f"update_{mod}"] = random.randint(0, 99999)
                         st.rerun()
 
                 # BOTÃO 4: REFINAR (DEPOIS DA IA)
@@ -1021,14 +1023,19 @@ with abas[0]:
                     pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, scores_ia)
                     
                     st.session_state.favoritas[mod] = sorted([int(n) for n in pool_refinado])
-                    st.rerun() # ISSO FORÇA A ATUALIZAÇÃO DO VOLANTE
+                    # Forçamos a mudança da key do multiselect
+                    st.session_state[f"update_{mod}"] = random.randint(0, 99999)
+                    st.rerun()
 
         st.markdown("---")
         
-     # Criamos uma ID que muda se o conteúdo do pool mudar
-        # Isso força o volante a mostrar os números que a IA escolheu
+        # --- SISTEMA DE ATUALIZAÇÃO DO VOLANTE ---
         pool_data = st.session_state.favoritas.get(mod, [])
-        v_key = f"volante_{mod}_{sum(pool_data)}_{len(pool_data)}"
+        
+        # Usamos um sufixo aleatório que muda APENAS quando o botão é clicado
+        # Isso evita que o multiselect "congele" os valores antigos
+        token_update = st.session_state.get(f"update_{mod}", 0)
+        v_key = f"volante_{mod}_{token_update}"
 
         pool = st.multiselect(
             f"SELECIONE SEU POOL ({mod}):", 
@@ -1036,7 +1043,7 @@ with abas[0]:
             default=pool_data,
             key=v_key
         )
-        st.session_state.favoritas[mod] = pool 
+        st.session_state.favoritas[mod] = pool
 
         # --- ANÁLISE DE QUADRANTES (IGUAL AO SEU ORIGINAL) ---
         if pool and mod == "Lotofácil":
