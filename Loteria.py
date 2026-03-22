@@ -263,19 +263,22 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_i
     mod = st.session_state.get('modalidade_selecionada', 'Lotofácil')
     res_db = st.session_state.ultimo_res.get(mod, {})
     
+    # CORREÇÃO: Se a matriz não existir, tentamos buscar a que está no state antes de desistir
+    if matriz_afinidade is None:
+        matriz_afinidade = st.session_state.get('matriz_ativa')
+
     if not matriz_afinidade or not pool_atual or not res_db:
         return sorted(list([int(n) for n in pool_atual]))
     
     if scores_ia is None:
-        scores_ia = {}
+        # Pega os scores reais que a IA gerou no treino, senão usa vazio
+        scores_ia = st.session_state.get('scores_especialistas', {})
 
     # 2. DICIONÁRIO DE NOTAS (O CONSELHO DE ESPECIALISTAS)
-    # Inicializamos com 81 para cobrir todas as loterias, mas usaremos apenas o necessário
     scores_especialistas = {d: {'gnn': 0.5, 'hmm': 0.5, 'transformer': 0.5, 'entropia': 0.5} for d in range(1, 81)}
 
     # --- [CORREÇÃO CRÍTICA DO HISTÓRICO] ---
     try:
-        # Garante que as chaves do histórico sejam tratadas como inteiros para ordenação
         chaves_ordenadas = sorted(res_db.keys(), key=lambda x: int(x))
         historico_ordenado = [sorted([int(n) for n in res_db[k]]) for k in chaves_ordenadas]
     except:
@@ -288,11 +291,9 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_i
 
     # --- [MOTOR DE INTELIGÊNCIA INTEGRADO] ---
     adj_matrix = np.array(matriz_afinidade)
-    # O tamanho real é o número de linhas da matriz (ex: 26 para Lotofácil, 81 para Quina)
     tamanho_real_matriz = len(adj_matrix)
     max_afim = np.max(adj_matrix) if np.max(adj_matrix) > 0 else 1
 
-    # Loop baseado no tamanho da matriz real disponível (Ignora o índice 0)
     for d in range(1, tamanho_real_matriz):
         # A. GNN (Grafos)
         conexao_direta = np.sum(adj_matrix[d])
@@ -318,21 +319,23 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_i
     # SALVA PARA O GERADOR E TREINADOR USAREM
     st.session_state['scores_especialistas'] = scores_especialistas
 
-    # 3. O JUIZ: FUSÃO FINAL (IA ORIGINAL + MOTOR NOVO)
+    # 3. O JUIZ: FUSÃO FINAL
     def peso_juiz(d):
         try:
             d_int = int(d)
-            # Proteção contra índice fora da matriz
             if d_int >= tamanho_real_matriz: return 0.0
             
-            s_ia = scores_ia.get(d_int, 0.5)
+            # CORREÇÃO: Trata se o score_ia vier como dict ou float
+            val_ia_bruto = scores_ia.get(d_int, 0.5)
+            if isinstance(val_ia_bruto, dict):
+                s_ia = sum(val_ia_bruto.values()) / len(val_ia_bruto)
+            else:
+                s_ia = val_ia_bruto
             
-            # Sua lógica de afinidade original (Garante acesso seguro à linha da matriz)
             linha_matriz = matriz_afinidade[d_int]
             afim_total = sum(linha_matriz) / (len(linha_matriz) + 1)
             estatistica_final = afim_total if afim_total > 0.40 else afim_total * 0.5
             
-            # Notas das Novas IAs do conselho
             sc = scores_especialistas[d_int]
             peso_motor_novo = (sc['gnn'] * 0.3) + (sc['hmm'] * 0.2) + (sc['transformer'] * 0.3) + (sc['entropia'] * 0.2)
             
@@ -342,15 +345,14 @@ def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_i
             return 0.1
 
     # 4. EXECUÇÃO DO REFINAMENTO (REMOÇÃO E CURA)
-    # Garante que todos os itens do pool sejam inteiros para processamento
     pool_refinado = [int(n) for n in pool_atual if int(n) < tamanho_real_matriz]
     
-    # Remoção técnica até o objetivo
     while len(pool_refinado) > tamanho_objetivo:
+        # Remove a dezena que o Juiz der a menor nota
         pior_idx = min(range(len(pool_refinado)), key=lambda i: peso_juiz(pool_refinado[i]))
         pool_refinado.pop(pior_idx)
 
-    # CURA DE VÁCUO (Trocas Agressivas para fortalecer o Pool)
+    # CURA DE VÁCUO (Trocas Agressivas)
     dezenas_fora = [d for d in range(1, tamanho_real_matriz) if d not in pool_refinado]
     for _ in range(4):
         if not dezenas_fora or not pool_refinado: break
@@ -1015,36 +1017,42 @@ with abas[0]:
                 if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
                     pool_base = st.session_state.favoritas.get(mod, [])
                     matriz_af = st.session_state.get('matriz_ativa')
+            
+                    # Garante que a matriz exista antes de rodar
                     if matriz_af is None:
                         matriz_af = calcular_matriz_afinidade_kadosh(mod)
                         st.session_state['matriz_ativa'] = matriz_af
-                    
+            
+                    # CORREÇÃO CRÍTICA: Busca os scores dos especialistas que a IA treinou
                     scores_ia = st.session_state.get('scores_especialistas', st.session_state.get('scores_predicao', {}))
+            
+                    # Roda a função de refinamento que você já tem
                     pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, scores_ia)
-                    
+            
+                    # Salva o resultado no estado das favoritas
                     st.session_state.favoritas[mod] = sorted([int(n) for n in pool_refinado])
-                    # Forçamos a mudança da key do multiselect
+            
+                    # Forçamos a mudança da key do multiselect com o token aleatório
                     st.session_state[f"update_{mod}"] = random.randint(0, 99999)
                     st.rerun()
 
-        st.markdown("---")
+                st.markdown("---")
         
-        # --- SISTEMA DE ATUALIZAÇÃO DO VOLANTE ---
-        pool_data = st.session_state.favoritas.get(mod, [])
+                # --- SISTEMA DE ATUALIZAÇÃO DO VOLANTE ---
+                pool_data = st.session_state.favoritas.get(mod, [])
         
-        # Usamos um sufixo aleatório que muda APENAS quando o botão é clicado
-        # Isso evita que o multiselect "congele" os valores antigos
-        token_update = st.session_state.get(f"update_{mod}", 0)
-        v_key = f"volante_{mod}_{token_update}"
+                # Usamos o sufixo aleatório que muda APENAS quando o botão acima é clicado
+                # Isso evita que o multiselect "congele" os valores antigos na tela
+                token_update = st.session_state.get(f"update_{mod}", 0)
+                v_key = f"volante_{mod}_{token_update}"
 
-        pool = st.multiselect(
-            f"SELECIONE SEU POOL ({mod}):", 
-            range(1, max_v_bt + 1), 
-            default=pool_data,
-            key=v_key
-        )
-        st.session_state.favoritas[mod] = pool
-
+                pool = st.multiselect(
+                    f"SELECIONE SEU POOL ({mod}):", 
+                    range(1, max_v_bt + 1), 
+                    default=pool_data,
+                    key=v_key
+                )
+                st.session_state.favoritas[mod] = pool
         # --- ANÁLISE DE QUADRANTES (IGUAL AO SEU ORIGINAL) ---
         if pool and mod == "Lotofácil":
             linhas_p = [0]*5
