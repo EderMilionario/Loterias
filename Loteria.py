@@ -223,67 +223,68 @@ def calcular_matriz_afinidade_kadosh(mod):
     return matriz
 
 def refinar_pool_kadosh(pool_atual, matriz_afinidade, tamanho_objetivo, scores_ia=None):
-    # Se os dados não existirem, o sistema retorna o pool atual para não travar
+    # 1. TRAVA DE SEGURANÇA: Se não houver dados, não quebra o programa
     if not matriz_afinidade or not pool_atual:
         return sorted(list(pool_atual))
     
-    # Se o botão enviar a IA, nós usamos. Se não, fica vazio.
     if scores_ia is None:
         scores_ia = {}
 
-    # --- [INTELIGÊNCIA DE AUTORIDADE MÁXIMA: O NOVO JUIZ] ---
+    # --- [O JUIZ INTEGRADO: AS 4 INTELIGÊNCIAS] ---
     def peso_juiz(d):
         d_int = int(d)
         
-        # 1. SCORE DA IA (FLORESTA/ÁRVORES) - 40% do Peso
-        # Mantemos sua variável original mas com peso ajustado para dar espaço às novas IAs
+        # INTELIGÊNCIA 1: SCORE DA IA (FLORESTA) - 40%
         s_ia = scores_ia.get(d_int, 0)
         
-        # 2. AFINIDADE CONTEXTUAL (MARKOV) - 30% do Peso
-        # Em vez de apenas somar, calculamos a densidade de conexão da dezena no pool
-        # Usamos sua 'matriz_afinidade' para ver quão "conectada" a dezena está com o grupo
+        # INTELIGÊNCIA 2: AFINIDADE MARKOV (ABA 6) - 30%
+        # Usa a sua matriz_afinidade real do código
         afim_total = sum(matriz_afinidade[d_int]) / 25
         
-        # 3. IA DE MATURAÇÃO (CICLO DE ATRASO) - 20% do Peso
-        # Recuperamos o histórico do session_state (sem inventar variáveis)
-        # Se a dezena está no 'atraso' ideal baseado no desvio padrão histórico
-        atraso_atual = st.session_state.atrasos.get(d_int, 0)
-        media_atraso = 3.0  # Média física da Lotofácil para cada dezena
-        # Se o atraso está próximo da média de retorno, a dezena "maturou" (ganha peso)
-        fator_maturacao = 1.0 if (atraso_atual >= media_atraso - 1 and atraso_atual <= media_atraso + 2) else 0.5
+        # INTELIGÊNCIA 3: MATURAÇÃO (CICLO DE ATRASO) - 20%
+        # Pega direto do seu df_analise (que é onde o seu arquivo guarda os atrasos)
+        fator_maturacao = 1.0
+        if 'df_analise' in st.session_state:
+            try:
+                # Localiza o atraso da dezena na sua tabela real
+                atraso_atual = st.session_state['df_analise'].loc[
+                    st.session_state['df_analise']['Dezena'] == d_int, 'Atraso'
+                ].values[0]
+                # Se está no ciclo de retorno (atraso 3 a 5), ganha peso
+                if 3 <= atraso_atual <= 5:
+                    fator_maturacao = 1.3
+                elif atraso_atual > 8:
+                    fator_maturacao = 0.7
+            except:
+                fator_maturacao = 1.0
 
-        # 4. IA DE ENTROPIA (O JUIZ DO CAOS) - 10% do Peso
-        # Força o sistema a não ser 100% lógico, permitindo dezenas de "quebra"
-        caos_controlado = random.uniform(0.8, 1.2) if d_int in [d for d in range(1, 26)] else 1.0
+        # INTELIGÊNCIA 4: CAOS CONTROLADO (ENTROPIA) - 10%
+        caos = random.uniform(0.8, 1.2)
 
-        # --- CÁLCULO DA ESTATÍSTICA FINAL (TRAVA DE SEGURANÇA) ---
-        # Mantendo sua trava de 40% mas aplicando o fator de maturação
+        # --- CÁLCULO FINAL (O DNA DO SORTEIO) ---
         estatistica_base = (afim_total * fator_maturacao)
+        # Trava de segurança para dezenas muito fracas
         estatistica_final = estatistica_base if estatistica_base > 0.40 else estatistica_base * 0.5
         
-        # O PESO FINAL INTEGRADO (Simulação de Realidade)
-        # Composição: 40% IA Floresta + 40% Estatística/Maturação + 20% Caos/Markov
-        return (s_ia * 0.4) + (estatistica_final * 0.4) + (caos_controlado * 0.2)
+        # RETORNA O PESO QUE O REFINADOR VAI USAR
+        return (s_ia * 0.4) + (estatistica_final * 0.4) + (caos * 0.2)
 
-    # --- [PROCESSO DE REFINO COM AUTORIDADE DE TROCA] ---
+    # --- [PROCESSO DE REFINO] ---
     pool_refinado = list(pool_atual)
     
-    # REMOÇÃO: Tira as dezenas mais fracas segundo o novo Peso Multivariável
+    # REMOÇÃO: Tira quem o Juiz reprovou
     while len(pool_refinado) > tamanho_objetivo:
         piores = sorted(pool_refinado, key=peso_juiz)
         pool_refinado.remove(piores[0])
 
-    # CURA DE VÁCUO (GEOMETRIA E SUBSTITUIÇÃO):
-    # Agora com autoridade máxima de trocar qualquer dezena se a de fora for muito superior
+    # CURA DE VÁCUO (TROCA DE ELITE):
+    # Se alguém lá fora for melhor que alguém aqui dentro, a IA troca!
     dezenas_fora = [d for d in range(1, 26) if d not in pool_refinado]
-    
-    # Aumentamos para 3 tentativas de troca para garantir a "Elite"
     for _ in range(3): 
         if not dezenas_fora: break
         pior_no_pool = min(pool_refinado, key=peso_juiz)
         melhor_fora = max(dezenas_fora, key=peso_juiz)
         
-        # Se a dezena de fora tem o "DNA" mais fiel ao sorteio real, ela entra.
         if peso_juiz(melhor_fora) > peso_juiz(pior_no_pool):
             pool_refinado.remove(pior_no_pool)
             pool_refinado.append(melhor_fora)
