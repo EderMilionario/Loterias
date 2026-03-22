@@ -1461,15 +1461,29 @@ with abas[3]:
             if c_api and d_api:
                 if m_db not in st.session_state.ultimo_res:
                     st.session_state.ultimo_res[m_db] = {}
+                
+                # Salva no formato padrão do seu Backup
                 st.session_state.ultimo_res[m_db][str(c_api)] = d_api
                 
-                # Sincroniza a IA
+                # --- [CONEXÃO PARA TODAS AS IAs: NOVO] ---
+                # Criamos o DataFrame que o Gerador, Refinador e Validador procuram
+                historico_completo = st.session_state.ultimo_res[m_db]
+                df_atualizado = pd.DataFrame([
+                    {"Concurso": int(k), "n": v, "Soma": sum(v)} 
+                    for k, v in historico_completo.items()
+                ])
+                # Resolve o problema das variáveis "cegas"
+                st.session_state['df_resultados'] = df_atualizado # O Gerador olha aqui
+                st.session_state['df_concursos'] = df_atualizado  # O Validador olha aqui
+                # ------------------------------------------
+                
+                # Sincroniza a IA (Seu código original)
                 tamanho_ia = 20 if "DIAMANTE" in str(st.session_state.get('fe_escolhido', '')) else 18
                 pool_ia = treinar_e_prever_ia(m_db, tamanho=tamanho_ia)
                 if pool_ia:
                     st.session_state.favoritas[m_db] = pool_ia
                 
-                st.success(f"🚀 SUCESSO! {m_db} Concurso {c_api} salvo.")
+                st.success(f"🚀 SUCESSO! {m_db} Concurso {c_api} salvo e IAs sincronizadas.")
                 st.rerun()
 
     st.divider()
@@ -1492,17 +1506,23 @@ with abas[3]:
             if st.button(f"💾 GRAVAR CONCURSO {id_c_manual}", use_container_width=True):
                 if m_db not in st.session_state.ultimo_res: st.session_state.ultimo_res[m_db] = {}
                 st.session_state.ultimo_res[m_db][str(id_c_manual)] = dezenas_limpas
-                st.success("Gravado!")
+                
+                # Sincroniza as IAs também no cadastro manual para não dar erro
+                df_manual = pd.DataFrame([{"Concurso": int(k), "n": v, "Soma": sum(v)} for k, v in st.session_state.ultimo_res[m_db].items()])
+                st.session_state['df_resultados'] = df_manual
+                st.session_state['df_concursos'] = df_manual
+                
+                st.success("Gravado e IAs Atualizadas!")
                 st.rerun()
 
-    # HISTÓRICO APENAS DENTRO DO EXPANDER (Como pediste)
+    # HISTÓRICO APENAS DENTRO DO EXPANDER
     with st.expander("📊 Ver Resultados Salvos"):
         historico = st.session_state.ultimo_res.get(m_db, {})
         if historico:
             dados_tabela = [{"Concurso": k, "Dezenas": ", ".join([f"{x:02d}" for x in v])} for k, v in historico.items()]
-            df_hist = pd.DataFrame(dados_tabela)
-            df_hist['Concurso'] = df_hist['Concurso'].astype(int)
-            st.table(df_hist.sort_values(by="Concurso", ascending=False))
+            df_hist_view = pd.DataFrame(dados_tabela)
+            df_hist_view['Concurso'] = df_hist_view['Concurso'].astype(int)
+            st.table(df_hist_view.sort_values(by="Concurso", ascending=False))
         else:
             st.info(f"Sem resultados para {m_db}.")
 
@@ -1537,13 +1557,28 @@ with abas[4]:
                     st.session_state.ultimo_res = d.get("res", st.session_state.ultimo_res)
                     st.session_state.favoritas = d.get("favoritas", st.session_state.favoritas)
                     
-                    # CORREÇÃO DE INDENTAÇÃO AQUI:
+                    # --- [CONEXÃO PARA TODAS AS IAs: SINCRONIZAÇÃO PÓS-RESTAURAÇÃO] ---
+                    # Garante que as IAs vejam os resultados restaurados como DataFrames
+                    for loteria_nome in st.session_state.ultimo_res:
+                        historico_recuperado = st.session_state.ultimo_res[loteria_nome]
+                        if historico_recuperado:
+                            df_recuperado = pd.DataFrame([
+                                {"Concurso": int(k), "n": v, "Soma": sum(v)} 
+                                for k, v in historico_recuperado.items()
+                            ])
+                            # Atualiza as globais que as IAs novas utilizam
+                            if loteria_nome == "Lotofácil":
+                                st.session_state['df_resultados'] = df_recuperado
+                                st.session_state['df_concursos'] = df_recuperado
+                    # ----------------------------------------------------------------
+                    
+                    # SEU CÓDIGO ORIGINAL (Recalcula tendências após restaurar):
                     for m in st.session_state.ultimo_res:
                         pool_ia = treinar_e_prever_ia(m)
                         if pool_ia: 
                             st.session_state.favoritas[m] = pool_ia
 
-                    st.success("✅ Sistema Restaurado!")
+                    st.success("✅ Sistema Restaurado e IAs Sincronizadas!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro: {e}")
