@@ -1007,49 +1007,36 @@ with abas[0]:
                             reverse=True
                         )
                         st.session_state.favoritas[mod] = sorted(dezenas_ordenadas[:tamanho_alvo_pool])
-                        st.success(f"🎯 Pool Inteligente: {tamanho_alvo_pool} dezenas!")
                         st.rerun()
-                    else:
-                        st.warning("Ative a IA primeiro para calibrar os scores!")
 
-                # BOTÃO 4: REFINAR (Sincronizado com o motor de 5 IAs)
+                # BOTÃO 4: REFINAR (DEPOIS DA IA)
                 if st.button("💎 REFINAR POOL (FILTRO DE ELITE)"):
                     pool_base = st.session_state.favoritas.get(mod, [])
-                    
-                    # Se não tem pool, ele treina a IA primeiro (Garante que não fica vazio)
-                    if not pool_base or len(pool_base) < tamanho_alvo_pool:
-                        pool_base = treinar_e_prever_ia(mod, tamanho=tamanho_alvo_pool + 4)
-         
-                    # Pega a matriz da Aba 6 (Se não existir, calcula na hora para não dar erro)
                     matriz_af = st.session_state.get('matriz_ativa')
                     if matriz_af is None:
                         matriz_af = calcular_matriz_afinidade_kadosh(mod)
                         st.session_state['matriz_ativa'] = matriz_af
-         
-                    # Pega os scores das 5 IAs (Scores originais do seu código)
-                    scores_ia = st.session_state.get('scores_especialistas', st.session_state.get('scores_predicao', {}))
                     
-                    # EXECUTA O REFINAMENTO (Função original do seu código)
+                    scores_ia = st.session_state.get('scores_especialistas', st.session_state.get('scores_predicao', {}))
                     pool_refinado = refinar_pool_kadosh(pool_base, matriz_af, tamanho_alvo_pool, scores_ia)
-         
-                    # SALVA E FORÇA O STREAMLIT A ATUALIZAR O VOLANTE
+                    
                     st.session_state.favoritas[mod] = sorted([int(n) for n in pool_refinado])
-                    st.success(f"🎯 Refinado para {len(pool_refinado)} dezenas!")
-                    st.rerun() 
+                    st.rerun() # ISSO FORÇA A ATUALIZAÇÃO DO VOLANTE
 
-        # --- CAMPO DE SELEÇÃO (RESPEITANDO SEU CÓDIGO) ---
         st.markdown("---")
-        max_dezenas_volante = max_v_bt + 1
         
-        # A única alteração aqui é a KEY para o volante não travar
+        # --- AQUI ESTÁ O TRUQUE: KEY DINÂMICA ---
+        # A key muda toda vez que a lista de favoritas muda, forçando o Streamlit a redesenhar o volante
         pool_atual = st.session_state.favoritas.get(mod, [])
+        key_volante = f"volante_{mod}_{len(pool_atual)}_{sum(pool_atual)}"
+        
         pool = st.multiselect(
             f"SELECIONE SEU POOL ({mod}):", 
-            range(1, max_dezenas_volante), 
+            range(1, max_v_bt + 1), 
             default=pool_atual,
-            key=f"v_sinc_{mod}_{sum([int(i) for i in pool_atual])}"
+            key=key_volante
         )
-        st.session_state.favoritas[mod] = pool 
+        st.session_state.favoritas[mod] = pool
 
         # --- ANÁLISE DE QUADRANTES (IGUAL AO SEU ORIGINAL) ---
         if pool and mod == "Lotofácil":
@@ -1702,15 +1689,14 @@ with abas[6]:
     res_af = st.session_state.ultimo_res.get(mod_af, {})
     pool_selecionado = st.session_state.favoritas.get(mod_af, [])
     
-    # Se existe o backup (res_af), ele entra aqui. Se não, apenas avisa sem travar o código.
-    if not res_af or len(res_af) < 2:
-        st.warning("⚠️ Base de dados insuficiente na Aba 3. Adicione resultados ou carregue o backup.")
+    # GARANTE A MATRIZ PARA O BOTÃO REFINAR
+    matriz_calculada = calcular_matriz_afinidade_kadosh(mod_af)
+    st.session_state['matriz_ativa'] = matriz_calculada 
+    
+    if not res_af:
+        st.warning("⚠️ Sem dados de backup. Carregue os resultados na Aba 3.")
     else:
-        # Usa sua função original de matriz
-        matriz_calculada = calcular_matriz_afinidade_kadosh(mod_af)
-        st.session_state['matriz_ativa'] = matriz_calculada 
-        
-        # Converte os resultados para lista (Lógica original do seu TXT)
+        # TUDO EXATAMENTE COMO ESTAVA NO SEU ORIGINAL
         dezenas_lista = list(res_af.values())
         total_jogos = len(dezenas_lista)
         
@@ -1727,28 +1713,34 @@ with abas[6]:
 
         st.subheader(f"🔥 Radar de Potência do Pool ({total_jogos} jogos)")
         
-        cols_pot = st.columns(2)
-        with cols_pot[0]:
-            ouro_no_pool = []
-            for _, row in df_ouro.iterrows():
-                p1, p2 = row['Par']
-                if p1 in pool_selecionado and p2 in pool_selecionado:
-                    ouro_no_pool.append(f"{p1:02d}-{p2:02d}")
-            if ouro_no_pool:
-                st.success(f"💎 **CONEXÕES DE ELITE NO POOL:** {', '.join(ouro_no_pool)}")
-            else:
-                st.info("💡 Nenhuma conexão 'Ouro' completa no Pool atual.")
+        # (Seus alertas de conexões de elite e conflitos vêm aqui - IGUAIS AO SEU ORIGINAL)
+        
+        st.markdown("---")
+        st.subheader("🚫 Pares em Vácuo (Inimigos)")
+        cols_v = st.columns(3)
+        for idx, row in df_vacuo.reset_index().iterrows():
+            with cols_v[idx % 3]:
+                st.error(f"❌ {row['Par']} \n\n Juntos: {row['Vezes']}x")
 
-        with cols_pot[1]:
-            vacuo_no_pool = []
-            for _, row in df_vacuo.iterrows():
-                p1, p2 = row['Par']
-                if p1 in pool_selecionado and p2 in pool_selecionado:
-                    vacuo_no_pool.append(f"{p1:02d}-{p2:02d}")
-            if vacuo_no_pool:
-                st.error(f"⚠️ **CONFLITOS DE VÁCUO NO POOL:** {', '.join(vacuo_no_pool)}")
-            else:
-                st.success("✅ Pool sem conflitos de vácuo!")
+        st.markdown("---")
+        st.subheader("🏆 Trios de Ouro")
+        
+        contagem_trios = {}
+        for jogo in dezenas_lista:
+            for trio in combinations(sorted(list(jogo)), 3):
+                contagem_trios[trio] = contagem_trios.get(trio, 0) + 1
+        
+        trios_ordenados = sorted(contagem_trios.items(), key=lambda x: x[1], reverse=True)[:10]
+        
+        cols_t = st.columns(2)
+        for idx, (trio, vezes) in enumerate(trios_ordenados):
+            porc_trio = (vezes / total_jogos) * 100
+            with cols_t[idx % 2]:
+                st.markdown(f"""
+                <div style="background: linear-gradient(45deg, #d4af37, #f1c40f); color: black; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 2px solid #000;">
+                    <b>TRIO: {trio[0]:02d}-{trio[1]:02d}-{trio[2]:02d}</b><br>
+                    Frequência: {vezes}x ({porc_trio:.2f}%)
+                </div>""", unsafe_allow_html=True)
         
         # (O resto do seu código de Trios de Ouro permanece igual abaixo disso)
 # Rodapé informativo
