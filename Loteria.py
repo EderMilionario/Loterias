@@ -1735,39 +1735,46 @@ with abas[5]:
 
 with abas[6]:
     st.header("🔗 Afinidade e Vínculos de Dezenas")
+    
+    # Seleção da Loteria
     mod_af = st.selectbox("Loteria para Análise", list(st.session_state.custos.keys()), key="af_sel_universal")
     
+    # Puxa os dados do banco (que vieram do Backup ou da API)
     res_af = st.session_state.ultimo_res.get(mod_af, {})
     pool_selecionado = st.session_state.favoritas.get(mod_af, [])
     
+    # Garante que a matriz de afinidade use os dados mais recentes
     matriz_calculada = calcular_matriz_afinidade_kadosh(mod_af)
     st.session_state['matriz_ativa'] = matriz_calculada 
     
     if not res_af or len(res_af) < 2:
-        st.warning("⚠️ Base de dados insuficiente na Aba 3. Adicione resultados.")
+        st.warning("⚠️ Base de dados insuficiente na Aba 3. Adicione resultados ou restaure um Backup.")
         st.stop()
     else:
+        # Extrai as dezenas e conta quantos concursos existem de verdade
         dezenas_lista = list(res_af.values())
-        total_jogos = len(dezenas_lista)
+        total_jogos_real = len(dezenas_lista)
         
-        matriz = {}
+        # --- CÁLCULO DE PARES (CASAL) ---
         todos_pares = []
-        for i in range(1, 26):
-            for j in range(i + 1, 26):
+        # Otimização: Só calcula para as dezenas da Lotofácil (1 a 25)
+        limite_dezena = 26 if mod_af == "Lotofácil" else 61
+        
+        for i in range(1, limite_dezena):
+            for j in range(i + 1, limite_dezena):
                 par_count = sum(1 for jogo in dezenas_lista if i in jogo and j in jogo)
-                porc = (par_count / total_jogos) * 100
-                todos_pares.append({"Par": (i, j), "Vezes": par_count, "Porc": porc})
+                if par_count > 0:
+                    porc = (par_count / total_jogos_real) * 100
+                    todos_pares.append({"Par": (i, j), "Vezes": par_count, "Porc": porc})
         
         df_completo = pd.DataFrame(todos_pares)
         df_ouro = df_completo.sort_values(by="Vezes", ascending=False).head(15)
         df_vacuo = df_completo.sort_values(by="Vezes", ascending=True).head(15)
 
-        st.subheader(f"🔥 Radar de Potência do Pool ({total_jogos} jogos)")
+        st.subheader(f"🔥 Radar de Potência do Pool ({total_jogos_real} concursos analisados)")
         
-        # --- NOVO: ALERTA DE POTÊNCIA VISUAL ---
         cols_pot = st.columns(2)
         with cols_pot[0]:
-            # Verifica quais Casais de Ouro estão COMPLETOS no seu Pool
             ouro_no_pool = []
             for _, row in df_ouro.iterrows():
                 p1, p2 = row['Par']
@@ -1780,7 +1787,6 @@ with abas[6]:
                 st.info("💡 Nenhuma conexão 'Ouro' completa no Pool atual.")
 
         with cols_pot[1]:
-            # Verifica se há pares de Vácuo (inimigos) no seu Pool
             vacuo_no_pool = []
             for _, row in df_vacuo.iterrows():
                 p1, p2 = row['Par']
@@ -1793,14 +1799,10 @@ with abas[6]:
                 st.success("✅ Pool sem conflitos de vácuo!")
 
         st.markdown("---")
-        # (O restante do seu código de tabelas e trios continua igual abaixo...)
 
-
-        st.subheader("🚫 Pares em Vácuo (Os que menos se encontram)")
-        st.warning("Evite usar estas duplas como FIXAS no mesmo bilhete.")
-        
+        # Tabela de Vácuo (Corrigida para não repetir título)
         st.subheader("🚫 Pares em Vácuo (Inimigos)")
-        st.warning("Evite usar estas duplas como FIXAS no mesmo bilhete.")
+        st.warning("Evite usar estas duplas como FIXAS no mesmo bilhete. Elas raramente saem juntas.")
         cols_v = st.columns(3)
         for idx, row in df_vacuo.reset_index().iterrows():
             with cols_v[idx % 3]:
@@ -1808,24 +1810,20 @@ with abas[6]:
 
         st.markdown("---")
         st.subheader("🏆 Trios de Ouro (Blocos de Alta Potência)")
-        st.info("Estes trios saíram juntos com frequência máxima na história (3630 concursos).")
+        # AQUI A MÁGICA: O número agora é dinâmico conforme seu Backup!
+        st.info(f"Estes trios saíram juntos com frequência máxima na história ({total_jogos_real} concursos analisados).")
 
-        # LÓGICA RIGOROSA DE TRIOS
+        # LÓGICA DE TRIOS
         contagem_trios = {}
-        # Analisamos os jogos para encontrar trios que aparecem juntos
-        # Para precisão perita, focamos nos trios mais recorrentes
         for jogo in dezenas_lista:
-            # Pegamos as combinações de 3 dentro de cada sorteio
             for trio in combinations(sorted(list(jogo)), 3):
                 contagem_trios[trio] = contagem_trios.get(trio, 0) + 1
         
-        # Filtramos os 10 trios mais fortes de toda a base
         trios_ordenados = sorted(contagem_trios.items(), key=lambda x: x[1], reverse=True)[:10]
         
         cols_t = st.columns(2)
         for idx, (trio, vezes) in enumerate(trios_ordenados):
-            # Cálculo de probabilidade real do trio
-            porc_trio = (vezes / total_jogos) * 100
+            porc_trio = (vezes / total_jogos_real) * 100
             with cols_t[idx % 2]:
                 st.markdown(f"""
                 <div style="background: linear-gradient(45deg, #d4af37, #f1c40f); color: black; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 2px solid #000; box-shadow: 3px 3px 0px #000;">
@@ -1835,7 +1833,6 @@ with abas[6]:
                     <b>Afinidade Real:</b> {porc_trio:.2f}%
                 </div>
                 """, unsafe_allow_html=True)
-
                 # --- [FINALIZAÇÃO DO SISTEMA] ---
 
 # Rodapé informativo
