@@ -1084,9 +1084,15 @@ with abas[0]:
             matriz_af = calcular_matriz_afinidade_kadosh(mod)
             st.session_state['matriz_ativa'] = matriz_af
 
-        # --- [NOVA INTELIGÊNCIA: DETECÇÃO DE CENÁRIO] ---
-        df_hist_oficial = st.session_state.get('df_resultados')
-        cenario_atual = analisar_cenario_dinamico(df_hist_oficial) if df_hist_oficial is not None else "NEUTRO"
+        # --- [CORREÇÃO: SINCRONIZAÇÃO DE INTELIGÊNCIA] ---
+        # 1. Usamos o nome de variável que o resto do seu sistema reconhece ('df_concursos')
+        df_hist_oficial = st.session_state.get('df_concursos') 
+
+        # 2. Detecção de cenário com trava de segurança
+        if df_hist_oficial is not None and not df_hist_oficial.empty:
+            cenario_atual = analisar_cenario_dinamico(df_hist_oficial)
+        else:
+            cenario_atual = "NEUTRO"
         # ------------------------------------------------
 
         if not pool or len(pool) < n_dez:
@@ -1127,7 +1133,7 @@ with abas[0]:
                     # INTEGRAÇÃO DE CENÁRIO: Filtro extra de equilíbrio se o cenário for ESTÁVEL
                     if passou and cenario_atual == "ESTAVEL":
                         pares = len([n for n in comb if n % 2 == 0])
-                        if pares < 7 or pares > 9: # Reforça a tendência média no cenário estável
+                        if pares < 6 or pares > 10: # Reforça a tendência média no cenário estável
                             passou = False
             
                     if passou:
