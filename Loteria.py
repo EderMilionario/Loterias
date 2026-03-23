@@ -1084,15 +1084,9 @@ with abas[0]:
             matriz_af = calcular_matriz_afinidade_kadosh(mod)
             st.session_state['matriz_ativa'] = matriz_af
 
-        # --- [CORREÇÃO: SINCRONIZAÇÃO DE INTELIGÊNCIA] ---
-        # 1. Usamos o nome de variável que o resto do seu sistema reconhece ('df_concursos')
-        df_hist_oficial = st.session_state.get('df_concursos') 
-
-        # 2. Detecção de cenário com trava de segurança
-        if df_hist_oficial is not None and not df_hist_oficial.empty:
-            cenario_atual = analisar_cenario_dinamico(df_hist_oficial)
-        else:
-            cenario_atual = "NEUTRO"
+        # --- [NOVA INTELIGÊNCIA: DETECÇÃO DE CENÁRIO] ---
+        df_hist_oficial = st.session_state.get('df_resultados')
+        cenario_atual = analisar_cenario_dinamico(df_hist_oficial) if df_hist_oficial is not None else "NEUTRO"
         # ------------------------------------------------
 
         if not pool or len(pool) < n_dez:
@@ -1127,14 +1121,14 @@ with abas[0]:
                     # FILTROS KADOSH (Simetria, Soma, Moldura, Quadrantes) + CENÁRIO
                     passou = True
                     if mod == "Lotofácil":
-                        # Chamada cirúrgica para a validação dinâmica (AGORA COM CENÁRIO CONECTADO)
-                        passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado, cenario=cenario_atual)                          
+                        # Chamada cirúrgica para a validação dinâmica
+                        passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
                     
-                    # INTEGRAÇÃO DE CENÁRIO: Filtro extra de equilíbrio se o cenário for ESTÁVEL
-                    if passou and cenario_atual == "ESTAVEL":
-                        pares = len([n for n in comb if n % 2 == 0])
-                        if pares < 6 or pares > 10: # Reforça a tendência média no cenário estável
-                            passou = False
+                        # INTEGRAÇÃO DE CENÁRIO: Filtro extra de equilíbrio se o cenário for ESTÁVEL
+                        if passou and cenario_atual == "ESTAVEL":
+                            pares = len([n for n in comb if n % 2 == 0])
+                            if pares < 7 or pares > 9: # Reforça a tendência média no cenário estável
+                                passou = False
             
                     if passou:
                         tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
@@ -1857,7 +1851,6 @@ st.markdown(
 # Instrução de implementação:
 # Certifique-se de que todas as bibliotecas (fpdf, pandas, requests) 
 # estejam instaladas no seu ambiente via: pip install streamlit requests pandas fpdf
-
 
 
 
