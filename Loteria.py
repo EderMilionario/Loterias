@@ -1121,15 +1121,14 @@ with abas[0]:
                     # FILTROS KADOSH (Simetria, Soma, Moldura, Quadrantes) + CENÁRIO
                     passou = True
                     if mod == "Lotofácil":
-                       if mod == "Lotofácil":
-                           # Chamada cirúrgica para a validação dinâmica (AGORA COM CENÁRIO)
-                           passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado, cenario=cenario_atual)
+                        # Chamada cirúrgica para a validação dinâmica (AGORA COM CENÁRIO CONECTADO)
+                        passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado, cenario=cenario_atual)                          
                     
-                        # INTEGRAÇÃO DE CENÁRIO: Filtro extra de equilíbrio se o cenário for ESTÁVEL
-                        if passou and cenario_atual == "ESTAVEL":
-                            pares = len([n for n in comb if n % 2 == 0])
-                            if pares < 7 or pares > 9: # Reforça a tendência média no cenário estável
-                                passou = False
+                    # INTEGRAÇÃO DE CENÁRIO: Filtro extra de equilíbrio se o cenário for ESTÁVEL
+                    if passou and cenario_atual == "ESTAVEL":
+                        pares = len([n for n in comb if n % 2 == 0])
+                        if pares < 7 or pares > 9: # Reforça a tendência média no cenário estável
+                            passou = False
             
                     if passou:
                         tag_est = f"{fe_escolhido if fe_escolhido != 'Nenhum' else est_escolhida}"
