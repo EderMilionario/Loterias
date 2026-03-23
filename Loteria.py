@@ -1121,8 +1121,9 @@ with abas[0]:
                     # FILTROS KADOSH (Simetria, Soma, Moldura, Quadrantes) + CENÁRIO
                     passou = True
                     if mod == "Lotofácil":
-                        # Chamada cirúrgica para a validação dinâmica
-                        passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado)
+                       if mod == "Lotofácil":
+                           # Chamada cirúrgica para a validação dinâmica (AGORA COM CENÁRIO)
+                           passou = validar_kadosh_cirurgico(comb, mod, tamanho_solicitado, cenario=cenario_atual)
                     
                         # INTEGRAÇÃO DE CENÁRIO: Filtro extra de equilíbrio se o cenário for ESTÁVEL
                         if passou and cenario_atual == "ESTAVEL":
