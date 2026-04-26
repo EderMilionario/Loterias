@@ -745,8 +745,15 @@ ESTRATEGIA_MAPA = {
     "8. RASTREAMENTO DE CICLO": {"dez": 16, "qtd": 1, "desc": "01 de 16 + 06 de 15 (Tendência)", "qtd_15": 6, "prob": "Alta Recorrência", "peso": 0.88},
     "9. CERCO POR ELIMINAÇÃO": {"dez": 15, "qtd": 10, "desc": "10 Jogos de 15 (Quentes vs Atrasados)", "prob": "Equilibrada", "peso": 0.75},
     "10. KADOSH PRESTIGE 20": {"dez": 15, "qtd": 36, "desc": "Pool 20 | 36 Jogos | ~91% de chance para 14 pts", "prob": "1/90.800", "peso": 0.91},
-    "11. FORTE ALIANÇA 22": {"dez": 16, "qtd": 2, "n_pool": 22, "desc": "Pool 22 | 02 de 16 + 20 de 15 | Cerco 88%", "qtd_15": 20, "prob": "1/116.741", "peso": 0.94}
-
+    "11. FORTE ALIANÇA 22": {"dez": 16, "qtd": 2, "n_pool": 22, "desc": "Pool 22 | 02 de 16 + 20 de 15 | Cerco 88%", "qtd_15": 20, "prob": "1/116.741", "peso": 0.94},
+    "12. MATRIZ PERITA 20-16": {
+    "dez": 16, 
+    "n_pool": 20, 
+    "qtd": 3, 
+    "desc": "03 Jogos de 16 | Pool 20 (Fechamento Matemático)", 
+    "prob": "1/116.741", 
+    "peso": 1.0
+},
 }
 
 MATRIZES_FECHAMENTO = {
@@ -1203,6 +1210,32 @@ with abas[0]:
                     processar_geracao(15, info_est['qtd_15'])
                 if "qtd_16" in info_est:
                     processar_geracao(16, info_est['qtd_16'])
+            elif est_escolhida == "12. MATRIZ PERITA 20-16":
+                # 1. Pegamos o Pool de 20 dezenas (Já refinado pela sua IA)
+                pool_20 = pool[:20] 
+                
+                # 2. Criamos 3 blocos que se cruzam. 
+                # O segredo dos 14/15 pontos é não deixar buracos nas 20 dezenas.
+                # Jogo 1: Dezenas 1 a 16 do Pool
+                # Jogo 2: Dezenas 5 a 20 do Pool
+                # Jogo 3: As 8 melhores + as 8 que menos apareceram nos jogos 1 e 2
+                
+                bloco_1 = sorted(pool_20[:16])
+                bloco_2 = sorted(pool_20[4:])
+                
+                # O Jogo 3 é o 'Curinga' que fecha a matriz
+                meio = pool_20[2:10]
+                fim = pool_20[12:20]
+                bloco_3 = sorted(list(set(meio + fim)))
+
+                # Enviamos para o seu motor validar (Soma, Moldura, etc)
+                for comb in [bloco_1, bloco_2, bloco_3]:
+                    novos.append({
+                        "mod": mod, "n": comb, "tam": 16, 
+                        "fixas_utilizadas": list(fixas_final),
+                        "chance": "MATEMÁTICA", "est": "MATRIZ PERITA",
+                        "cenario_ia": cenario_atual
+                    })        
             else:
                 processar_geracao(n_dez, qtd)
     
