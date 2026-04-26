@@ -966,7 +966,8 @@ with abas[0]:
             if "A MARRETA" in est_escolhida: tamanhos_detectados.append(22)
             elif "PRESTIGE 20" in est_escolhida: tamanhos_detectados.append(20)
             elif "ELITE KADOSH" in est_escolhida: tamanhos_detectados.append(19)
-            elif "FORTE ALIANÇA" in est_escolhida: tamanhos_detectados.append(22)    
+            elif "FORTE ALIANÇA" in est_escolhida: tamanhos_detectados.append(22)
+            elif "MATRIZ PERITA 20-16" in est_escolhida: tamanhos_detectados.append(20)    
             
             # Checa a Matriz (sobrepõe a estratégia se for maior)
             if fe_escolhido != "Nenhum":
