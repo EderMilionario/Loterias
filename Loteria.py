@@ -747,13 +747,13 @@ ESTRATEGIA_MAPA = {
     "10. KADOSH PRESTIGE 20": {"dez": 15, "qtd": 36, "desc": "Pool 20 | 36 Jogos | ~91% de chance para 14 pts", "prob": "1/90.800", "peso": 0.91},
     "11. FORTE ALIANÇA 22": {"dez": 16, "qtd": 2, "n_pool": 22, "desc": "Pool 22 | 02 de 16 + 20 de 15 | Cerco 88%", "qtd_15": 20, "prob": "1/116.741", "peso": 0.94},
     "12. MATRIZ PERITA 20-16": {
-    "dez": 16, 
-    "n_pool": 20, 
-    "qtd": 3, 
-    "desc": "03 Jogos de 16 | Pool 20 (Fechamento Matemático)", 
-    "prob": "1/116.741", 
-    "peso": 1.0
-},
+        "dez": 16, 
+        "n_pool": 20, 
+        "qtd": 3, 
+        "desc": "03 Jogos de 16 | Pool 20 (Fechamento Matemático)", 
+        "prob": "1/116.741", 
+        "peso": 1.0
+    },
 }
 
 MATRIZES_FECHAMENTO = {
