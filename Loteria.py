@@ -902,6 +902,22 @@ with abas[0]:
     info_est = ESTRATEGIA_MAPA.get(est_escolhida) if mod == "Lotofácil" else ESTRATEGIA_MAPA["Personalizado"]
     
     st.markdown("---")
+    # --- [INÍCIO DO INDICADOR DE CLIMA E FIXAS] ---
+    df_hist = st.session_state.get('df_resultados')
+    if df_hist is not None and mod == "Lotofácil":
+        # Chama a função de análise que já existe no seu motor
+        cenario_atual = analisar_cenario_dinamico(df_hist)
+        
+        if cenario_atual == "ESTAVEL":
+            st.success(f"💎 **CLIMA DETECTADO:** {cenario_atual}")
+            st.info("💡 **DICA PERITA:** Para esta estratégia, use **8 FIXAS** no slider abaixo.")
+        elif cenario_atual == "ERRATICO":
+            st.warning(f"⚠️ **CLIMA DETECTADO:** {cenario_atual}")
+            st.info("💡 **DICA PERITA:** O sorteio está instável. Use **7 FIXAS** no slider abaixo.")
+        else:
+            st.info(f"🌀 **CLIMA DETECTADO:** {cenario_atual}")
+            st.info("💡 **DICA PERITA:** Cenário neutro. Recomendado entre **6 e 7 FIXAS**.")
+    # --- [FIM DO INDICADOR] ---
 
     c1, c2 = st.columns(2)
     with c1:
