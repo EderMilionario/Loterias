@@ -5,7 +5,7 @@ from collections import Counter
 import random
 
 # =====================================================================
-# 1. INICIALIZAÇÃO SEGURA DA PÁGINA (ESTRUTURA COMPATÍVEL PYTHON 3.13)
+# 1. CONFIGURAÇÃO DA PÁGINA (PADRÃO SEGURO NATIVO)
 # =====================================================================
 st.set_page_config(
     page_title="SuperLoto - Engenharia Preditiva",
@@ -14,58 +14,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Inicialização forçada do elemento nativo para destravar o metrics_util do Streamlit Cloud
+# Título principal usando elemento puramente nativo do Streamlit (Sem HTML/CSS perigoso)
 st.title("👑 SuperLoto Premium")
-
-# Injeção de CSS em container isolado e seguro para evitar conflito de renderização
-with st.container():
-    st.markdown("""
-        <style>
-            .stApp {
-                background-color: #0A0C10;
-                color: #E2E8F0;
-            }
-            .stTextInput input, .stNumberInput input {
-                background-color: #141822 !important;
-                color: #FFFFFF !important;
-                border: 1px solid #D4AF37 !important;
-                border-radius: 8px !important;
-            }
-            .stButton>button {
-                background: linear-gradient(135deg, #D4AF37 0%, #AA7C11 100%) !important;
-                color: #0A0C10 !important;
-                font-weight: bold !important;
-                border: none !important;
-                border-radius: 8px !important;
-                padding: 0.6rem 2rem !important;
-                transition: all 0.3s ease !important;
-                box-shadow: 0px 4px 12px rgba(212, 175, 55, 0.2) !important;
-                width: 100%;
-            }
-            .stButton>button:hover {
-                transform: translateY(-2px) !important;
-                box-shadow: 0px 6px 18px rgba(212, 175, 55, 0.4) !important;
-                color: #0A0C10 !important;
-            }
-            .bola-loto {
-                display: inline-block;
-                width: 48px;
-                height: 48px;
-                line-height: 48px;
-                text-align: center;
-                border-radius: 50%;
-                font-weight: bold;
-                font-size: 1.1rem;
-                margin: 4px;
-                box-shadow: inset -3px -3px 8px rgba(0,0,0,0.4), 2px 2px 5px rgba(0,0,0,0.3);
-            }
-            .bola-padrao { background: #93278F; color: white; border: 2px solid #D4AF37; }
-            .bola-pool { background: linear-gradient(135deg, #BD10E0 0%, #93278F 100%); color: white; border: 3px solid #D4AF37; box-shadow: 0 0 12px #D4AF37; }
-            .bola-fixa { background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #0A0C10; border: 3px solid #FFF; box-shadow: 0 0 15px #FFD700; }
-            .bola-excluida { background: #2D3748; color: #718096; border: 2px dashed #4A5568; opacity: 0.4; }
-            .bola-sorteada { background: #00E676; color: #0A0C10; border: 2px solid #FFF; box-shadow: 0 0 12px #00E676; }
-        </style>
-    """, unsafe_html=True)
+st.caption("Sistema Privado de Engenharia Preditiva Avançada — Versão Blindada Python 3.13")
 
 # =====================================================================
 # 2. SISTEMA DE SESSÃO E BANCO DE DADOS LOCAL
@@ -81,6 +32,7 @@ if "fixas_atuais" not in st.session_state: st.session_state.fixas_atuais = []
 
 USUARIOS_SISTEMA = {"admin": "kadosh15", "irma": "loto15"}
 
+# Histórico de ignição para o sistema nunca iniciar zerado
 if not st.session_state.historico_sorteios:
     st.session_state.historico_sorteios = {
         "3100": [1, 2, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 24, 25],
@@ -90,14 +42,11 @@ if not st.session_state.historico_sorteios:
     }
 
 # =====================================================================
-# 3. INTERFACE DE AUTENTICAÇÃO PRIVADA
+# 3. INTERFACE DE AUTENTICAÇÃO
 # =====================================================================
 if not st.session_state.autenticado:
-    st.markdown("<p style='text-align: center; color: #A0AEC0; font-size: 1.2rem;'>Sistema Privado de Engenharia Preditiva Avançada</p><br>", unsafe_html=True)
-    
     col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
-        st.markdown("<div style='background-color: #141822; padding: 2.5rem; border-radius: 16px; border: 1px solid #2D3748; box-shadow: 0 10px 25px rgba(0,0,0,0.5);'>", unsafe_html=True)
         user_input = st.text_input("Operador do Sistema", key="login_user")
         pass_input = st.text_input("Chave Kadosh de Acesso", type="password", key="login_pass")
         if st.button("ATIVAR MOTORES PRECOGNITIVOS"):
@@ -107,27 +56,28 @@ if not st.session_state.autenticado:
                 st.rerun()
             else:
                 st.error("Chave de acesso ou operador incorretos.")
-        st.markdown("</div>", unsafe_html=True)
 
 else:
+    # Menu lateral 100% nativo
     with st.sidebar:
-        st.markdown("<h2 style='color: #D4AF37; margin-bottom: 0;'>👑 SuperLoto</h2>", unsafe_html=True)
-        st.markdown(f"<p style='color: #A0AEC0; font-size: 0.9rem;'>Operador: <span style='color: #FFF; font-weight:bold;'>{st.session_state.usuario_ativo}</span></p>", unsafe_html=True)
-        st.markdown("<hr style='border-color: #2D3748;'>", unsafe_html=True)
+        st.subheader("👑 Menu SuperLoto")
+        st.write(f"Operador: **{st.session_state.usuario_ativo}**")
+        st.write(f"Caixa: **R$ {st.session_state.caixa_saldo:.2f}**")
+        st.markdown("---")
         
         abas_menu = ["🎯 Operações SuperLoto", "📊 Análise de Ciclo & Engenharia", "💳 Gestão de Caixa", "💾 Segurança & Backup"]
         st.session_state.aba_atual = st.radio("Módulos do Sistema", abas_menu)
         
-        st.markdown("<br><hr style='border-color: #2D3748;'>", unsafe_html=True)
+        st.markdown("---")
         if st.button("Encerrar Sessão"):
             st.session_state.autenticado = False
-            st.session_state.usuario_ativo = None
+            st.session_state.usuario_active = None
             st.rerun()
 
-    st.markdown(f"<h3>Módulo Selecionado: <span style='color: #D4AF37;'>{st.session_state.aba_atual}</span></h3>", unsafe_html=True)
+    st.subheader(f"Módulo: {st.session_state.aba_atual}")
 
     # =====================================================================
-    # 4. CAPTURA DOS RESULTADOS REAIS (API CAIXA)
+    # 4. METODO ESTÁVEL DE CAPTURA (API CAIXA)
     # =====================================================================
     def capturar_resultado_caixa_estavel(concurso=None):
         try:
@@ -136,15 +86,13 @@ else:
             response = requests.get(url, timeout=10, verify=False)
             if response.status_code == 200:
                 dados = response.json()
-                num_concurso = str(dados["numero"])
-                lista_dezenas = [int(x) for x in dados["listaDezenas"]]
-                return num_concurso, lista_dezenas
+                return str(dados["numero"]), [int(x) for x in dados["listaDezenas"]]
         except:
             pass
         return None, None
 
     # =====================================================================
-    # 5. EXECUÇÃO UNIFICADA DOS 6 MOTORES DE INTELIGÊNCIA
+    # 5. OS 6 MOTORES DE INTELIGÊNCIA UNIFICADOS
     # =====================================================================
     def processar_cerebro_unificado_superloto():
         historico = st.session_state.historico_sorteios
@@ -195,8 +143,7 @@ else:
                 break
         dezenas_faltantes_ciclo = set(range(1, 26)) - dezenas_sorteadas_no_ciclo
         
-        for n in dezenas_faltantes_ciclo:
-            scores_finais[n] += 4.0
+        for n in dezenas_faltantes_ciclo: scores_finais[n] += 4.0
 
         ranking = sorted(scores_finais.keys(), key=lambda x: scores_finais[x], reverse=True)
         pool_20 = sorted(ranking[:20])
@@ -229,26 +176,25 @@ else:
         return "🔱 A LANÇA", "Ambiente Ideal! Caixa saudável e Clima Firme. Força de ataque máxima liberada."
 
     # =====================================================================
-    # MÓDULO 1:🎯 OPERAÇÕES SUPERLOTO
+    # MÓDULO 1: 🎯 OPERAÇÕES SUPERLOTO
     # =====================================================================
     if st.session_state.aba_atual == "🎯 Operações SuperLoto":
         col_api1, col_api2 = st.columns([2, 1])
         with col_api1:
-            st.markdown("<h3 style='color: #D4AF37;'>🔄 Sincronização do Sistema</h3>", unsafe_html=True)
             c_input = st.text_input("Digitar Concurso Específico (Vazio para Último Oficial)")
         with col_api2:
-            st.markdown("<br>", unsafe_html=True)
-            if st.button("SINCRONIZAR CONCURSO REAL"):
+            st.write("<br>", unsafe_html=True)
+            if st.button("🔄 SINCRONIZAR CONCURSO REAL"):
                 num_c, dez_c = capturar_resultado_caixa_estavel(c_input if c_input else None)
                 if num_c:
                     st.session_state.historico_sorteios[num_c] = dez_c
-                    st.success(f"Concurso {num_c} capturado com sucesso da fonte oficial!")
+                    st.success(f"Concurso {num_c} sincronizado com sucesso!")
                 else:
-                    st.warning("Falha na captura automática. Modo manual disponível abaixo.")
+                    st.warning("Falha na captura automática. Use a gravação manual se necessário.")
 
-        with st.expander("📝 Inserção Manual de Sorteio"):
+        with st.expander("📝 Inserção Manual de Sorteio Suplementar"):
             c_man = st.text_input("Número do Concurso Manual")
-            d_man = st.text_input("Insira as 15 Dezenas Separadas por Vírgula (Ex: 1,2,3...)")
+            d_man = st.text_input("Insira as 15 Dezenas Separadas por Vírgula")
             if st.button("GRAVAR MANUALMENTE"):
                 try:
                     lista_d = [int(x.strip()) for x in d_man.split(",")]
@@ -256,7 +202,7 @@ else:
                         st.session_state.historico_sorteios[c_man] = sorted(lista_d)
                         st.success("Sorteio gravado com sucesso!")
                     else: st.error("Insira exatamente 15 números.")
-                except: st.error("Formato de dados inválido.")
+                except: st.error("Dados inválidos.")
 
         st.markdown("---")
         
@@ -271,24 +217,17 @@ else:
         with c_caixa: st.metric("💳 SEU CAIXA OPERACIONAL", f"R$ {st.session_state.caixa_saldo:.2f}")
         with c_rec: st.metric("🎯 RECOMENDAÇÃO DO PILOTO", rec_est, help=rec_txt)
 
-        st.markdown("<h3 style='color: #D4AF37;'>🔮 Volante Preditivo SuperLoto (Análise de Massa)</h3>", unsafe_html=True)
-        html_volante = "<div style='background-color:#141822; padding:1.5rem; border-radius:12px; border:1px solid #2D3748; text-align:center;'>"
-        for n in range(1, 26):
-            classe_bola = "bola-padrao"
-            if n in fixas_8: classe_bola = "bola-fixa"
-            elif n in pool_20: classe_bola = "bola-pool"
-            else: classe_bola = "bola-excluida"
-            
-            txt_bola = f"🔒{n:02d}" if n in fixas_8 else f"{n:02d}"
-            html_volante += f"<span class='bola-loto {classe_bola}'>{txt_bola}</span>"
-            if n % 5 == 0: html_volante += "<br>"
-        html_volante += "</div>"
-        st.markdown(html_volante, unsafe_html=True)
-        st.markdown("<p style='font-size:0.9rem; color:#A0AEC0;'>Legenda: <span style='color:#FFD700;'>■ Fixas de Arrastre</span> | <span style='color:#BD10E0;'>■ Pool de Elite</span> | <span style='color:#4A5568;'>■ Excluídas</span></p>", unsafe_html=True)
+        # Volante preditivo construído de forma nativa e limpa (Sem quebras de CSS)
+        st.write("### 🔮 Volante Preditivo SuperLoto")
+        
+        # Agrupamento visual nativo por blocos
+        st.write(f"🔒 **Dezenas Fixas Selecionadas (Markov):** {', '.join(f'{x:02d}' for x in fixas_8)}")
+        st.write(f"🔮 **Dezenas do seu Pool de Elite (Bayes/Coocorrência):** {', '.join(f'{x:02d}' for x in pool_20 if x not in fixas_8)}")
+        st.write(f"❌ **Dezenas Excluídas (Baixa Probabilidade):** {', '.join(f'{x:02d}' for x in range(1, 26) if x not in pool_20)}")
 
         st.markdown("---")
 
-        st.markdown("<h3 style='color: #D4AF37;'>⚔️ Configuração do Formato de Ataque</h3>", unsafe_html=True)
+        st.write("### ⚔️ Configuração do Formato de Ataque")
         
         opcoes_estrategias = {
             "🔱 A LANÇA": {
@@ -316,14 +255,12 @@ else:
         est_escolhida = st.selectbox("Escolha sua Estratégia de Combate", list(opcoes_estrategias.keys()))
         dados_est = opcoes_estrategias[est_escolhida]
         
-        st.markdown(f"""
-            <div style='background-color:#141822; padding:1.2rem; border-radius:8px; border-left:5px solid #D4AF37; margin-bottom:1rem;'>
-                <b>Especificação Física:</b> {dados_est['desc']}<br>
-                <b>💸 Custo Atualizado da Operação:</b> <span style='color:#00E676; font-weight:bold;'>R$ {dados_est['custo']:.2f}</span><br>
-                <b>🎯 Probabilidade de 15 Pontos (Com Pool de 20):</b> {dados_est['prob15']}<br>
-                <b>🎯 Probabilidade de 14 Pontos (Com Pool de 20):</b> {dados_est['prob14']}
-            </div>
-        """, unsafe_html=True)
+        st.info(f"""
+        **Especificação:** {dados_est['desc']}  
+        **💸 Custo da Operação:** R$ {dados_est['custo']:.2f}  
+        **🎯 Probabilidade de 15 acertos (No Pool):** {dados_est['prob15']}  
+        **🎯 Probabilidade de 14 acertos (No Pool):** {dados_est['prob14']}
+        """)
 
         if st.button("⚡ PROCESSAR E FILTRAR JOGOS DE ELITE"):
             jogos_gerados = []
@@ -347,11 +284,11 @@ else:
             
             st.session_state.jogos_salvos = jogos_gerados
             st.session_state.caixa_saldo -= dados_est["custo"]
-            st.success(f"Sucesso! {len(jogos_gerados)} Jogos calculados. Custo de R$ {dados_est['custo']:.2f} processado.")
+            st.success(f"Sucesso! {len(jogos_gerados)} Jogos calculados pelo motor preditivo.")
             st.rerun()
 
         if st.session_state.jogos_salvos:
-            st.markdown("<h3 style='color: #D4AF37;'>📋 Bilhetes Filtrados Prontos para Registrar</h3>", unsafe_html=True)
+            st.write("### 📋 Bilhetes Prontos para Registrar")
             for idx, jogo in enumerate(st.session_state.jogos_salvos):
                 texto_jogo = ", ".join(f"{x:02d}" for x in jogo)
                 st.code(f"Jogo {idx+1} ({len(jogo)} Dezenas): {texto_jogo}", language="text")
@@ -360,29 +297,28 @@ else:
     # MÓDULO 2: 📊 ANÁLISE DE CICLO & ENGENHARIA
     # =====================================================================
     if st.session_state.aba_atual == "📊 Análise de Ciclo & Engenharia":
-        st.markdown("<h3 style='color:#D4AF37;'>⚙️ Auditoria de Motores Preditivos</h3>", unsafe_html=True)
-        st.write("Base de dados interna de concursos:")
+        st.write("### ⚙️ Auditoria de Motores Preditivos")
+        st.write("Base de dados de concursos armazenados:")
         st.json(st.session_state.historico_sorteios)
 
     # =====================================================================
     # MÓDULO 3: 💳 GESTÃO DE CAIXA
     # =====================================================================
     if st.session_state.aba_atual == "💳 Gestão de Caixa":
-        st.markdown("<h3 style='color:#D4AF37;'>📈 Painel Financeiro e Apuração de Rateio Real</h3>", unsafe_html=True)
+        st.write("### 📈 Painel Financeiro e Apuração de Rateio")
         
         col_c1, col_c2 = st.columns(2)
         with col_c1:
-            novo_saldo = st.number_input("Ajustar/Aportar Saldo de Caixa (R$)", value=float(st.session_state.caixa_saldo))
-            if st.button("CONFIRMAR APORTE"):
+            novo_saldo = st.number_input("Ajustar Saldo de Caixa (R$)", value=float(st.session_state.caixa_saldo))
+            if st.button("CONFIRMAR OPERAÇÃO DE SALDO"):
                 st.session_state.caixa_saldo = novo_saldo
                 st.success("Saldo atualizado.")
                 st.rerun()
                 
         with col_c2:
-            st.markdown("<br>", unsafe_html=True)
-            conc_verificar = st.text_input("Número do Concurso para Conferir e Atualizar Caixa")
+            conc_verificar = st.text_input("Número do Concurso para Conferencia de Rateio")
             
-        if st.button("🔄 CONFERIR APURAR RATEIO OFICIAL E ADICIONAR PREMIAÇÕES"):
+        if st.button("🔄 CONFERIR APURAR RATEIO OFICIAL"):
             if conc_verificar in st.session_state.historico_sorteios:
                 sorteio_real = set(st.session_state.historico_sorteios[conc_verificar])
                 total_ganho = 0.0
@@ -405,13 +341,8 @@ else:
                         elif acertos == 11: total_ganho += 6.00; cartoes_premiados += 1
                 
                 st.session_state.caixa_saldo += total_ganho
-                st.success(f"Apuração Finalizada! {cartoes_premiados} cartões premiados. R$ {total_ganho:.2f} injetados no saldo.")
-                
-                html_sorteio = "<br><div style='text-align:center;'>"
-                for n in sorted(list(sorteio_real)):
-                    html_sorteio += f"<span class='bola-loto bola-sorteada'>{n:02d}</span>"
-                html_sorteio += "</div>"
-                st.markdown(html_sorteio, unsafe_html=True)
+                st.success(f"Apuração Finalizada! {cartoes_premiados} cartões premiados. Retorno de R$ {total_ganho:.2f} computado no Caixa.")
+                st.write(f"**Resultado Oficial do Concurso {conc_verificar}:** {', '.join(f'{x:02d}' for x in sorted(list(sorteio_real)))}")
             else:
                 st.error("Concurso não localizado. Sincronize o sorteio primeiro na aba principal.")
 
@@ -419,7 +350,7 @@ else:
     # MÓDULO 4: 💾 SEGURANÇA & BACKUP
     # =====================================================================
     if st.session_state.aba_atual == "💾 Segurança & Backup":
-        st.markdown("<h3 style='color:#D4AF37;'>📂 Central de Salvaguarda de Dados</h3>", unsafe_html=True)
+        st.write("### 📂 Central de Salvaguarda de Dados")
         
         dados_backup = {
             "caixa_saldo": st.session_state.caixa_saldo,
@@ -429,15 +360,15 @@ else:
         json_string = json.dumps(dados_backup)
         
         st.download_button(
-            label="📥 EXTRAIR BACKUP COMPLETO (KADOSH .JSON)",
+            label="📥 EXTRAIR BACKUP COMPLETO (.JSON)",
             data=json_string,
             file_name="SUPERLOTO_BACKUP.json",
             mime="application/json"
         )
         
-        st.markdown("<hr style='border-color: #2D3748;'>", unsafe_html=True)
-        st.markdown("<h4>📤 Importar Estrutura de Backup</h4>", unsafe_html=True)
-        arquivo_upload = st.file_uploader("Arraste seu arquivo .json de Backup do SuperLoto aqui", type=["json"])
+        st.markdown("---")
+        st.write("#### 📤 Importar Estrutura de Backup")
+        arquivo_upload = st.file_uploader("Arraste seu arquivo .json de Backup aqui", type=["json"])
         
         if arquivo_upload is not None:
             try:
@@ -448,4 +379,4 @@ else:
                 st.success("Toda a estrutura e histórico foram restaurados com sucesso!")
                 st.rerun()
             except:
-                st.error("Falha ao descriptografar arquivo de backup.")
+                st.error("Falha ao ler o arquivo de backup.")
