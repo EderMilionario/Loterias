@@ -298,21 +298,24 @@ else:
         st.caption(f"**Especificação:** {d_est['desc']} | Custo Operacional: **R$ {d_est['custo']:.2f}**")
 
         if st.button("⚡ PROCESSAR E FILTRAR BILHETES COMPATÍVEIS"):
+            # REPROCESSA O POOL DENTRO DO BOTÃO PARA EVITAR ERRO DE ESCOPO
+            pool_20, fixas_8, _ = processar_cerebro_unificado_superloto()
+        
             jogos_gerados = []
-            restante_pool = [x for x in pool if x not in fixas]
+            restante_pool = [x for x in pool_20 if x not in fixas_8]
             tentativas = 0
             qtd = 24 if strat == "🛡️ A MURALHA" else 4
         
             while len(jogos_gerados) < qtd and tentativas < 3000:
                 tentativas += 1
-                comb = sorted(fixas + random.sample(restante_pool, 7))
-                if validar_jogo(comb) and comb not in jogos_gerados: 
+                comb = sorted(fixas_8 + random.sample(restante_pool, 7))
+                if validar_jogo_peneira_geometrica(comb) and comb not in jogos_gerados: 
                     jogos_gerados.append(comb)
                 
             st.session_state.jogos_salvos = jogos_gerados
-            st.session_state.estrategia_atual = strat
-            st.success(f"Sucesso! {len(jogos_gerados)} Bilhetes salvos no Diário de Bordo.")
+            st.success(f"Sucesso! {len(jogos_gerados)} Bilhetes gerados.")
             st.rerun()
+        
 
         if st.session_state.jogos_salvos:
             st.write("### 📋 Seus Cartões Premium Prontos para Registrar")
