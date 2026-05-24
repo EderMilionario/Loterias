@@ -164,7 +164,6 @@ else:
                 score += (atraso * 1.2)
             
             # INJEÇÃO DA CAMADA DE APRENDIZADO POR ERRO (BACKPROPAGATION)
-            # Soma a calibragem calculada no último sorteio direto no score
             score += st.session_state.pesos_recalibrados.get(str(n), 0.0)
             scores_base[n] = score
 
@@ -189,7 +188,6 @@ else:
         dezenas_faltantes_ciclo = set(range(1, 26)) - dezenas_sorteadas_no_ciclo
         for n in dezenas_faltantes_ciclo: scores_finais[n] += 4.0
 
-        # Filtro de Tendência de Quadrantes (Simetria Geométrica de Bloco)
         ranking = sorted(scores_finais.keys(), key=lambda x: scores_finais[x], reverse=True)
         pool_20 = sorted(ranking[:20])
         fixas_8 = sorted(ranking[:8])
@@ -206,10 +204,10 @@ else:
         pares = len([x for x in dezenas if x % 2 == 0])
         if not (160 <= soma <= 220): return False
         if not (6 <= pares <= 9): return False
-        if linha1 > 5 or linha5 > 5: return False
+        if línea1 = len([x for x in dezenas if 1 <= x <= 5]) > 5 or linha5 > 5: return False
         return True
 
-    def obter_cenario_e_justificativa_completa(clima):
+    def obtener_cenario_e_justificativa_completa(clima):
         saldo = st.session_state.caixa_saldo
         if saldo < 100.00:
             return "🛡️ O ESCUDO", "MODO DEFENSIVO", "Banca abaixo do limite (R$ 100,00). O motor financeiro travou desdobramentos de 16 dezenas para proteger capital."
@@ -234,7 +232,6 @@ else:
             num_c, dez_c = capturar_ultimo_resultado_oficial_caixa()
             if num_c:
                 st.session_state.historico_sorteios[num_c] = dez_c
-                # LIMPEZA VISUAL REQUISITADA: Reseta os jogos antigos para o painel ficar limpo na nova rodada
                 st.session_state.jogos_salvos = []
                 st.success(f"🚀 Concurso {num_c} integrado automaticamente! Memória visual de bilhetes limpa para nova rodada.")
                 st.rerun()
@@ -250,7 +247,7 @@ else:
                     lista_d = [int(x.strip()) for x in d_man.split(",")]
                     if len(lista_d) == 15:
                         st.session_state.historico_sorteios[str(c_man)] = sorted(lista_d)
-                        st.session_state.jogos_salvos = [] # Limpa jogos antigos
+                        st.session_state.jogos_salvos = [] 
                         st.success(f"Sorteio {c_man} gravado! Pronto para recalibrar.")
                         st.rerun()
                 except: st.error("Formato incorreto.")
@@ -269,7 +266,7 @@ else:
         **🎯 RECOMENDAÇÃO TÁTICA:** Ativar a estratégia **{est_rec}** **🔬 O PORQUÊ DA DECISÃO:** {justificativa_ia}
         """)
 
-        # --- REDESENHO DAS DEZENAS EM BLOCOS (SEM ROLAGEM) ---
+        # --- REDESENHO DAS DEZENAS EM BLOCOS ---
         st.write("### 🔮 Detalhe Estrutural das Dezenas Moduladas")
         st.write("🟣 **O POOL GERAL BASE — As 20 Dezenas Totais para Combinações:**")
         st.info(f"{'   '.join(f'**[{x:02d}]**' for x in pool_20[:10])}\n\n{'   '.join(f'**[{x:02d}]**' for x in pool_20[10:])}")
@@ -309,7 +306,8 @@ else:
                 tentativas += 1
                 comb = sorted(fixas_8 + random.sample(restante_pool, 8))
                 if validar_jogo_peneira_geometrica(comb) and comb not in jogos_gerados: jogos_gerados.append(comb)
-            while len(jogos_gerados) < (d_est["j16"] + d_est["j15"]) and tentatives < 3000:
+            # CORREÇÃO DEFINITIVA DO TYPO DO LOOP DE SEGUNDO BLOCO
+            while len(jogos_gerados) < (d_est["j16"] + d_est["j15"]) and tentativas < 3000:
                 tentativas += 1
                 comb = sorted(fixas_8 + random.sample(restante_pool, 7))
                 if validar_jogo_peneira_geometrica(comb) and comb not in jogos_gerados: jogos_gerados.append(comb)
@@ -319,7 +317,6 @@ else:
             st.success(f"Sucesso! {len(jogos_gerados)} Bilhetes estruturados. Custo debitado.")
             st.rerun()
 
-        # EXIBIÇÃO EM FILTRO LIMPO DE CARTOES DE LUXO
         if st.session_state.jogos_salvos:
             st.write("### 📋 Seus Cartões Premium Prontos para Registrar")
             for idx, job in enumerate(st.session_state.jogos_salvos):
@@ -327,7 +324,7 @@ else:
                 st.info(f"**🎟️ CARTÃO #{idx+1} — {tipo_b}**\n\n{'  '.join(f'**{x:02d}**' for x in job)}")
 
 # =====================================================================
-# MÓDULO 2: 📊 ANÁLISE DE CICLO VISUAL E TRANSPARENTE
+# MÓDULO 2: 📊 ANÁLISE DE CICLO & ENGENHARIA
 # =====================================================================
     if st.session_state.aba_atual == "📊 Análise de Ciclo & Engenharia":
         st.write("### ⚙️ Painel de Auditoria de Ciclos e Amostragem")
@@ -364,7 +361,7 @@ else:
             novo_s = st.number_input("Adicionar Capital à Banca (R$)", value=float(st.session_state.caixa_saldo))
             if st.button("CONFIRMAR APORTE"):
                 st.session_state.caixa_saldo = novo_s
-                st.success("Banca operacional atualizada!")
+                st.success("Banca operacional actualizada!")
                 st.rerun()
         with col_c2:
             concursos_ativos = sorted(st.session_state.historico_sorteios.keys(), key=lambda x: int(x), reverse=True)
@@ -377,7 +374,6 @@ else:
                 total_ganho_banca = 0.0
                 faixas_individuais = {15: 0, 14: 0, 13: 0, 12: 0, 11: 0}
                 
-                # Armazenador para o Backpropagation recalibrar dezenas erradas
                 dezenas_erradas_sorteadas = list(sorteio_real - set(st.session_state.pool_atual))
                 
                 st.write("### 📜 Extrato de Performance Individual por Bilhete:")
@@ -413,24 +409,21 @@ else:
                 st.metric("🎯 ACERTOS PRENDIDOS NO POOL DE 20", f"{pool_acertados} de 15")
                 st.metric("💰 RECOMPENSA FINANCEIRA TOTAL", f"R$ {total_ganho_banca:.2f}")
                 
-                # --- BOTÃO PERITO SOLICITADO: BOTÃO DE FEEDBACK DO ERRO PARA A IA ESTUDAR ---
                 st.markdown("---")
                 st.write("#### 🧠 Central de Recalibragem de Aprendizado de Máquina")
                 
                 if st.button("⚙️ GRAVAR NO BANCO E EXECUTAR BACKPROPAGATION"):
-                    # Aplica punição matemática nas dezenas que escaparam do cerco do Pool
-                    # e recompensa as que o sistema acertou, moldando os scores futuros
                     for n in range(1, 26):
                         if n in dezenas_erradas_sorteadas:
-                            st.session_state.pesos_recalibrados[str(n)] += 2.0 # Aumenta peso da esquecida
+                            st.session_state.pesos_recalibrados[str(n)] += 2.0 
                         elif n in sorteio_real:
-                            st.session_state.pesos_recalibrados[str(n)] += 0.5 # Fortalece acerto
+                            st.session_state.pesos_recalibrados[str(n)] += 0.5 
                         else:
-                            st.session_state.pesos_recalibrados[str(n)] -= 0.5 # Diminui fria
+                            st.session_state.pesos_recalibrados[str(n)] -= 0.5 
                     st.success("🧠 Sucesso Absoluto! A IA estudou o concurso, identificou onde errou as dezenas e recalibrou a força dos motores para o próximo jogo!")
                 
                 st.markdown("---")
-                st.write(f"### 🏛️ Boletim Oficial Geral de Rateio Nacional — Concurso {conc_verificar}")
+                st.write("### 🏛️ Boletim Oficial Geral de Rateio Nacional — Concurso {conc_verificar}")
                 st.markdown(f"**Resultado do Globo da Caixa:** {', '.join(f'{x:02d}' for x in sorted(list(sorteio_real)))}")
                 
                 valores_b = {
@@ -474,7 +467,7 @@ else:
             mime="application/json"
         )
         st.markdown("---")
-        st.write("#### 📤 Importação e Restauração de Ambiente")
+        st.write("#### 📤 Importar Estrutura de Backup")
         arquivo_importacao = st.file_uploader("Solte seu arquivo de backup aqui", type=["json"])
         if arquivo_importacao is not None:
             try:
