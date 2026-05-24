@@ -29,7 +29,7 @@ if "jogos_salvos" not in st.session_state: st.session_state.jogos_salvos = []
 if "pool_atual" not in st.session_state: st.session_state.pool_atual = []
 if "fixas_atuais" not in st.session_state: st.session_state.fixas_atuais = []
 
-# Matriz de Memória de Aprendizado de IA (O que faltava para recalibrar de verdade)
+# Matriz de Memória de Aprendizado de IA
 if "pesos_recalibrados" not in st.session_state: 
     st.session_state.pesos_recalibrados = {str(x): 0.0 for x in range(1, 26)}
 
@@ -123,7 +123,7 @@ else:
     st.subheader(st.session_state.aba_atual)
 
     # =====================================================================
-    # 4. CAPTURA AUTOMÁTICA INTELIGENTE DYNÁMICA
+    # 4. CAPTURA AUTOMÁTICA INTELIGENTE DYNAMICA
     # =====================================================================
     def capturar_ultimo_resultado_oficial_caixa():
         try:
@@ -204,10 +204,11 @@ else:
         pares = len([x for x in dezenas if x % 2 == 0])
         if not (160 <= soma <= 220): return False
         if not (6 <= pares <= 9): return False
-        if línea1 = len([x for x in dezenas if 1 <= x <= 5]) > 5 or linha5 > 5: return False
+        # CORREÇÃO DEFINITIVA DA LINHA DA SINTAXE DO FILTRO GEOMÉTRICO
+        if linha1 > 5 or linha5 > 5: return False
         return True
 
-    def obtener_cenario_e_justificativa_completa(clima):
+    def obter_cenario_e_justificativa_completa(clima):
         saldo = st.session_state.caixa_saldo
         if saldo < 100.00:
             return "🛡️ O ESCUDO", "MODO DEFENSIVO", "Banca abaixo do limite (R$ 100,00). O motor financeiro travou desdobramentos de 16 dezenas para proteger capital."
@@ -283,7 +284,6 @@ else:
 
         st.markdown("---")
 
-        # ARSENAL EXPANDIDO COM A NOVA ESTRATÉGIA PERITA 'A MURALHA'
         opcoes_estrategias = {
             "🔱 A LANÇA": {"custo": 147.00, "j15": 10, "j16": 2, "desc": "2 jogos de 16 dezenas (Prêmio Multiplicado) + 10 jogos de 15 dezenas."},
             "🛡️ A MURALHA": {"custo": 84.00, "j15": 24, "j16": 0, "desc": "Estratégia Perita: 24 jogos balanceados de 15 dezenas. Maior cobertura matemática do Pool de 20 (1 em 1.615 para 15 pontos)."},
@@ -306,7 +306,6 @@ else:
                 tentativas += 1
                 comb = sorted(fixas_8 + random.sample(restante_pool, 8))
                 if validar_jogo_peneira_geometrica(comb) and comb not in jogos_gerados: jogos_gerados.append(comb)
-            # CORREÇÃO DEFINITIVA DO TYPO DO LOOP DE SEGUNDO BLOCO
             while len(jogos_gerados) < (d_est["j16"] + d_est["j15"]) and tentativas < 3000:
                 tentativas += 1
                 comb = sorted(fixas_8 + random.sample(restante_pool, 7))
@@ -378,12 +377,12 @@ else:
                 
                 st.write("### 📜 Extrato de Performance Individual por Bilhete:")
                 
-                for idx, jogo in enumerate(st.session_state.jogos_salvos):
-                    acertos = len(set(jogo).intersection(sorteio_real))
+                for idx, juego in enumerate(st.session_state.jogos_salvos):
+                    acertos = len(set(juego).intersection(sorteio_real))
                     valor_jogo = 0.0
                     justificativa = "Aposta não atingiu pontuação mínima."
                     
-                    if len(jogo) == 16:
+                    if len(juego) == 16:
                         if acertos == 15: valor_jogo = 1500000.00; faixas_individuais[15] += 1; justificativa = "💥 MÁXIMO MULTIPLICADO! Paga 1 de 15 + 15 prêmios de 14!"
                         elif acertos == 14: valor_jogo = 3000.00; faixas_individuais[14] += 1; justificativa = "💵 MULTIPLICADO! Paga 2 de 14 + 14 prêmios de 13!"
                         elif acertos == 13: valor_jogo = 235.00; faixas_individuais[13] += 1; justificativa = "🟢 MULTIPLICADO! Paga 3 de 13 + 13 prêmios de 12!"
@@ -398,9 +397,9 @@ else:
                     
                     total_ganho_banca += valor_jogo
                     if acertos >= 11:
-                        st.success(f"🎟️ **CARTÃO #{idx+1} ({len(jogo)} Dz) ➔ {acertos} ACERTOS** | Retorno: **R$ {valor_jogo:.2f}**\n\n*Auditoria:* {justificativa}")
+                        st.success(f"🎟️ **CARTÃO #{idx+1} ({len(juego)} Dz) ➔ {acertos} ACERTOS** | Retorno: **R$ {valor_jogo:.2f}**\n\n*Auditoria:* {justificativa}")
                     else:
-                        st.text(f"🎟️ CARTÃO #{idx+1} ({len(jogo)} Dz) ➔ {acertos} Acertos | {justificativa}")
+                        st.text(f"🎟️ CARTÃO #{idx+1} ({len(juego)} Dz) ➔ {acertos} Acertos | {justificativa}")
                 
                 st.session_state.caixa_saldo += total_ganho_banca
                 pool_acertados = len(set(st.session_state.pool_atual).intersection(sorteio_real))
