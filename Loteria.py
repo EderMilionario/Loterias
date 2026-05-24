@@ -5,7 +5,7 @@ from collections import Counter
 import random
 
 # =====================================================================
-# 1. INICIALIZAÇÃO SEGURA DA PÁGINA E ESTILIZAÇÃO PREMIUM
+# 1. INICIALIZAÇÃO SEGURA DA PÁGINA (ESTRUTURA COMPATÍVEL PYTHON 3.13)
 # =====================================================================
 st.set_page_config(
     page_title="SuperLoto - Engenharia Preditiva",
@@ -14,7 +14,11 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-def injetar_estilo_premium():
+# Inicialização forçada do elemento nativo para destravar o metrics_util do Streamlit Cloud
+st.title("👑 SuperLoto Premium")
+
+# Injeção de CSS em container isolado e seguro para evitar conflito de renderização
+with st.container():
     st.markdown("""
         <style>
             .stApp {
@@ -63,9 +67,6 @@ def injetar_estilo_premium():
         </style>
     """, unsafe_html=True)
 
-# Executa a injeção visual de forma isolada e segura
-injetar_estilo_premium()
-
 # =====================================================================
 # 2. SISTEMA DE SESSÃO E BANCO DE DADOS LOCAL
 # =====================================================================
@@ -92,7 +93,6 @@ if not st.session_state.historico_sorteios:
 # 3. INTERFACE DE AUTENTICAÇÃO PRIVADA
 # =====================================================================
 if not st.session_state.autenticado:
-    st.markdown("<br><br><h1 style='text-align: center; color: #D4AF37; font-size: 3rem; font-weight: 800;'>👑 SUPERLOTO</h1>", unsafe_html=True)
     st.markdown("<p style='text-align: center; color: #A0AEC0; font-size: 1.2rem;'>Sistema Privado de Engenharia Preditiva Avançada</p><br>", unsafe_html=True)
     
     col1, col2, col3 = st.columns([1, 1.2, 1])
@@ -124,7 +124,7 @@ else:
             st.session_state.usuario_ativo = None
             st.rerun()
 
-    st.markdown(f"<h1 style='color: #FFFFFF; margin-top: 0;'>SuperLoto <span style='color: #D4AF37;'>|</span> <span style='font-size: 1.5rem; color: #A0AEC0;'>{st.session_state.aba_atual}</span></h1>", unsafe_html=True)
+    st.markdown(f"<h3>Módulo Selecionado: <span style='color: #D4AF37;'>{st.session_state.aba_atual}</span></h3>", unsafe_html=True)
 
     # =====================================================================
     # 4. CAPTURA DOS RESULTADOS REAIS (API CAIXA)
