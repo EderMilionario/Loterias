@@ -49,7 +49,17 @@ if 'historico_50_sorteios' not in st.session_state:
 # =====================================================================
 def obter_dezenas_inteligentes():
     """Analisa histórico e retorna dezenas ordenadas por frequência."""
-    frequencia = Counter()
+    fdef gerar_pdf(lote):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(200, 10, "Recibo Oficial LotoPro", ln=True, align='C')
+    pdf.set_font("Arial", size=12)
+    pdf.ln(10)
+    for i, jogo in enumerate(lote["bilhetes"]):
+        d = " - ".join([f"{n:02d}" for n in sorted(jogo["dezenas"])])
+        pdf.cell(200, 10, f"Bilhete {i+1} ({jogo['tipo']} dez): {d}", ln=True)
+    return pdf.output(dest='S').encode('latin-1')requencia = Counter()
     for sorteio in st.session_state.historico_50_sorteios:
         frequencia.update(sorteio)
     dezenas_ordenadas = [numero for numero, contagem in frequencia.most_common()]
