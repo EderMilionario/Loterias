@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import json
 from collections import Counter
-import math
+import random
 
 # =====================================================================
 # 1. CONFIGURAÇÃO DA PÁGINA E IDENTIDADE VISUAL (DARK, MAGENTA & GOLD)
@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilização CSS Injetada para Visual Premium de Elite
+# Estilização CSS Injetada para Visual Premium de Elite (CORRIGIDO)
 st.markdown("""
     <style>
         .stApp {
@@ -129,7 +129,6 @@ else:
     # 4. SISTEMA DE CAPTURA OFICIAL HÍBRIDO (MANUAL/AUTOMÁTICO)
     # =====================================================================
     def capturar_resultado_caixa_estavel(concurso=None):
-        # Método estável baseado em requisições diretas e limpas para evitar erros
         try:
             url = "https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/"
             if concurso: url += str(concurso)
@@ -162,7 +161,7 @@ else:
             score = 0.0
             if n in u1 and n in u2 and n in u3: score += 1.0
             elif n in u1 and n in u2 and n not in u3: score += 2.5
-            elif n in u1 and n not in u2 and n not in u3: score += 3.5  # Retorno Pivô
+            elif n in u1 and n not in u2 and n not in u3: score += 3.5  
             elif n not in u1 and n in u2 and n in u3: score += 1.5
             elif n not in u1 and n not in u2 and n in u3: score += 2.0
             elif n not in u1 and n not in u2 and n not in u3:
@@ -191,20 +190,17 @@ else:
         for c in concursos_ordenados:
             dezenas_sorteadas_no_ciclo.update(historico[c])
             if len(dezenas_sorteadas_no_ciclo) == 25:
-                dezenas_sorteadas_no_ciclo = set(historico[c]) # Reinicia medição do ciclo anterior
+                dezenas_sorteadas_no_ciclo = set(historico[c]) 
                 break
         dezenas_faltantes_ciclo = set(range(1, 26)) - dezenas_sorteadas_no_ciclo
         
-        # Injeta força máxima se o ciclo estiver prestes a fechar
         for n in dezenas_faltantes_ciclo:
             scores_finais[n] += 4.0
 
-        # Classificação Geral de Elite
         ranking = sorted(scores_finais.keys(), key=lambda x: scores_finais[x], reverse=True)
         pool_20 = sorted(ranking[:20])
         fixas_8 = sorted(ranking[:8])
         
-        # Definição Dinâmica de Clima do Sorteio
         repeticao_ultimo = len(u1.intersection(u2))
         clima = "ESTÁVEL" if 8 <= repeticao_ultimo <= 10 else "ERRÁTICO"
         
@@ -212,7 +208,6 @@ else:
 
     # MOTOR 5: Peneira de Descarte Geométrico e Simetria Kadosh
     def validar_jogo_peneira_geometrica(dezenas):
-        # Filtra jogos com desenhos aberrantes que nunca acontecem na Caixa
         linha1 = len([x for x in dezenas if 1 <= x <= 5])
         linha5 = len([x for x in dezenas if 21 <= x <= 25])
         soma = sum(dezenas)
@@ -250,7 +245,6 @@ else:
                 else:
                     st.warning("Falha na captura automática. Modo manual ativado.")
 
-        # Campo de Inserção Manual Suplementar (Para total estabilidade do usuário)
         with st.expander("📝 Inserção Manual de Sorteio"):
             c_man = st.text_input("Número do Concurso Manual")
             d_man = st.text_input("Insira as 15 Dezenas Separadas por Vírgula (Ex: 1,2,3...)")
@@ -265,12 +259,10 @@ else:
 
         st.markdown("---")
         
-        # Execução do Cérebro Unificado
         pool_20, fixas_8, clima = processar_cerebro_unificado_superloto()
         st.session_state.pool_atual = pool_20
         st.session_state.fixas_atuais = fixas_8
         
-        # Exibição do Piloto de Caixa e Clima
         rec_est, rec_txt = obter_recomendacao_piloto_caixa(clima)
         
         c_clima, c_caixa, c_rec = st.columns(3)
@@ -278,7 +270,6 @@ else:
         with c_caixa: st.metric("💳 SEU CAIXA OPERACIONAL", f"R$ {st.session_state.caixa_saldo:.2f}")
         with c_rec: st.metric("🎯 RECOMENDAÇÃO DO PILOTO", rec_est, help=rec_txt)
 
-        # Painel Visual do Volante de Bolas Coloridas Oficiais
         st.markdown("<h3 style='color: #D4AF37;'>🔮 Volante Preditivo SuperLoto (Análise de Massa)</h3>", unsafe_html=True)
         html_volante = "<div style='background-color:#141822; padding:1.5rem; border-radius:12px; border:1px solid #2D3748; text-align:center;'>"
         for n in range(1, 26):
@@ -287,7 +278,6 @@ else:
             elif n in pool_20: classe_bola = "bola-pool"
             else: classe_bola = "bola-excluida"
             
-            # Adiciona marcador visual de cadeado nas fixas
             txt_bola = f"🔒{n:02d}" if n in fixas_8 else f"{n:02d}"
             html_volante += f"<span class='bola-loto {classe_bola}'>{txt_bola}</span>"
             if n % 5 == 0: html_volante += "<br>"
@@ -297,7 +287,6 @@ else:
 
         st.markdown("---")
 
-        # MENU SELETOR DE ESTRATÉGIAS DE ELITE
         st.markdown("<h3 style='color: #D4AF37;'>⚔️ Configuração do Formato de Ataque</h3>", unsafe_html=True)
         
         opcoes_estrategias = {
@@ -325,7 +314,6 @@ else:
 
         est_escolhida = st.selectbox("Escolha sua Estratégia de Combate", list(opcoes_estrategias.keys()))
         
-        # Exibição Detalhada das Especificações e Probabilidades Reais da Estratégia na Tela
         dados_est = opcoes_estrategias[est_escolhida]
         st.markdown(f"""
             <div style='background-color:#141822; padding:1.2rem; border-radius:8px; border-left:5px solid #D4AF37; margin-bottom:1rem;'>
@@ -337,37 +325,30 @@ else:
         """, unsafe_html=True)
 
         if st.button("⚡ PROCESSAR E FILTRAR JOGOS DE ELITE"):
-            # EXECUÇÃO DO FECHAMENTO MATEMÁTICO INTEGRADO À IA
             jogos_gerados = []
             restante_pool = [x for x in pool_20 if x not in fixas_8]
             
-            # Geração e filtragem rigorosa por Peneira Geométrica
             tentativas = 0
             alvo_16 = dados_est["j16"]
             alvo_15 = dados_est["j15"]
             
-            # Gera jogos de 16
             while len(jogos_gerados) < alvo_16 and tentativas < 1000:
                 tentativas += 1
-                import random
                 comb = sorted(fixas_8 + random.sample(restante_pool, 8))
                 if validar_jogo_peneira_geometrica(comb) and comb not in jogos_gerados:
                     jogos_gerados.append(comb)
             
-            # Gera jogos de 15
             while len(jogos_gerados) < (alvo_16 + alvo_15) and tentativas < 2000:
                 tentativas += 1
-                import random
                 comb = sorted(fixas_8 + random.sample(restante_pool, 7))
                 if validar_jogo_peneira_geometrica(comb) and comb not in jogos_gerados:
                     jogos_gerados.append(comb)
             
             st.session_state.jogos_salvos = jogos_gerados
             st.session_state.caixa_saldo -= dados_est["custo"]
-            st.success(f"Sucesso! {len(jogos_gerados)} Jogos estruturados e filtrados. Custo de R$ {dados_est['custo']:.2f} debitado do Caixa.")
+            st.success(f"Sucesso! {len(jogos_gerados)} Jogos estruturados. Custo de R$ {dados_est['custo']:.2f} debitado.")
             st.rerun()
 
-        # Exibição dos Bilhetes Gerados Prontos para Cópia
         if st.session_state.jogos_salvos:
             st.markdown("<h3 style='color: #D4AF37;'>📋 Bilhetes Filtrados Prontos para Registrar</h3>", unsafe_html=True)
             for idx, jogo in enumerate(st.session_state.jogos_salvos):
@@ -379,7 +360,7 @@ else:
     # =====================================================================
     if st.session_state.aba_atual == "📊 Análise de Ciclo & Engenharia":
         st.markdown("<h3 style='color:#D4AF37;'>⚙️ Auditoria de Motores Preditivos</h3>", unsafe_html=True)
-        st.write("Aqui você pode verificar a quantidade de concursos armazenados na memória interna e auditar os últimos estados físicos gravados.")
+        st.write("Histórico de concursos armazenados na memória interna:")
         st.json(st.session_state.historico_sorteios)
 
     # =====================================================================
@@ -406,19 +387,16 @@ else:
                 total_ganho = 0.0
                 cartoes_premiados = 0
                 
-                # Regra de conferência com cálculo real de prêmios multiplicados para jogos de 16 dezenas
                 for jogo in st.session_state.jogos_salvos:
                     acertos = len(set(jogo).intersection(sorteio_real))
                     
                     if len(jogo) == 16:
-                        # Tabela real de multiplicação da Caixa para apostas de 16 números
-                        if acertos == 15: total_ganho += 1500000.00; cartoes_premiados += 1 # Valor estimado do rateio
-                        elif acertos == 14: total_ganho += 2400.00; cartoes_premiados += 1 # 2 de 14 + 14 de 13
-                        elif acertos == 13: total_ganho += 105.00; cartoes_premiados += 1  # 3 de 13 + 13 de 12
-                        elif acertos == 12: total_ganho += 48.00; cartoes_premiados += 1   # 4 de 12 + 12 de 11
-                        elif acertos == 11: total_ganho += 17.50; cartoes_premiados += 1   # 5 de 11
+                        if acertos == 15: total_ganho += 1500000.00; cartoes_premiados += 1 
+                        elif acertos == 14: total_ganho += 2400.00; cartoes_premiados += 1 
+                        elif acertos == 13: total_ganho += 105.00; cartoes_premiados += 1  
+                        elif acertos == 12: total_ganho += 48.00; cartoes_premiados += 1   
+                        elif acertos == 11: total_ganho += 17.50; cartoes_premiados += 1   
                     else:
-                        # Jogos tradicionais de 15 dezenas
                         if acertos == 15: total_ganho += 1500000.00; cartoes_premiados += 1
                         elif acertos == 14: total_ganho += 1200.00; cartoes_premiados += 1
                         elif acertos == 13: total_ganho += 30.00; cartoes_premiados += 1
@@ -426,16 +404,15 @@ else:
                         elif acertos == 11: total_ganho += 6.00; cartoes_premiados += 1
                 
                 st.session_state.caixa_saldo += total_ganho
-                st.success(f"Apuração Concluída! {cartoes_premiados} cartões foram premiados neste concurso. Total de R$ {total_ganho:.2f} adicionados ao seu Caixa Operacional!")
+                st.success(f"Apuração Concluída! {cartoes_premiados} cartões premiados. R$ {total_ganho:.2f} adicionados.")
                 
-                # Exibição visual das bolas sorteadas piscando na tela
                 html_sorteio = "<br><div style='text-align:center;'>"
                 for n in sorted(list(sorteio_real)):
                     html_sorteio += f"<span class='bola-loto bola-sorteada'>{n:02d}</span>"
                 html_sorteio += "</div>"
                 st.markdown(html_sorteio, unsafe_html=True)
             else:
-                st.error("Concurso não localizado no histórico de sorteios. Sincronize o resultado primeiro na aba Operações.")
+                st.error("Concurso não localizado. Sincronize o resultado primeiro na aba Operações.")
 
     # =====================================================================
     # MÓDULO 4: 💾 SEGURANÇA & BACKUP
@@ -443,7 +420,6 @@ else:
     if st.session_state.aba_atual == "💾 Segurança & Backup":
         st.markdown("<h3 style='color:#D4AF37;'>📂 Central de Salvaguarda de Dados (Manual e Total)</h3>", unsafe_html=True)
         
-        # Estrutura completa de extração de dados em JSON estruturado
         dados_backup = {
             "caixa_saldo": st.session_state.caixa_saldo,
             "historico_sorteios": st.session_state.historico_sorteios,
@@ -468,7 +444,7 @@ else:
                 st.session_state.caixa_saldo = conteudo["caixa_saldo"]
                 st.session_state.historico_sorteios = conteudo["historico_sorteios"]
                 st.session_state.jogos_salvos = conteudo["jogos_salvos"]
-                st.success("Backup e ambiente restaurados perfeitamente com sucesso absoluto!")
+                st.success("Backup restaurado perfeitamente!")
                 st.rerun()
             except:
-                st.error("Erro crítico na leitura do arquivo. Certifique-se de que é um backup válido gerado pelo SuperLoto.")
+                st.error("Erro na leitura do arquivo de backup.")
