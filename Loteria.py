@@ -48,18 +48,7 @@ if 'historico_50_sorteios' not in st.session_state:
 # 3. MOTOR DE INTELIGÊNCIA E ESTATÍSTICA
 # =====================================================================
 def obter_dezenas_inteligentes():
-    """Analisa histórico e retorna dezenas ordenadas por frequência."""
-    fdef gerar_pdf(lote):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, "Recibo Oficial LotoPro", ln=True, align='C')
-    pdf.set_font("Arial", size=12)
-    pdf.ln(10)
-    for i, jogo in enumerate(lote["bilhetes"]):
-        d = " - ".join([f"{n:02d}" for n in sorted(jogo["dezenas"])])
-        pdf.cell(200, 10, f"Bilhete {i+1} ({jogo['tipo']} dez): {d}", ln=True)
-    return pdf.output(dest='S').encode('latin-1')requencia = Counter()
+    frequencia = Counter()
     for sorteio in st.session_state.historico_50_sorteios:
         frequencia.update(sorteio)
     dezenas_ordenadas = [numero for numero, contagem in frequencia.most_common()]
@@ -128,13 +117,6 @@ if menu == "1. Gerador (Piloto Automático)":
         else:
             with st.spinner("A cruzar dados históricos e a aplicar filtros..."):
                 dezenas_elite = obter_dezenas_inteligentes()
-                
-                # --- NOVO: EXIBIÇÃO TRANSPARENTE DAS 18 DEZENAS ---
-                st.subheader("🤖 Dezenas Selecionadas pela Inteligência")
-                dezenas_selecionadas = sorted(dezenas_elite[:18])
-                st.info("Dezenas base do fechamento: " + ", ".join([f"{n:02d}" for n in dezenas_selecionadas]))
-                # ----------------------------------------------------
-
                 jogos_finais = []
                 custo_total = 0.0
                 orcamento_restante = orcamento
@@ -173,6 +155,7 @@ if menu == "1. Gerador (Piloto Automático)":
                 
                 st.success("✅ Estratégia processada! Os bilhetes foram gerados e o valor debitado da sua Banca.")
                 st.info(f"O seu troco de R$ {orcamento_restante:.2f} não foi gasto e permanece na Banca.")
+
 # ---------------------------------------------------------------------
 # ABA 2: RECIBO
 # ---------------------------------------------------------------------
