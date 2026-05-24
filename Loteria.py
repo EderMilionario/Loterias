@@ -166,17 +166,6 @@ if menu == "1. Gerador (Piloto Automático)":
 # ---------------------------------------------------------------------
 # ABA 2: RECIBO
 # ---------------------------------------------------------------------
-def gerar_pdf(lote):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, txt="Recibo Oficial LotoPro", ln=True, align='C')
-    pdf.set_font("Arial", size=12)
-    pdf.ln(10)
-    for i, jogo in enumerate(lote["bilhetes"]):
-        dezenas = " - ".join([f"{n:02d}" for n in sorted(jogo["dezenas"])])
-        pdf.cell(200, 10, txt=f"Bilhete {i+1} ({jogo['tipo']} dez): {dezenas}", ln=True)
-    return pdf.output(dest='S').encode('latin-1')
 elif menu == "2. Os Meus Bilhetes (Recibo)":
     st.header("🎫 Recibo Oficial de Lote")
     lote = st.session_state.lote_ativo
