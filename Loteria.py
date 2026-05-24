@@ -415,7 +415,6 @@ else:
                 st.write("#### 🧠 Central de Recalibragem de Aprendizado de Máquina")
                 
                 if st.button("⚙️ GRAVAR NO BANCO E EXECUTAR BACKPROPAGATION"):
-                    # Puxa o último sorteio para comparar
                     concursos_ordenados = sorted(st.session_state.historico_sorteios.keys(), key=lambda x: int(x), reverse=True)
                     sorteio_real = set(st.session_state.historico_sorteios[concursos_ordenados[0]])
         
@@ -424,16 +423,19 @@ else:
                         acertos = len(set(jogo).intersection(sorteio_real))
                         if acertos < 11:
                             for dezena in jogo:
+                                # Penalização de pesos por erro
                                 st.session_state.pesos_recalibrados[str(dezena)] -= 0.1
         
                     # Estuda o que saiu e estava fora do Pool
                     for n in range(1, 26):
-                        if n in sorteio_real and str(n) not in [str(x) for x in pool]:
+                        # CORREÇÃO AQUI: Referenciando corretamente st.session_state.pool_atual
+                        if n in sorteio_real and n not in st.session_state.pool_atual:
                             st.session_state.pesos_recalibrados[str(n)] += 2.0
                         elif n in sorteio_real:
                             st.session_state.pesos_recalibrados[str(n)] += 0.5
         
-                    st.success("🧠 IA estudou o Diário de Bordo e recalibrou os pesos!")
+                    st.success("🧠 IA estudou o Diário de Bordo e recalibrou os pesos com sucesso!")
+                    st.rerun()
                 
                 st.markdown("---")
                 st.write("### 🏛️ Boletim Oficial Geral de Rateio Nacional — Concurso {conc_verificar}")
