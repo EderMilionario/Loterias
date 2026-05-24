@@ -284,37 +284,39 @@ else:
 
         st.markdown("---")
 
+        # --- BLOCO CORRIGIDO DE SELEÇÃO E GERAÇÃO ---
         opcoes_estrategias = {
-            "🔱 A LANÇA": {"custo": 147.00, "j15": 10, "j16": 2, "desc": "2 jogos de 16 dezenas (Prêmio Multiplicado) + 10 jogos de 15 dezenas."},
-            "🛡️ A MURALHA": {"custo": 84.00, "j15": 24, "j16": 0, "desc": "Estratégia Perita: 24 jogos balanceados de 15 dezenas. Maior cobertura matemática do Pool de 20 (1 em 1.615 para 15 pontos)."},
-            "⚔️ A MARRETA": {"custo": 168.00, "j15": 0, "j16": 3, "desc": "3 jogos puros de 16 dezenas em escada de massa."},
-            "🪓 O MACHADO": {"custo": 14.00, "j15": 4, "j16": 0, "desc": "4 jogos simples de 15 dezenas de alta cobertura econômica."},
-            "💎 A COROA": {"custo": 63.00, "j15": 2, "j16": 1, "desc": "1 jogo de 16 dezenas + 2 jogos de 15 para fim de ciclo."},
-            "🛡️ O ESCUDO": {"custo": 7.00, "j15": 2, "j16": 0, "desc": "2 jogos de 15 dezenas focados em proteção de capital."}
+            "🔱 A LANÇA": {"custo": 147.00, "j15": 10, "j16": 2},
+            "🛡️ A MURALHA": {"custo": 84.00, "j15": 24, "j16": 0},
+            "🪓 O MACHADO": {"custo": 14.00, "j15": 4, "j16": 0},
+            "⚔️ A MARRETA": {"c": 168.0, "j": 3},
+            "💎 A COROA": {"c": 63.0, "j": 3},
+            "🛡️ O ESCUDO": {"c": 7.0, "j": 2}
         }
         
-        est_escolhida = st.selectbox("Selecione seu Formato de Ataque no Volante", list(opcoes_estrategias.keys()))
-        d_est = opcoes_estrategias[est_escolhida]
-        st.caption(f"**Especificação:** {d_est['desc']} | Custo Operacional: **R$ {d_est['custo']:.2f}**")
-
-        if st.button("⚡ PROCESSAR E FILTRAR BILHETES COMPATÍVEIS"):
-            # REPROCESSA O POOL DENTRO DO BOTÃO PARA EVITAR ERRO DE ESCOPO
-            pool_20, fixas_8, _ = processar_cerebro_unificado_superloto()
+        # Definimos o selectbox e capturamos o valor em 'strat'
+        strat = st.selectbox("Selecione seu Formato de Ataque no Volante", list(opcoes_estrategias.keys()))
+        d_est = opcoes_estrategias[strat]
         
+        if st.button("⚡ PROCESSAR E FILTRAR BILHETES COMPATÍVEIS"):
+            # O processamento agora usa o 'strat' que foi definido acima
             jogos_gerados = []
+            pool_20, fixas_8, _ = processar_cerebro_unificado_superloto()
             restante_pool = [x for x in pool_20 if x not in fixas_8]
             tentativas = 0
-            qtd = 24 if strat == "🛡️ A MURALHA" else 4
-        
+            qtd = d_est["j15"] 
+            
             while len(jogos_gerados) < qtd and tentativas < 3000:
                 tentativas += 1
                 comb = sorted(fixas_8 + random.sample(restante_pool, 7))
                 if validar_jogo_peneira_geometrica(comb) and comb not in jogos_gerados: 
                     jogos_gerados.append(comb)
-                
+            
             st.session_state.jogos_salvos = jogos_gerados
+            st.session_state.caixa_saldo -= d_est["custo"]
             st.success(f"Sucesso! {len(jogos_gerados)} Bilhetes gerados.")
             st.rerun()
+        
         
 
         if st.session_state.jogos_salvos:
