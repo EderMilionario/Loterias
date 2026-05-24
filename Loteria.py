@@ -466,32 +466,49 @@ else:
 # =====================================================================
 # MÓDULO 4: 💾 CENTRAL DE BACKUP (SALVA OS PESOS RECALIBRADOS TAMBÉM)
 # =====================================================================
+    # MÓDULO 4: CENTRAL DE BACKUP (CORREÇÃO DE ESTABILIDADE)
     if st.session_state.aba_atual == "💾 Central de Backup":
-        st.write("### 📂 Central de Salvaguarda de Dados (Backup)")
+        st.write("### 📂 Central de Salvaguarda de Dados")
+    
+        # 1. Preparação do arquivo para download (o que você já tinha)
         dados_salvamento = {
             "caixa_saldo": st.session_state.caixa_saldo,
             "historico_sorteios": st.session_state.historico_sorteios,
             "jogos_salvos": st.session_state.jogos_salvos,
             "pesos_recalibrados": st.session_state.pesos_recalibrados
-        }
-        json_backup_string = json.dumps(dados_salvamento)
+            }
+    
+        # 2. Botão de Download (para você salvar o progresso atual)
         st.download_button(
-            label="📥 EXTRAIR BACKUP TOTAL DO SISTEMA COM APRENDIZADO DA IA (.JSON)",
-            data=json_backup_string,
+            label="📥 BAIXAR BACKUP ATUALIZADO (.JSON)",
+            data=json.dumps(dados_salvamento),
             file_name="SUPERLOTO_BACKUP.json",
             mime="application/json"
         )
+    
         st.markdown("---")
-        st.write("#### 📤 Importar Estrutura de Backup")
-        arquivo_importacao = st.file_uploader("Solte seu arquivo de backup aqui", type=["json"])
+    
+        # 3. Importação (Onde o sistema carrega os dados)
+        st.write("#### 📤 Carregar Backup")
+        arquivo_importacao = st.file_uploader("Selecione seu arquivo .json salvo", type=["json"])
+    
         if arquivo_importacao is not None:
             try:
-                conteudo_recuperado = json.load(arquivo_importacao)
-                st.session_state.caixa_saldo = conteudo_recuperado["caixa_saldo"]
-                st.session_state.historico_sorteios = conteudo_recuperado["historico_sorteios"]
-                st.session_state.jogos_salvos = conteudo_recuperado["jogos_salvos"]
-                if "pesos_recalibrados" in conteudo_recuperado:
-                    st.session_state.pesos_recalibrados = conteudo_recuperado["pesos_recalibrados"]
-                st.success("Toda a inteligência recalibrada e histórico restaurados com sucesso absoluto!")
-                st.rerun()
-            except: st.error("Arquivo inválido.")
+                # Lê o conteúdo do arquivo que você subiu
+                conteudo = json.load(arquivo_importacao)
+            
+                # ATUALIZAÇÃO FORÇADA DA MEMÓRIA DO SISTEMA
+                st.session_state.caixa_saldo = conteudo.get("caixa_saldo", 500.0)
+                st.session_state.historico_sorteios = conteudo.get("historico_sorteios", {})
+                st.session_state.jogos_salvos = conteudo.get("jogos_salvos", [])
+                st.session_state.pesos_recalibrados = conteudo.get("pesos_recalibrados", {str(x): 0.0 for x in range(1, 26)})
+            
+                st.success("✅ Dados carregados! A IA e o histórico foram restaurados.")
+                st.info(f"Jogos recuperados: {len(st.session_state.jogos_salvos)}")
+            
+                # O st.rerun() força o sistema a ler esses novos dados imediatamente
+                if st.button("🔄 APLICAR DADOS E ATUALIZAR TELA"):
+                    st.rerun()
+                
+            except Exception as e:
+                st.error(f"Erro ao ler o arquivo: {e}")
