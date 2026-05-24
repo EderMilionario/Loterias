@@ -5,7 +5,7 @@ from collections import Counter
 import random
 
 # =====================================================================
-# 1. CONFIGURAÇÃO DA PÁGINA (PADRÃO SEGURO NATIVO)
+# 1. CONFIGURAÇÃO DA PÁGINA (PADRÃO SEGURO NATIVO STREAMLIT)
 # =====================================================================
 st.set_page_config(
     page_title="SuperLoto - Engenharia Preditiva",
@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Título principal usando elemento puramente nativo do Streamlit (Sem HTML/CSS perigoso)
+# Título principal usando elementos puros do Streamlit (Sem HTML)
 st.title("👑 SuperLoto Premium")
 st.caption("Sistema Privado de Engenharia Preditiva Avançada — Versão Blindada Python 3.13")
 
@@ -32,7 +32,7 @@ if "fixas_atuais" not in st.session_state: st.session_state.fixas_atuais = []
 
 USUARIOS_SISTEMA = {"admin": "kadosh15", "irma": "loto15"}
 
-# Histórico de ignição para o sistema nunca iniciar zerado
+# Histórico de ignição base para o sistema funcionar imediatamente
 if not st.session_state.historico_sorteios:
     st.session_state.historico_sorteios = {
         "3100": [1, 2, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 24, 25],
@@ -58,7 +58,7 @@ if not st.session_state.autenticado:
                 st.error("Chave de acesso ou operador incorretos.")
 
 else:
-    # Menu lateral 100% nativo
+    # Menu lateral nativo completo
     with st.sidebar:
         st.subheader("👑 Menu SuperLoto")
         st.write(f"Operador: **{st.session_state.usuario_ativo}**")
@@ -71,19 +71,19 @@ else:
         st.markdown("---")
         if st.button("Encerrar Sessão"):
             st.session_state.autenticado = False
-            st.session_state.usuario_active = None
+            st.session_state.usuario_ativo = None
             st.rerun()
 
     st.subheader(f"Módulo: {st.session_state.aba_atual}")
 
     # =====================================================================
-    # 4. METODO ESTÁVEL DE CAPTURA (API CAIXA)
+    # 4. MÉTODO DE CAPTURA DA CAIXA (BLINDADO CONTRA TIMEOUT)
     # =====================================================================
     def capturar_resultado_caixa_estavel(concurso=None):
         try:
             url = "https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/"
             if concurso: url += str(concurso)
-            response = requests.get(url, timeout=10, verify=False)
+            response = requests.get(url, timeout=7, verify=False)
             if response.status_code == 200:
                 dados = response.json()
                 return str(dados["numero"]), [int(x) for x in dados["listaDezenas"]]
@@ -183,26 +183,28 @@ else:
         with col_api1:
             c_input = st.text_input("Digitar Concurso Específico (Vazio para Último Oficial)")
         with col_api2:
-            st.write("<br>", unsafe_html=True)
+            st.markdown(" ") # Substituído de forma segura (Sem HTML)
             if st.button("🔄 SINCRONIZAR CONCURSO REAL"):
                 num_c, dez_c = capturar_resultado_caixa_estavel(c_input if c_input else None)
                 if num_c:
                     st.session_state.historico_sorteios[num_c] = dez_c
                     st.success(f"Concurso {num_c} sincronizado com sucesso!")
+                    st.rerun()
                 else:
-                    st.warning("Falha na captura automática. Use a gravação manual se necessário.")
+                    st.error("Servidor da Caixa indisponível no momento. Insira manualmente abaixo para não travar seu jogo.")
 
         with st.expander("📝 Inserção Manual de Sorteio Suplementar"):
             c_man = st.text_input("Número do Concurso Manual")
-            d_man = st.text_input("Insira as 15 Dezenas Separadas por Vírgula")
+            d_man = st.text_input("Insira as 15 Dezenas Separadas por Vírgula (Ex: 1,2,3,4...)")
             if st.button("GRAVAR MANUALMENTE"):
                 try:
                     lista_d = [int(x.strip()) for x in d_man.split(",")]
                     if len(lista_d) == 15:
-                        st.session_state.historico_sorteios[c_man] = sorted(lista_d)
-                        st.success("Sorteio gravado com sucesso!")
-                    else: st.error("Insira exatamente 15 números.")
-                except: st.error("Dados inválidos.")
+                        st.session_state.historico_sorteios[str(c_man)] = sorted(lista_d)
+                        st.success(f"Sorteio {c_man} gravado com sucesso no histórico!")
+                        st.rerun()
+                    else: st.error("Erro: Um sorteio oficial precisa ter exatamente 15 números.")
+                except: st.error("Formato de dados incorreto. Use apenas números separados por vírgulas.")
 
         st.markdown("---")
         
@@ -217,10 +219,7 @@ else:
         with c_caixa: st.metric("💳 SEU CAIXA OPERACIONAL", f"R$ {st.session_state.caixa_saldo:.2f}")
         with c_rec: st.metric("🎯 RECOMENDAÇÃO DO PILOTO", rec_est, help=rec_txt)
 
-        # Volante preditivo construído de forma nativa e limpa (Sem quebras de CSS)
         st.write("### 🔮 Volante Preditivo SuperLoto")
-        
-        # Agrupamento visual nativo por blocos
         st.write(f"🔒 **Dezenas Fixas Selecionadas (Markov):** {', '.join(f'{x:02d}' for x in fixas_8)}")
         st.write(f"🔮 **Dezenas do seu Pool de Elite (Bayes/Coocorrência):** {', '.join(f'{x:02d}' for x in pool_20 if x not in fixas_8)}")
         st.write(f"❌ **Dezenas Excluídas (Baixa Probabilidade):** {', '.join(f'{x:02d}' for x in range(1, 26) if x not in pool_20)}")
@@ -284,7 +283,7 @@ else:
             
             st.session_state.jogos_salvos = jogos_gerados
             st.session_state.caixa_saldo -= dados_est["custo"]
-            st.success(f"Sucesso! {len(jogos_gerados)} Jogos calculados pelo motor preditivo.")
+            st.success(f"Sucesso! {len(jogos_gerados)} Jogos calculados e salvos em memória.")
             st.rerun()
 
         if st.session_state.jogos_salvos:
@@ -298,7 +297,7 @@ else:
     # =====================================================================
     if st.session_state.aba_atual == "📊 Análise de Ciclo & Engenharia":
         st.write("### ⚙️ Auditoria de Motores Preditivos")
-        st.write("Base de dados de concursos armazenados:")
+        st.write("Base de dados de concursos armazenados no histórico:")
         st.json(st.session_state.historico_sorteios)
 
     # =====================================================================
@@ -312,7 +311,7 @@ else:
             novo_saldo = st.number_input("Ajustar Saldo de Caixa (R$)", value=float(st.session_state.caixa_saldo))
             if st.button("CONFIRMAR OPERAÇÃO DE SALDO"):
                 st.session_state.caixa_saldo = novo_saldo
-                st.success("Saldo atualizado.")
+                st.success("Saldo operacional de banca atualizado!")
                 st.rerun()
                 
         with col_c2:
@@ -341,16 +340,16 @@ else:
                         elif acertos == 11: total_ganho += 6.00; cartoes_premiados += 1
                 
                 st.session_state.caixa_saldo += total_ganho
-                st.success(f"Apuração Finalizada! {cartoes_premiados} cartões premiados. Retorno de R$ {total_ganho:.2f} computado no Caixa.")
-                st.write(f"**Resultado Oficial do Concurso {conc_verificar}:** {', '.join(f'{x:02d}' for x in sorted(list(sorteio_real)))}")
+                st.success(f"Apuração Finalizada! {cartoes_premiados} cartões premiados encontrados. Retorno de R$ {total_ganho:.2f} adicionados.")
+                st.write(f"**Resultado do Concurso {conc_verificar}:** {', '.join(f'{x:02d}' for x in sorted(list(sorteio_real)))}")
             else:
-                st.error("Concurso não localizado. Sincronize o sorteio primeiro na aba principal.")
+                st.error("Concurso não localizado. Sincronize o concurso ou insira manualmente na aba Operações primeiro.")
 
     # =====================================================================
     # MÓDULO 4: 💾 SEGURANÇA & BACKUP
     # =====================================================================
     if st.session_state.aba_atual == "💾 Segurança & Backup":
-        st.write("### 📂 Central de Salvaguarda de Dados")
+        st.write("### 📂 Central de Salvaguarda de Dados (Backup)")
         
         dados_backup = {
             "caixa_saldo": st.session_state.caixa_saldo,
@@ -376,7 +375,7 @@ else:
                 st.session_state.caixa_saldo = conteudo["caixa_saldo"]
                 st.session_state.historico_sorteios = conteudo["historico_sorteios"]
                 st.session_state.jogos_salvos = conteudo["jogos_salvos"]
-                st.success("Toda a estrutura e histórico foram restaurados com sucesso!")
+                st.success("Toda a estrutura, saldo e histórico restaurados com sucesso absoluto!")
                 st.rerun()
             except:
-                st.error("Falha ao ler o arquivo de backup.")
+                st.error("Falha ao descriptografar arquivo de backup. Verifique se o arquivo está correto.")
