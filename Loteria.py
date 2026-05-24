@@ -5,7 +5,7 @@ from collections import Counter
 import random
 
 # =====================================================================
-# 1. CONFIGURAÇÃO DA PÁGINA E IDENTIDADE VISUAL (DARK, MAGENTA & GOLD)
+# 1. INICIALIZAÇÃO SEGURA DA PÁGINA E ESTILIZAÇÃO PREMIUM
 # =====================================================================
 st.set_page_config(
     page_title="SuperLoto - Engenharia Preditiva",
@@ -14,58 +14,60 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilização CSS Injetada para Visual Premium de Elite (CORRIGIDO)
-st.markdown("""
-    <style>
-        .stApp {
-            background-color: #0A0C10;
-            color: #E2E8F0;
-        }
-        .stTextInput input, .stNumberInput input {
-            background-color: #141822 !important;
-            color: #FFFFFF !important;
-            border: 1px solid #D4AF37 !important;
-            border-radius: 8px !important;
-        }
-        .stButton>button {
-            background: linear-gradient(135deg, #D4AF37 0%, #AA7C11 100%) !important;
-            color: #0A0C10 !important;
-            font-weight: bold !important;
-            border: none !important;
-            border-radius: 8px !important;
-            padding: 0.6rem 2rem !important;
-            transition: all 0.3s ease !important;
-            box-shadow: 0px 4px 12px rgba(212, 175, 55, 0.2) !important;
-            width: 100%;
-        }
-        .stButton>button:hover {
-            transform: translateY(-2px) !important;
-            box-shadow: 0px 6px 18px rgba(212, 175, 55, 0.4) !important;
-            color: #0A0C10 !important;
-        }
-        /* Bolas Oficiais da Lotofácil */
-        .bola-loto {
-            display: inline-block;
-            width: 50px;
-            height: 50px;
-            line-height: 50px;
-            text-align: center;
-            border-radius: 50%;
-            font-weight: bold;
-            font-size: 1.2rem;
-            margin: 5px;
-            box-shadow: inset -3px -3px 8px rgba(0,0,0,0.4), 2px 2px 5px rgba(0,0,0,0.3);
-        }
-        .bola-padrao { background: #93278F; color: white; border: 2px solid #D4AF37; }
-        .bola-pool { background: linear-gradient(135deg, #BD10E0 0%, #93278F 100%); color: white; border: 3px solid #D4AF37; box-shadow: 0 0 12px #D4AF37; }
-        .bola-fixa { background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #0A0C10; border: 3px solid #FFF; box-shadow: 0 0 15px #FFD700; }
-        .bola-excluida { background: #2D3748; color: #718096; border: 2px dashed #4A5568; opacity: 0.4; }
-        .bola-sorteada { background: #00E676; color: #0A0C10; border: 2px solid #FFF; box-shadow: 0 0 12px #00E676; }
-    </style>
-""", unsafe_html=True)
+def injetar_estilo_premium():
+    st.markdown("""
+        <style>
+            .stApp {
+                background-color: #0A0C10;
+                color: #E2E8F0;
+            }
+            .stTextInput input, .stNumberInput input {
+                background-color: #141822 !important;
+                color: #FFFFFF !important;
+                border: 1px solid #D4AF37 !important;
+                border-radius: 8px !important;
+            }
+            .stButton>button {
+                background: linear-gradient(135deg, #D4AF37 0%, #AA7C11 100%) !important;
+                color: #0A0C10 !important;
+                font-weight: bold !important;
+                border: none !important;
+                border-radius: 8px !important;
+                padding: 0.6rem 2rem !important;
+                transition: all 0.3s ease !important;
+                box-shadow: 0px 4px 12px rgba(212, 175, 55, 0.2) !important;
+                width: 100%;
+            }
+            .stButton>button:hover {
+                transform: translateY(-2px) !important;
+                box-shadow: 0px 6px 18px rgba(212, 175, 55, 0.4) !important;
+                color: #0A0C10 !important;
+            }
+            .bola-loto {
+                display: inline-block;
+                width: 48px;
+                height: 48px;
+                line-height: 48px;
+                text-align: center;
+                border-radius: 50%;
+                font-weight: bold;
+                font-size: 1.1rem;
+                margin: 4px;
+                box-shadow: inset -3px -3px 8px rgba(0,0,0,0.4), 2px 2px 5px rgba(0,0,0,0.3);
+            }
+            .bola-padrao { background: #93278F; color: white; border: 2px solid #D4AF37; }
+            .bola-pool { background: linear-gradient(135deg, #BD10E0 0%, #93278F 100%); color: white; border: 3px solid #D4AF37; box-shadow: 0 0 12px #D4AF37; }
+            .bola-fixa { background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #0A0C10; border: 3px solid #FFF; box-shadow: 0 0 15px #FFD700; }
+            .bola-excluida { background: #2D3748; color: #718096; border: 2px dashed #4A5568; opacity: 0.4; }
+            .bola-sorteada { background: #00E676; color: #0A0C10; border: 2px solid #FFF; box-shadow: 0 0 12px #00E676; }
+        </style>
+    """, unsafe_html=True)
+
+# Executa a injeção visual de forma isolada e segura
+injetar_estilo_premium()
 
 # =====================================================================
-# 2. INICIALIZAÇÃO DE VARIÁVEIS DE ESTADO (SESSION STATE)
+# 2. SISTEMA DE SESSÃO E BANCO DE DADOS LOCAL
 # =====================================================================
 if "autenticado" not in st.session_state: st.session_state.autenticado = False
 if "usuario_ativo" not in st.session_state: st.session_state.usuario_ativo = None
@@ -78,7 +80,6 @@ if "fixas_atuais" not in st.session_state: st.session_state.fixas_atuais = []
 
 USUARIOS_SISTEMA = {"admin": "kadosh15", "irma": "loto15"}
 
-# SIMULAÇÃO DE HISTÓRICO BASE PARA IGNIÇÃO DO SISTEMA SE API FALHAR
 if not st.session_state.historico_sorteios:
     st.session_state.historico_sorteios = {
         "3100": [1, 2, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 24, 25],
@@ -88,11 +89,12 @@ if not st.session_state.historico_sorteios:
     }
 
 # =====================================================================
-# 3. INTERFACE DE LOGIN DE ELITE
+# 3. INTERFACE DE AUTENTICAÇÃO PRIVADA
 # =====================================================================
 if not st.session_state.autenticado:
     st.markdown("<br><br><h1 style='text-align: center; color: #D4AF37; font-size: 3rem; font-weight: 800;'>👑 SUPERLOTO</h1>", unsafe_html=True)
     st.markdown("<p style='text-align: center; color: #A0AEC0; font-size: 1.2rem;'>Sistema Privado de Engenharia Preditiva Avançada</p><br>", unsafe_html=True)
+    
     col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
         st.markdown("<div style='background-color: #141822; padding: 2.5rem; border-radius: 16px; border: 1px solid #2D3748; box-shadow: 0 10px 25px rgba(0,0,0,0.5);'>", unsafe_html=True)
@@ -108,7 +110,6 @@ if not st.session_state.autenticado:
         st.markdown("</div>", unsafe_html=True)
 
 else:
-    # Barra Lateral Customizada de Navegação
     with st.sidebar:
         st.markdown("<h2 style='color: #D4AF37; margin-bottom: 0;'>👑 SuperLoto</h2>", unsafe_html=True)
         st.markdown(f"<p style='color: #A0AEC0; font-size: 0.9rem;'>Operador: <span style='color: #FFF; font-weight:bold;'>{st.session_state.usuario_ativo}</span></p>", unsafe_html=True)
@@ -126,7 +127,7 @@ else:
     st.markdown(f"<h1 style='color: #FFFFFF; margin-top: 0;'>SuperLoto <span style='color: #D4AF37;'>|</span> <span style='font-size: 1.5rem; color: #A0AEC0;'>{st.session_state.aba_atual}</span></h1>", unsafe_html=True)
 
     # =====================================================================
-    # 4. SISTEMA DE CAPTURA OFICIAL HÍBRIDO (MANUAL/AUTOMÁTICO)
+    # 4. CAPTURA DOS RESULTADOS REAIS (API CAIXA)
     # =====================================================================
     def capturar_resultado_caixa_estavel(concurso=None):
         try:
@@ -143,7 +144,7 @@ else:
         return None, None
 
     # =====================================================================
-    # 5. OS 6 MOTORES DE INTELIGÊNCIA UNIFICADOS
+    # 5. EXECUÇÃO UNIFICADA DOS 6 MOTORES DE INTELIGÊNCIA
     # =====================================================================
     def processar_cerebro_unificado_superloto():
         historico = st.session_state.historico_sorteios
@@ -151,7 +152,7 @@ else:
         
         concursos_ordenados = sorted(historico.keys(), key=lambda x: int(x), reverse=True)
         
-        # MOTOR 1: Cadeia de Transição de Estados (Markov de 2ª Ordem - Curto Prazo)
+        # Motor 1: Cadeia de Transição de Estados (Markov de 2ª Ordem)
         u1 = set(historico[concursos_ordenados[0]])
         u2 = set(historico[concursos_ordenados[1]])
         u3 = set(historico[concursos_ordenados[2]])
@@ -172,7 +173,7 @@ else:
                 score += (atraso * 1.2)
             scores_base[n] = score
 
-        # MOTOR 2 & 3: Coocorrência Espacial & Lógica Bayesiana (Longo Prazo)
+        # Motores 2 e 3: Coocorrência Espacial e Lógica Bayesiana
         top_3_recentes = sorted(list(u1), key=lambda x: scores_base.get(x, 0), reverse=True)[:3]
         co_ocorrencia = Counter()
         for c in concursos_ordenados[:30]:
@@ -185,7 +186,7 @@ else:
             peso_co = (co_ocorrencia[n] / 30.0) * 2.0
             scores_finais[n] = scores_base[n] + peso_co
 
-        # MOTOR 4: Sensor de Ruptura de Ciclo (Antissaturação)
+        # Motor 4: Rastreador Antissaturação de Ciclo das Pedras
         dezenas_sorteadas_no_ciclo = set()
         for c in concursos_ordenados:
             dezenas_sorteadas_no_ciclo.update(historico[c])
@@ -206,7 +207,7 @@ else:
         
         return pool_20, fixas_8, clima
 
-    # MOTOR 5: Peneira de Descarte Geométrico e Simetria Kadosh
+    # Motor 5: Peneira de Validação Geométrica Kadosh
     def validar_jogo_peneira_geometrica(dezenas):
         linha1 = len([x for x in dezenas if 1 <= x <= 5])
         linha5 = len([x for x in dezenas if 21 <= x <= 25])
@@ -218,7 +219,7 @@ else:
         if linha1 > 5 or linha5 > 5: return False
         return True
 
-    # MOTOR 6: Inteligência Financeira e Piloto Automático de Caixa
+    # Motor 6: Gestor Dinâmico de Caixa Inteligente
     def obter_recomendacao_piloto_caixa(clima):
         saldo = st.session_state.caixa_saldo
         if saldo < 100.00:
@@ -243,7 +244,7 @@ else:
                     st.session_state.historico_sorteios[num_c] = dez_c
                     st.success(f"Concurso {num_c} capturado com sucesso da fonte oficial!")
                 else:
-                    st.warning("Falha na captura automática. Modo manual ativado.")
+                    st.warning("Falha na captura automática. Modo manual disponível abaixo.")
 
         with st.expander("📝 Inserção Manual de Sorteio"):
             c_man = st.text_input("Número do Concurso Manual")
@@ -253,7 +254,7 @@ else:
                     lista_d = [int(x.strip()) for x in d_man.split(",")]
                     if len(lista_d) == 15:
                         st.session_state.historico_sorteios[c_man] = sorted(lista_d)
-                        st.success("Gravado com Sucesso!")
+                        st.success("Sorteio gravado com sucesso!")
                     else: st.error("Insira exatamente 15 números.")
                 except: st.error("Formato de dados inválido.")
 
@@ -283,7 +284,7 @@ else:
             if n % 5 == 0: html_volante += "<br>"
         html_volante += "</div>"
         st.markdown(html_volante, unsafe_html=True)
-        st.markdown("<p style='font-size:0.9rem; color:#A0AEC0;'>Legenda: <span style='color:#FFD700;'>■ Fixas de Arrastre</span> | <span style='color:#BD10E0;'>■ Pool de Elite</span> | <span style='color:#4A5568;'>■ Excluídas do Jogo</span></p>", unsafe_html=True)
+        st.markdown("<p style='font-size:0.9rem; color:#A0AEC0;'>Legenda: <span style='color:#FFD700;'>■ Fixas de Arrastre</span> | <span style='color:#BD10E0;'>■ Pool de Elite</span> | <span style='color:#4A5568;'>■ Excluídas</span></p>", unsafe_html=True)
 
         st.markdown("---")
 
@@ -291,30 +292,30 @@ else:
         
         opcoes_estrategias = {
             "🔱 A LANÇA": {
-                "desc": "Poder Ofensivo Máximo. Une 2 jogos robustos de 16 dezenas (foco em prêmio multiplicado) com 10 jogos de 15 dezenas (rede de contenção contra zebras).",
+                "desc": "Poder Ofensivo Máximo. Une 2 jogos de 16 dezenas com 10 jogos de 15 dezenas para cercar desvios e anomalias do sorteio.",
                 "custo": 147.00, "prob15": "1 em 4.430", "prob14": "1 em 118", "j15": 10, "j16": 2
             },
             "⚔️ A MARRETA": {
-                "desc": "Alto Impacto Concentrado. Entrega 3 jogos puros de 16 dezenas configurados em formato de escada compensatória. Poder máximo focado em faturar prêmios multiplicados.",
+                "desc": "Alto Impacto Concentrado. 3 jogos puros de 16 dezenas montados em matriz compensatória de escada. Prêmios multiplicados.",
                 "custo": 168.00, "prob15": "1 em 5.160", "prob14": "1 em 141", "j15": 0, "j16": 3
             },
             "🪓 O MACHADO": {
-                "desc": "Cerco Matemático Econômico. Distribuição simétrica perfeita do Pool em 4 jogos simples de 15 dezenas. Custo extremamente baixo com altíssima cobertura.",
+                "desc": "Cerco Matemático Econômico. Distribuição simétrica perfeita do Pool em 4 jogos simples de 15 dezenas com baixíssimo custo.",
                 "custo": 14.00, "prob15": "1 em 3.876", "prob14": "1 em 242", "j15": 4, "j16": 0
             },
             "💎 A COROA": {
-                "desc": "Sistema Misto de Equilíbrio. 1 jogo de 16 dezenas para o padrão comum da Caixa cruzado com 2 jogos de 15 dezenas focados no Bloco de fechamento de Ciclo.",
+                "desc": "Sistema Misto de Equilíbrio. 1 jogo de 16 dezenas (padrão histórico) cruzado com 2 jogos de 15 dezenas focados no fim do ciclo.",
                 "custo": 63.00, "prob15": "1 em 7.750", "prob14": "1 em 310", "j15": 2, "j16": 1
             },
             "🛡️ O ESCUDO": {
-                "desc": "Proteção Absoluta de Caixa. Gera 2 jogos de 15 dezenas usando apenas os pivôs de curto prazo de Markov. Feito para interceptar 12 e 13 pontos e reaver o investimento.",
+                "desc": "Proteção Absoluta de Caixa. Gera 2 jogos cirúrgicos de 15 dezenas baseados nos pivôs estáveis de Markov para proteger capital.",
                 "custo": 7.00, "prob15": "1 em 7.752", "prob14": "1 em 484", "j15": 2, "j16": 0
             }
         }
 
         est_escolhida = st.selectbox("Escolha sua Estratégia de Combate", list(opcoes_estrategias.keys()))
-        
         dados_est = opcoes_estrategias[est_escolhida]
+        
         st.markdown(f"""
             <div style='background-color:#141822; padding:1.2rem; border-radius:8px; border-left:5px solid #D4AF37; margin-bottom:1rem;'>
                 <b>Especificação Física:</b> {dados_est['desc']}<br>
@@ -346,7 +347,7 @@ else:
             
             st.session_state.jogos_salvos = jogos_gerados
             st.session_state.caixa_saldo -= dados_est["custo"]
-            st.success(f"Sucesso! {len(jogos_gerados)} Jogos estruturados. Custo de R$ {dados_est['custo']:.2f} debitado.")
+            st.success(f"Sucesso! {len(jogos_gerados)} Jogos calculados. Custo de R$ {dados_est['custo']:.2f} processado.")
             st.rerun()
 
         if st.session_state.jogos_salvos:
@@ -360,7 +361,7 @@ else:
     # =====================================================================
     if st.session_state.aba_atual == "📊 Análise de Ciclo & Engenharia":
         st.markdown("<h3 style='color:#D4AF37;'>⚙️ Auditoria de Motores Preditivos</h3>", unsafe_html=True)
-        st.write("Histórico de concursos armazenados na memória interna:")
+        st.write("Base de dados interna de concursos:")
         st.json(st.session_state.historico_sorteios)
 
     # =====================================================================
@@ -404,7 +405,7 @@ else:
                         elif acertos == 11: total_ganho += 6.00; cartoes_premiados += 1
                 
                 st.session_state.caixa_saldo += total_ganho
-                st.success(f"Apuração Concluída! {cartoes_premiados} cartões premiados. R$ {total_ganho:.2f} adicionados.")
+                st.success(f"Apuração Finalizada! {cartoes_premiados} cartões premiados. R$ {total_ganho:.2f} injetados no saldo.")
                 
                 html_sorteio = "<br><div style='text-align:center;'>"
                 for n in sorted(list(sorteio_real)):
@@ -412,13 +413,13 @@ else:
                 html_sorteio += "</div>"
                 st.markdown(html_sorteio, unsafe_html=True)
             else:
-                st.error("Concurso não localizado. Sincronize o resultado primeiro na aba Operações.")
+                st.error("Concurso não localizado. Sincronize o sorteio primeiro na aba principal.")
 
     # =====================================================================
     # MÓDULO 4: 💾 SEGURANÇA & BACKUP
     # =====================================================================
     if st.session_state.aba_atual == "💾 Segurança & Backup":
-        st.markdown("<h3 style='color:#D4AF37;'>📂 Central de Salvaguarda de Dados (Manual e Total)</h3>", unsafe_html=True)
+        st.markdown("<h3 style='color:#D4AF37;'>📂 Central de Salvaguarda de Dados</h3>", unsafe_html=True)
         
         dados_backup = {
             "caixa_saldo": st.session_state.caixa_saldo,
@@ -430,7 +431,7 @@ else:
         st.download_button(
             label="📥 EXTRAIR BACKUP COMPLETO (KADOSH .JSON)",
             data=json_string,
-            file_name="SUPERLOTO_KADOSH_BACKUP.json",
+            file_name="SUPERLOTO_BACKUP.json",
             mime="application/json"
         )
         
@@ -444,7 +445,7 @@ else:
                 st.session_state.caixa_saldo = conteudo["caixa_saldo"]
                 st.session_state.historico_sorteios = conteudo["historico_sorteios"]
                 st.session_state.jogos_salvos = conteudo["jogos_salvos"]
-                st.success("Backup restaurado perfeitamente!")
+                st.success("Toda a estrutura e histórico foram restaurados com sucesso!")
                 st.rerun()
             except:
-                st.error("Erro na leitura do arquivo de backup.")
+                st.error("Falha ao descriptografar arquivo de backup.")
