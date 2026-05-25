@@ -2,13 +2,14 @@ import streamlit as st
 import itertools
 import random
 import json
+import requests
 from collections import Counter
 from datetime import datetime
 
 # =====================================================================
-# CONFIGURAÇÕES E PREÇOS ATUAIS (ATUALIZADOS)
+# CONFIGURAÇÕES E PREÇOS ATUAIS
 # =====================================================================
-st.set_page_config(page_title="LotoPro Ultimate", page_icon="💎", layout="wide")
+st.set_page_config(page_title="LotoPro — API Caixa", page_icon="🤖", layout="wide")
 
 PRECO_15 = 3.50
 PRECO_16 = 56.00
@@ -19,12 +20,12 @@ PREMIO_12 = 14.00
 PREMIO_13 = 35.00
 
 # =====================================================================
-# INICIALIZAÇÃO DE ESTADO E BANCO DE DADOS
+# INICIALIZAÇÃO E AUTENTICAÇÃO
 # =====================================================================
 if 'autenticado' not in st.session_state: st.session_state.autenticado = False
 
 if not st.session_state.autenticado:
-    st.title("🔒 LotoPro Ultimate - Acesso")
+    st.title("🔒 LotoPro - Terminal Profissional")
     senha = st.text_input("Senha de Operador:", type="password")
     if st.button("Entrar", type="primary"):
         if senha == "7777":
@@ -37,19 +38,59 @@ if not st.session_state.autenticado:
 # Variáveis do Sistema
 if 'banca' not in st.session_state: st.session_state.banca = 200.0
 if 'lote_ativo' not in st.session_state: st.session_state.lote_ativo = None
-if 'historico_dados' not in st.session_state:
-    # Estrutura base de dados: armazena como dicionários para saber exatamente o concurso
-    st.session_state.historico_dados = [
-        {"concurso": 3643, "dezenas": [1, 2, 3, 5, 6, 8, 10, 11, 14, 15, 17, 20, 21, 23, 24]},
-        {"concurso": 3644, "dezenas": [2, 4, 5, 7, 9, 10, 12, 13, 16, 17, 18, 20, 22, 24, 25]}
-        # O sistema irá adicionar novos sorteios aqui!
-    ]
+if 'historico_dados' not in st.session_state: st.session_state.historico_dados = []
+
+# =====================================================================
+# COMUNICAÇÃO COM A API OFICIAL DA CAIXA
+# =====================================================================
+def buscar_sorteio_caixa(concurso=""):
+    """
+    Liga-se à API da Caixa Econômica Federal.
+    Se concurso for vazio, traz o último sorteio realizado.
+    """
+    url = f"https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/{concurso}"
+    # O Header (User-Agent) é obrigatório para a Caixa não bloquear a nossa ligação
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=10, verify=False)
+        if response.status_code == 200:
+            dados = response.json()
+            
+            # Formatar os dados recebidos da Caixa
+            dezenas = [int(dezena) for dezena in dados['listaDezenas']]
+            
+            # Buscar os valores dos prémios de 14 e 15 acertos
+            valor_14 = 1500.00 # Valor base caso falhe a leitura
+            valor_15 = 1500000.00
+            
+            for rateio in dados.get('listaRateioPremio', []):
+                if rateio['faixa'] == 1: # 15 acertos
+                    valor_15 = rateio['valorPremio']
+                elif rateio['faixa'] == 2: # 14 acertos
+                    valor_14 = rateio['valorPremio']
+
+            return {
+                "sucesso": True,
+                "concurso": dados['numero'],
+                "dezenas": sorted(dezenas),
+                "data": dados['dataApuracao'],
+                "valor_14": valor_14,
+                "valor_15": valor_15
+            }
+        else:
+            return {"sucesso": False, "erro": f"Sorteio não encontrado ou API indisponível (Erro {response.status_code})"}
+    except Exception as e:
+        return {"sucesso": False, "erro": str(e)}
 
 # =====================================================================
 # MOTOR DE INTELIGÊNCIA (IA) E REGRAS MATEMÁTICAS
 # =====================================================================
 def analisar_frequencias():
-    # Extrai apenas as dezenas de todo o histórico para análise
+    if not st.session_state.historico_dados:
+        return Counter()
     todas = [n for sorteio in st.session_state.historico_dados for n in sorteio["dezenas"]]
     return Counter(todas)
 
@@ -73,199 +114,171 @@ def calcular_premio_real(jogo, sorteadas, valor_14, valor_15):
         elif acertos == 15: valor = valor_15; detalhe = "Prémio Máximo!"
     
     elif tamanho == 16:
-        # Matemática de apostas múltiplas exata da Lotofácil (16 dezenas)
         if acertos == 11: 
-            valor = 5 * PREMIO_11
-            detalhe = "5x Prémio 11"
+            valor = 5 * PREMIO_11; detalhe = "5x Prémio 11"
         elif acertos == 12: 
-            valor = (4 * PREMIO_12) + (12 * PREMIO_11)
-            detalhe = "4x Prémio 12 + 12x Prémio 11"
+            valor = (4 * PREMIO_12) + (12 * PREMIO_11); detalhe = "Múltiplo 12"
         elif acertos == 13: 
-            valor = (3 * PREMIO_13) + (13 * PREMIO_12)
-            detalhe = "3x Prémio 13 + 13x Prémio 12"
+            valor = (3 * PREMIO_13) + (13 * PREMIO_12); detalhe = "Múltiplo 13"
         elif acertos == 14: 
-            valor = (2 * valor_14) + (14 * PREMIO_13)
-            detalhe = "2x Prémio 14 + 14x Prémio 13"
+            valor = (2 * valor_14) + (14 * PREMIO_13); detalhe = "Múltiplo 14"
         elif acertos == 15: 
-            valor = valor_15 + (15 * valor_14)
-            detalhe = "1x Prémio 15 + 15x Prémio 14"
+            valor = valor_15 + (15 * valor_14); detalhe = "Múltiplo 15"
 
     return acertos, valor, detalhe
 
 # =====================================================================
 # INTERFACE DO SISTEMA
 # =====================================================================
-st.sidebar.markdown("## 💎 LotoPro Ultimate")
-st.sidebar.metric("Saldo em Caixa", f"R$ {st.session_state.banca:.2f}")
-st.sidebar.info(f"📚 Histórico: {len(st.session_state.historico_dados)} sorteios na base.")
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning) # Evita avisos de SSL da Caixa
 
-menu = st.sidebar.radio("Navegação", [
-    "1. Cérebro & Gerador", 
-    "2. Conferência de Sorteio", 
-    "3. Cofre e Banco de Dados"
+st.sidebar.markdown("## 📡 LotoPro - Ligado à Caixa")
+st.sidebar.metric("Saldo em Caixa", f"R$ {st.session_state.banca:.2f}")
+st.sidebar.info(f"📚 Banco de Dados: {len(st.session_state.historico_dados)} Sorteios")
+
+menu = st.sidebar.radio("Painel de Controlo", [
+    "1. IA Geradora de Jogos", 
+    "2. Sincronização & Conferência", 
+    "3. Cofre e Gestão"
 ])
 
 # ---------------------------------------------------------------------
 # ABA 1: GERADOR INTELIGENTE
 # ---------------------------------------------------------------------
-if menu == "1. Cérebro & Gerador":
-    st.header("🧠 Inteligência e Geração de Bilhetes")
+if menu == "1. IA Geradora de Jogos":
+    st.header("🧠 Cérebro Analítico e Gerador")
     
-    freq = analisar_frequencias()
-    top_18 = [n for n, c in freq.most_common(18)]
-    
-    with st.expander("📊 Transparência: Ver Análise do Motor (Cérebro)", expanded=True):
-        st.write("**As 18 dezenas mais quentes da sua Base de Dados:**")
-        st.code(sorted(top_18))
-        st.write("*(O sistema cruza estas tendências com a probabilidade matemática usando filtros para criar o fechamento perfeito).*")
+    if not st.session_state.historico_dados:
+        st.warning("O seu Banco de Dados está vazio. Vá à Aba 2 e sincronize os últimos sorteios da Caixa para a IA funcionar.")
+    else:
+        freq = analisar_frequencias()
+        top_18 = [n for n, c in freq.most_common(18)]
+        
+        with st.expander("📊 Raio-X da IA (Transparência Total)", expanded=True):
+            st.write(f"A analisar as tendências dos **{len(st.session_state.historico_dados)}** concursos registados no sistema.")
+            st.write("**Dezenas Mais Frequentes (Top 18):**")
+            st.code(sorted(top_18))
+            st.markdown("Filtros Aplicados: Soma `180-220` | Ímpares `6-9` | Primos `4-7`")
 
-    st.markdown("---")
-    orcamento = st.number_input("Orçamento para esta rodada (R$):", min_value=3.50, value=59.50, step=3.50)
-    
-    if st.button("Executar IA (Estratégia Híbrida)", type="primary"):
-        if orcamento > st.session_state.banca:
-            st.error("Orçamento superior ao saldo em caixa! Vá à Aba 3 para adicionar fundos.")
-        else:
-            with st.spinner("A calcular probabilidades e cruzar dados..."):
-                jogos = []
-                caixa_temp = orcamento
-                
-                # Tenta gerar de 16 primeiro
-                qtd_16 = int(caixa_temp // PRECO_16)
-                if qtd_16 > 0:
-                    cand_16 = [j for j in itertools.combinations(top_18, 16) if filtro_matematico(j)]
-                    escolhidos_16 = random.sample(cand_16, min(qtd_16, len(cand_16))) if cand_16 else []
-                    for j in escolhidos_16:
-                        jogos.append({"tipo": 16, "dezenas": list(j)})
-                        caixa_temp -= PRECO_16
-                
-                # Preenche com de 15
-                qtd_15 = int(caixa_temp // PRECO_15)
-                if qtd_15 > 0:
-                    cand_15 = [j for j in itertools.combinations(top_18, 15) if filtro_matematico(j)]
-                    escolhidos_15 = random.sample(cand_15, min(qtd_15, len(cand_15))) if cand_15 else []
-                    for j in escolhidos_15:
-                        jogos.append({"tipo": 15, "dezenas": list(j)})
-                        caixa_temp -= PRECO_15
-                
-                custo_final = orcamento - caixa_temp
-                st.session_state.banca -= custo_final
-                
-                st.session_state.lote_ativo = {
-                    "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
-                    "custo": custo_final,
-                    "bilhetes": jogos,
-                    "status": "Aguardando Auditoria"
-                }
-                
-                st.success("✅ Fechamento Gerado!")
-                st.info(f"Foram gastos R$ {custo_final:.2f}. O troco de R$ {caixa_temp:.2f} foi mantido na banca.")
-                
-                for i, b in enumerate(jogos):
-                    cor = "blue" if b["tipo"] == 16 else "green"
-                    st.markdown(f"**Bilhete {i+1}** (:{cor}[{b['tipo']} dezenas]): `{sorted(b['dezenas'])}`")
-
-# ---------------------------------------------------------------------
-# ABA 2: CONFERÊNCIA E SINCRONIZAÇÃO DADOS OFICIAIS
-# ---------------------------------------------------------------------
-elif menu == "2. Conferência de Sorteio":
-    st.header("🎯 Auditoria e Sincronização Dinâmica")
-    st.write("Indique o sorteio, o resultado e os prémios variáveis do dia. O sistema irá auditar os bilhetes, pagar os prémios à sua banca e **guardar o sorteio no seu Histórico**.")
-    
-    colA, colB = st.columns(2)
-    numero_concurso = colA.number_input("Número do Concurso (Sorteio):", min_value=1, step=1, value=3693)
-    entrada_sorteio = colB.text_input("15 Números (separados por vírgula):")
-    
-    st.write("💰 **Valores Oficiais da Caixa para este sorteio:**")
-    colC, colD = st.columns(2)
-    valor_14_hoje = colC.number_input("Valor Prémio 14 (R$):", value=1500.00, step=100.0)
-    valor_15_hoje = colD.number_input("Valor Prémio 15 (R$):", value=1500000.00, step=10000.0)
-    
-    if st.button("Auditar Jogos e Salvar Sorteio", type="primary"):
-        if not entrada_sorteio:
-            st.error("Insira o resultado oficial.")
-        else:
-            try:
-                sorteio = sorted([int(x.strip()) for x in entrada_sorteio.split(",")])
-                if len(sorteio) != 15:
-                    st.error("Tem que inserir exatamente 15 dezenas.")
-                else:
-                    # Sincroniza Banco de Dados
-                    concurso_existe = any(d["concurso"] == numero_concurso for d in st.session_state.historico_dados)
-                    if not concurso_existe:
-                        st.session_state.historico_dados.append({"concurso": numero_concurso, "dezenas": sorteio})
-                        st.success(f"💾 O concurso {numero_concurso} foi adicionado à inteligência do robô!")
-                    else:
-                        st.warning(f"O concurso {numero_concurso} já existia na base e não foi duplicado.")
-
-                    # Auditoria (se houver lote)
-                    if not st.session_state.lote_ativo or st.session_state.lote_ativo["status"] == "Auditado":
-                        st.info("O sorteio foi salvo, mas não havia bilhetes pendentes para este concurso.")
-                    else:
-                        total_premios = 0.0
-                        st.markdown("### Resultados do Seu Lote")
-                        for i, b in enumerate(st.session_state.lote_ativo["bilhetes"]):
-                            acertos, valor, detalhe = calcular_premio_real(b["dezenas"], sorteio, valor_14_hoje, valor_15_hoje)
-                            total_premios += valor
-                            
-                            if valor > 0:
-                                st.markdown(f"""
-                                <div style="background-color: #d4edda; padding: 10px; border-left: 5px solid #28a745; margin-bottom: 5px;">
-                                    <b style="color: #155724;">✅ Bilhete {i+1} PREMIADO! ({b['tipo']} dezenas)</b><br>
-                                    <span style="color: #155724;">Acertos: <b>{acertos}</b> | Retorno: <b>R$ {valor:.2f}</b> <i>({detalhe})</i></span><br>
-                                    <code style="color: black; background: transparent;">{sorted(b['dezenas'])}</code>
-                                </div>
-                                """, unsafe_allow_html=True)
-                            else:
-                                st.write(f"❌ Bilhete {i+1} ({b['tipo']} dez) — {acertos} acertos.")
-                        
-                        st.session_state.banca += total_premios
-                        st.session_state.lote_ativo["status"] = "Auditado"
-                        st.success(f"🎉 R$ {total_premios:.2f} ganhos! Saldo atualizado para R$ {st.session_state.banca:.2f}.")
-
-                    st.info("👉 Vá à Aba 3 e faça o download do Cofre para garantir que este sorteio não se perca!")
-            except:
-                st.error("Formato inválido. Use vírgulas para separar as dezenas.")
+        st.markdown("---")
+        orcamento = st.number_input("Orçamento para esta operação (R$):", min_value=3.50, value=59.50, step=3.50)
+        
+        if st.button("Acionar Fechamento Híbrido", type="primary"):
+            if orcamento > st.session_state.banca:
+                st.error("Saldo insuficiente.")
+            else:
+                with st.spinner("A cruzar matrizes e calcular fechamentos..."):
+                    jogos = []
+                    caixa_temp = orcamento
+                    
+                    # 16 Dezenas
+                    qtd_16 = int(caixa_temp // PRECO_16)
+                    if qtd_16 > 0:
+                        cand_16 = [j for j in itertools.combinations(top_18, 16) if filtro_matematico(j)]
+                        escolhidos_16 = random.sample(cand_16, min(qtd_16, len(cand_16))) if cand_16 else []
+                        for j in escolhidos_16:
+                            jogos.append({"tipo": 16, "dezenas": list(j)})
+                            caixa_temp -= PRECO_16
+                    
+                    # 15 Dezenas
+                    qtd_15 = int(caixa_temp // PRECO_15)
+                    if qtd_15 > 0:
+                        cand_15 = [j for j in itertools.combinations(top_18, 15) if filtro_matematico(j)]
+                        escolhidos_15 = random.sample(cand_15, min(qtd_15, len(cand_15))) if cand_15 else []
+                        for j in escolhidos_15:
+                            jogos.append({"tipo": 15, "dezenas": list(j)})
+                            caixa_temp -= PRECO_15
+                    
+                    custo_final = orcamento - caixa_temp
+                    st.session_state.banca -= custo_final
+                    
+                    st.session_state.lote_ativo = {
+                        "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                        "custo": custo_final,
+                        "bilhetes": jogos,
+                        "status": "Aguardando Sorteio"
+                    }
+                    
+                    st.success("✅ Fechamento Gerado com Sucesso!")
+                    for i, b in enumerate(jogos):
+                        st.markdown(f"**Bilhete {i+1}** (Format: {b['tipo']} dezenas): `{sorted(b['dezenas'])}`")
 
 # ---------------------------------------------------------------------
-# ABA 3: GESTÃO E BACKUP (COFRE E BANCO DE DADOS)
+# ABA 2: SINCRONIZAÇÃO E CONFERÊNCIA COM A CAIXA
 # ---------------------------------------------------------------------
-elif menu == "3. Cofre e Banco de Dados":
-    st.header("💾 Cofre de Segurança do Sistema")
-    st.write("Ao fazer o download do cofre, estás a salvar todo o teu histórico oficial de sorteios, as tuas apostas e a tua banca financeira.")
+elif menu == "2. Sincronização & Conferência":
+    st.header("📡 Sincronização Oficial (Caixa Econômica)")
+    st.write("Conecte-se aos servidores oficiais para puxar resultados reais, auditar bilhetes ativos e atualizar a inteligência do sistema.")
     
-    col1, col2 = st.columns(2)
-    col1.metric("Saldo Atual da Banca", f"R$ {st.session_state.banca:.2f}")
-    col2.metric("Tamanho do Banco de Dados", f"{len(st.session_state.historico_dados)} Sorteios Registados")
+    # 1. SINCRONIZAR AUTOMATICAMENTE
+    st.markdown("### 📥 Puxar Dados Direto da Internet")
+    concurso_busca = st.text_input("Qual concurso deseja baixar? (Deixe em branco para puxar o ÚLTIMO SORTEIO VIGENTE):")
     
-    st.markdown("---")
-    st.subheader("📥 Exportar Sistema Completo (.json)")
+    if st.button("Buscar na Caixa", type="primary"):
+        with st.spinner("A conectar aos servidores da Caixa..."):
+            resultado_api = buscar_sorteio_caixa(concurso_busca)
+            
+            if resultado_api["sucesso"]:
+                conc = resultado_api["concurso"]
+                dezs = resultado_api["dezenas"]
+                
+                st.success(f"✅ Concurso {conc} ({resultado_api['data']}) importado com sucesso!")
+                st.code(f"Dezenas: {dezs}")
+                st.info(f"Prémios Oficiais lidos -> 14 Acertos: R$ {resultado_api['valor_14']:.2f} | 15 Acertos: R$ {resultado_api['valor_15']:.2f}")
+                
+                # Guarda no Banco de Dados da IA se não existir
+                if not any(d["concurso"] == conc for d in st.session_state.historico_dados):
+                    st.session_state.historico_dados.append({"concurso": conc, "dezenas": dezs})
+                    st.write("💾 Sorteio adicionado ao Cérebro da IA.")
+                
+                # Se houver apostas ativas, faz a auditoria financeira
+                if st.session_state.lote_ativo and st.session_state.lote_ativo["status"] != "Auditado":
+                    st.markdown("---")
+                    st.markdown("### 🔍 Auditoria dos Seus Bilhetes")
+                    total_ganho = 0.0
+                    for i, b in enumerate(st.session_state.lote_ativo["bilhetes"]):
+                        acertos, valor, detalhe = calcular_premio_real(b["dezenas"], dezs, resultado_api['valor_14'], resultado_api['valor_15'])
+                        total_ganho += valor
+                        if valor > 0:
+                            st.write(f"🎉 **Bilhete {i+1} ({b['tipo']} dez) premiado!** Acertos: {acertos} | Prémio: R$ {valor:.2f} ({detalhe})")
+                        else:
+                            st.write(f"❌ Bilhete {i+1} - {acertos} acertos.")
+                    
+                    st.session_state.banca += total_ganho
+                    st.session_state.lote_ativo["status"] = "Auditado"
+                    st.success(f"💰 Auditoria finalizada. R$ {total_ganho:.2f} adicionados à banca!")
+            else:
+                st.error(f"Falha na comunicação: {resultado_api['erro']}")
+                st.warning("A API da Caixa pode estar em manutenção. Tente novamente mais tarde ou insira manualmente no Cofre.")
+
+# ---------------------------------------------------------------------
+# ABA 3: GESTÃO E BACKUP
+# ---------------------------------------------------------------------
+elif menu == "3. Cofre e Gestão":
+    st.header("💾 Cofre do Sistema")
+    st.write("Guarde o seu progresso. O ficheiro JSON contém a sua banca, apostas e **todo o histórico da Caixa que descarregou**.")
+    
+    st.metric("Saldo Atual", f"R$ {st.session_state.banca:.2f}")
     
     estado_total = {
         "banca": st.session_state.banca,
         "historico_dados": st.session_state.historico_dados,
         "lote_ativo": st.session_state.lote_ativo
     }
-    json_export = json.dumps(estado_total)
     
-    st.download_button(
-        label="Download Cofre Atualizado (LotoPro_Backup.json)",
-        data=json_export,
-        file_name="LotoPro_Backup.json",
-        mime="application/json",
-        type="primary"
-    )
+    st.download_button("📤 Salvar Cofre Atualizado (.json)", json.dumps(estado_total), "LotoPro_Backup.json", "application/json", type="primary")
     
     st.markdown("---")
-    st.subheader("📤 Importar Cofre Anterior")
-    arquivo = st.file_uploader("Carregue o seu LotoPro_Backup.json para restaurar o banco de dados:", type=["json"])
+    st.subheader("📥 Restaurar Cofre")
+    arquivo = st.file_uploader("Suba um LotoPro_Backup.json para restaurar:", type=["json"])
     if arquivo is not None:
         try:
             dados = json.load(arquivo)
             st.session_state.banca = dados.get("banca", 200.0)
             st.session_state.historico_dados = dados.get("historico_dados", [])
             st.session_state.lote_ativo = dados.get("lote_ativo", None)
-            st.success("✅ Sistema e Inteligência restaurados com sucesso!")
+            st.success("✅ Cofre restaurado! Inteligência e Saldo atualizados.")
             st.rerun()
         except:
-            st.error("Ficheiro inválido ou corrompido.")
+            st.error("Erro ao ler o ficheiro.")
