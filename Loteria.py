@@ -7,7 +7,24 @@ from collections import Counter
 from datetime import datetime
 import urllib3
 
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# --- BLOCO DE SEGURANÇA E CARREGAMENTO ---
+if 'dados_carregados' not in st.session_state:
+    st.session_state.dados_carregados = False
+
+def carregar_cofre_seguro(uploaded_file):
+    import json
+    try:
+        data = json.load(uploaded_file)
+        st.session_state.historico_dados = data.get("historico_dados", [])
+        st.session_state.banca = data.get("banca", 200.0)
+        st.session_state.dados_carregados = True
+        return True
+    except Exception as e:
+        st.error(f"Erro ao ler cofre: {e}")
+        return False
+# ------------------------------------------
 
 # =====================================================================
 # CONFIGURAÇÕES E PREÇOS - LOTOMATRIX PREMIUM 2026
@@ -316,12 +333,23 @@ elif menu == "4. Cofre (Backup)":
     
     st.markdown("### 📥 Restaurar Sistema")
     arquivo = st.file_uploader("Selecione o arquivo Cofre.json:", type=["json"])
-    if arquivo:
-        d = json.load(arquivo)
-        st.session_state.banca = d.get("banca", 0.0)
-        st.session_state.historico_dados = d.get("historico_dados", [])
-        st.session_state.lote_ativo = d.get("lote_ativo", None)
-        st.session_state.matriz_gerada = d.get("matriz_gerada", None)
-        st.session_state.ultimo_concurso_sincronizado = d.get("ultimo_concurso_sincronizado", 3693)
-        st.success("✅ Sistema Restaurado e Inteligência Carregada!")
-        st.rerun()
+
+    # Agora, o carregamento só acontece se o arquivo existir E você clicar no botão
+    if arquivo is not None:
+        if st.button("🚀 PROCESSAR E CARREGAR DADOS"):
+            with st.spinner("Processando histórico... Isso pode levar alguns segundos."):
+                try:
+                    import json
+                    d = json.load(arquivo)
+                
+                    # Carrega os dados para o session_state
+                    st.session_state.banca = d.get("banca", 0.0)
+                    st.session_state.historico_dados = d.get("historico_dados", [])
+                    st.session_state.lote_ativo = d.get("lote_ativo", None)
+                    st.session_state.matriz_gerada = d.get("matriz_gerada", None)
+                    st.session_state.ultimo_concurso_sincronizado = d.get("ultimo_concurso_sincronizado", 3693)
+                
+                    st.success("✅ Sistema Restaurado e Inteligência Carregada!")
+                    st.rerun() # Recarrega a página para atualizar tudo
+                except Exception as e:
+                    st.error(f"Erro ao processar arquivo: {e}")
