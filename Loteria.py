@@ -30,7 +30,7 @@ if not st.session_state.autenticado:
 # 2. VARIÁVEIS DE SISTEMA E BANCA VIRTUAL
 # =====================================================================
 PRECO_15 = 3.50
-PRECO_16 = 54.00
+PRECO_16 = 56.00
 
 if 'banca_saldo' not in st.session_state: st.session_state.banca_saldo = 200.0 # Saldo inicial
 if 'lote_ativo' not in st.session_state: st.session_state.lote_ativo = None
