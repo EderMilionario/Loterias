@@ -57,7 +57,7 @@ if not st.session_state.autenticado:
                     st.error("❌ Credencial Inválida.")
     st.stop()
 
-if 'banca' not in st.session_state: st.session_state.banca = 200.0
+if 'banca' not in st.session_state: st.session_state.banca = 000.0
 if 'lote_ativo' not in st.session_state: st.session_state.lote_ativo = None
 if 'matriz_gerada' not in st.session_state: st.session_state.matriz_gerada = None
 if 'historico_dados' not in st.session_state: st.session_state.historico_dados = []
