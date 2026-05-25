@@ -312,10 +312,12 @@ elif menu == "3. Conferência e Resultados":
                     st.error(res["erro"])
 
 # ---------------------------------------------------------------------
-# MÓDULO 4: COFRE
+# ---------------------------------------------------------------------
+# MÓDULO 4: COFRE (BACKUP) - SUBSTITUA TODO O CONTEÚDO DESTE BLOCO
 # ---------------------------------------------------------------------
 elif menu == "4. Cofre (Backup)":
     st.header("🏦 Administração e Backup Total")
+    
     with st.container(border=True):
         st.metric("Saldo Líquido", formatar_moeda(st.session_state.banca))
         aporte = st.number_input("Realizar Aporte (R$):", min_value=0.0, step=50.0)
@@ -323,10 +325,12 @@ elif menu == "4. Cofre (Backup)":
             st.session_state.banca += aporte
             st.rerun()
     
-    st.markdown("### 💾 Salvar Progresso (Importante após Sincronização)")
+    st.markdown("### 💾 Salvar Progresso")
     estado = {
-        "banca": st.session_state.banca, "historico_dados": st.session_state.historico_dados,
-        "lote_ativo": st.session_state.lote_ativo, "matriz_gerada": st.session_state.matriz_gerada,
+        "banca": st.session_state.banca, 
+        "historico_dados": st.session_state.historico_dados,
+        "lote_ativo": st.session_state.lote_ativo, 
+        "matriz_gerada": st.session_state.matriz_gerada,
         "ultimo_concurso_sincronizado": st.session_state.ultimo_concurso_sincronizado
     }
     st.download_button("📤 Baixar Cofre de Segurança (.json)", json.dumps(estado), "Cofre.json", "application/json", type="primary")
@@ -334,22 +338,11 @@ elif menu == "4. Cofre (Backup)":
     st.markdown("### 📥 Restaurar Sistema")
     arquivo = st.file_uploader("Selecione o arquivo Cofre.json:", type=["json"])
 
-    # Agora, o carregamento só acontece se o arquivo existir E você clicar no botão
     if arquivo is not None:
         if st.button("🚀 PROCESSAR E CARREGAR DADOS"):
-            with st.spinner("Processando histórico... Isso pode levar alguns segundos."):
-                try:
-                    import json
-                    d = json.load(arquivo)
-                
-                    # Carrega os dados para o session_state
-                    st.session_state.banca = d.get("banca", 0.0)
-                    st.session_state.historico_dados = d.get("historico_dados", [])
-                    st.session_state.lote_ativo = d.get("lote_ativo", None)
-                    st.session_state.matriz_gerada = d.get("matriz_gerada", None)
-                    st.session_state.ultimo_concurso_sincronizado = d.get("ultimo_concurso_sincronizado", 3693)
-                
+            with st.spinner("Lendo histórico do cofre de forma segura..."):
+                if carregar_cofre_seguro(arquivo):
                     st.success("✅ Sistema Restaurado e Inteligência Carregada!")
-                    st.rerun() # Recarrega a página para atualizar tudo
-                except Exception as e:
-                    st.error(f"Erro ao processar arquivo: {e}")
+                    st.rerun() 
+                else:
+                    st.error("Falha ao processar o arquivo. Verifique o formato do JSON.")
