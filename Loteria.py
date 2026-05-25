@@ -119,7 +119,7 @@ if menu == "1. Cérebro & Gerador":
         st.code(sorted(top_18))
         st.write("*(O sistema cruza estas tendências com a probabilidade matemática usando filtros para criar o fechamento perfeito).*")
 
-    st.markdown("---\")
+    st.markdown("---")
     orcamento = st.number_input("Orçamento para esta rodada (R$):", min_value=3.50, value=59.50, step=3.50)
     
     if st.button("Executar IA (Estratégia Híbrida)", type="primary"):
