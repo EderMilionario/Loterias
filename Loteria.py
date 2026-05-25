@@ -313,7 +313,8 @@ elif menu == "3. Conferência e Resultados":
 
 # ---------------------------------------------------------------------
 # ---------------------------------------------------------------------
-# MÓDULO 4: COFRE (BACKUP) - SUBSTITUA TODO O CONTEÚDO DESTE BLOCO
+# ---------------------------------------------------------------------
+# MÓDULO 4: COFRE (BACKUP) - VERSÃO DE PERSISTÊNCIA TOTAL
 # ---------------------------------------------------------------------
 elif menu == "4. Cofre (Backup)":
     st.header("🏦 Administração e Backup Total")
@@ -336,13 +337,28 @@ elif menu == "4. Cofre (Backup)":
     st.download_button("📤 Baixar Cofre de Segurança (.json)", json.dumps(estado), "Cofre.json", "application/json", type="primary")
     
     st.markdown("### 📥 Restaurar Sistema")
-    arquivo = st.file_uploader("Selecione o arquivo Cofre.json:", type=["json"])
-
-    if arquivo is not None:
-        if st.button("🚀 PROCESSAR E CARREGAR DADOS"):
-            with st.spinner("Lendo histórico do cofre de forma segura..."):
-                if carregar_cofre_seguro(arquivo):
-                    st.success("✅ Sistema Restaurado e Inteligência Carregada!")
-                    st.rerun() 
-                else:
-                    st.error("Falha ao processar o arquivo. Verifique o formato do JSON.")
+    
+    # Este file_uploader guarda o conteúdo na sessão para não sumir
+    uploaded_file = st.file_uploader("Selecione o arquivo Cofre.json:", type=["json"])
+    
+    if uploaded_file is not None:
+        # Armazena o conteúdo em bytes na sessão para não perder no clique do botão
+        st.session_state.bytes_arquivo = uploaded_file.getvalue()
+        
+    if st.button("🚀 PROCESSAR E CARREGAR DADOS"):
+        if 'bytes_arquivo' in st.session_state and st.session_state.bytes_arquivo:
+            with st.spinner("Lendo histórico do cofre..."):
+                try:
+                    import io
+                    # Criamos um arquivo virtual a partir dos bytes salvos
+                    f = io.BytesIO(st.session_state.bytes_arquivo)
+                    if carregar_cofre_seguro(f):
+                        st.success("✅ Sistema Restaurado e Inteligência Carregada!")
+                        st.session_state.bytes_arquivo = None # Limpa memória
+                        st.rerun()
+                    else:
+                        st.error("Erro ao processar arquivo.")
+                except Exception as e:
+                    st.error(f"Erro crítico: {e}")
+        else:
+            st.warning("⚠️ Selecione o arquivo antes de clicar em processar.")
