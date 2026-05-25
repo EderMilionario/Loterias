@@ -27,7 +27,7 @@ if 'autenticado' not in st.session_state: st.session_state.autenticado = False
 
 if not st.session_state.autenticado:
     st.markdown("<h1 style='text-align: center; color: #1a237e;'>🧬 LotoMatrix Premium</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #546e7a;'>Terminal de Engenharia Preditiva Avançada (Versão 2026)</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #546e7a;'>IA Autônoma de Engenharia Preditiva (Versão 2026)</p>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         with st.container(border=True):
@@ -48,7 +48,7 @@ if 'ultimo_concurso_sincronizado' not in st.session_state: st.session_state.ulti
 if 'tela_conferencia' not in st.session_state: st.session_state.tela_conferencia = None 
 
 # =====================================================================
-# API DA CAIXA E MOTORES DO SISTEMA AVANÇADOS
+# API DA CAIXA E MOTOR AUTÔNOMO DE IA
 # =====================================================================
 def buscar_sorteio_caixa(concurso=""):
     url = f"https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/{concurso}"
@@ -66,32 +66,30 @@ def buscar_sorteio_caixa(concurso=""):
     except Exception as e:
         return {"sucesso": False, "erro": str(e)}
 
-def motor_inteligencia_dinamica(modo, orcamento):
-    """IA 2026: Define o tamanho da matriz e mescla ciclos. Ajusta dinamicamente."""
+def motor_inteligencia_autonoma(orcamento):
+    """IA 100% Autônoma: Lê o histórico completo e o saldo para decidir a melhor estratégia sozinha."""
     if not st.session_state.historico_dados: return []
+    
     todas = [n for s in st.session_state.historico_dados for n in s["dezenas"]]
     freq = Counter(todas)
     ordenadas = [n for n, c in freq.most_common()]
     faltantes = [n for n in range(1, 26) if n not in ordenadas]
     ordenadas.extend(faltantes)
     
-    # Inteligência de Expansão de Matriz baseada no Caixa (Se tem muito caixa, cerca mais dezenas)
-    if orcamento > 500: tamanho_matriz = 20
-    elif orcamento > 200: tamanho_matriz = 19
-    elif orcamento > 100: tamanho_matriz = 18
+    # A IA decide a matriz baseada no poder de fogo (orçamento)
+    if orcamento >= 500: tamanho_matriz = 20
+    elif orcamento >= 200: tamanho_matriz = 19
+    elif orcamento >= 60: tamanho_matriz = 18
     else: tamanho_matriz = 17
 
-    if modo == "Pura Tendência (As Mais Quentes)":
-        matriz = sorted(ordenadas[:tamanho_matriz])
-    elif modo == "Caçador de Atrasadas (Frias + Médias)":
-        matriz = sorted(ordenadas[-8:] + ordenadas[8:8+(tamanho_matriz-8)])
-    else: # Inteligência IA 2026 Híbrida Dinâmica
-        qtd_quentes = tamanho_matriz // 2
-        qtd_frias = 4
-        qtd_medias = tamanho_matriz - qtd_quentes - qtd_frias
-        matriz = sorted(ordenadas[:qtd_quentes] + ordenadas[10:10+qtd_medias] + ordenadas[-qtd_frias:])
+    # A IA calcula a mescla perfeita sem perguntar ao utilizador
+    qtd_quentes = tamanho_matriz // 2
+    qtd_frias = 4
+    qtd_medias = tamanho_matriz - qtd_quentes - qtd_frias
+    
+    matriz = sorted(ordenadas[:qtd_quentes] + ordenadas[10:10+qtd_medias] + ordenadas[-qtd_frias:])
         
-    st.session_state.matriz_gerada = {"completa": matriz, "modo": f"{modo} ({tamanho_matriz} Dezenas)"}
+    st.session_state.matriz_gerada = {"completa": matriz, "modo": f"Autônoma Inteligente ({tamanho_matriz} Dezenas)"}
     return matriz
 
 def validar_matematica(jogo):
@@ -99,7 +97,7 @@ def validar_matematica(jogo):
     impares = len([x for x in jogo if x % 2 != 0])
     primos = len([x for x in jogo if x in [2, 3, 5, 7, 11, 13, 17, 19, 23]])
     
-    # REGRA DE EXCLUSÃO HISTÓRICA: Se o jogo gerado já foi sorteado na história, REJEITA!
+    # EXCLUSÃO HISTÓRICA: Se o jogo gerado já foi prémio máximo no passado, elimina!
     if len(jogo) == 15:
         historico_sets = [set(d['dezenas']) for d in st.session_state.historico_dados]
         if set(jogo) in historico_sets:
@@ -114,43 +112,39 @@ st.sidebar.markdown("<h2 style='color: #1a237e;'>🧬 LotoMatrix Premium</h2>", 
 st.sidebar.metric("🏦 Capital da Banca", formatar_moeda(st.session_state.banca))
 st.sidebar.metric("🎯 Alvo (Próximo Sorteio)", st.session_state.ultimo_concurso_sincronizado + 1)
 st.sidebar.markdown("---")
-st.sidebar.success(f"**{len(st.session_state.historico_dados)} Sorteios Salvos** no Cérebro.")
+st.sidebar.success(f"**{len(st.session_state.historico_dados)} Sorteios Salvos** no Cérebro da IA.")
 st.sidebar.markdown("---")
 
-menu = st.sidebar.radio("Módulos de Operação", ["1. Gerador Matrix", "2. Os Meus Bilhetes", "3. Conferência e Resultados", "4. Cofre (Backup)"])
+menu = st.sidebar.radio("Módulos de Operação", ["1. Gerador Autônomo", "2. Os Meus Bilhetes", "3. Conferência e Resultados", "4. Cofre (Backup)"])
 
 # ---------------------------------------------------------------------
 # MÓDULO 1: GERADOR
 # ---------------------------------------------------------------------
-if menu == "1. Gerador Matrix":
-    st.header("🧠 Cérebro Analítico: IA LotoMatrix 2026")
+if menu == "1. Gerador Autônomo":
+    st.header("🧠 Cérebro Analítico Autônomo (IA 2026)")
     concurso_alvo = st.session_state.ultimo_concurso_sincronizado + 1
     
     if not st.session_state.historico_dados:
-        st.warning("Vá ao Módulo 3 e sincronize a Caixa primeiro.")
+        st.warning("Vá ao Módulo 3 e sincronize todo o histórico da Caixa para a IA trabalhar.")
     else:
         with st.container(border=True):
-            modo_ia = st.selectbox("Selecione a Inteligência de Análise:", [
-                "IA Dinâmica 2026 (Expande Matriz pelo Caixa, Mescla Ciclos)", 
-                "Pura Tendência (As Mais Quentes)", 
-                "Caçador de Atrasadas (Frias + Médias)"
-            ])
-            orcamento_temp = st.number_input("Previsão de Limite de Capital (R$):", min_value=3.50, value=59.50, step=3.50, help="Isso ajuda a IA a definir o tamanho da Matriz de Risco.")
-            
-            matriz = motor_inteligencia_dinamica(modo_ia, orcamento_temp)
-            st.success(f"**Matriz Dinâmica Selecionada ({len(matriz)} Dezenas):** `{matriz}`")
-
-        with st.container(border=True):
+            st.markdown("### ⚙️ Configuração do Lote")
             colA, colB = st.columns(2)
-            orcamento = colA.number_input("Capital Final para Operação (R$):", min_value=3.50, value=orcamento_temp, step=3.50)
+            orcamento = colA.number_input("Limite de Capital para Investir (R$):", min_value=3.50, value=59.50, step=3.50)
             estrategia = colB.selectbox("Formato dos Bilhetes:", ["Híbrida (16 e 15 Dezenas)", "Apenas 15 Dezenas", "Apenas 16 Dezenas"])
             
-            if st.button("🚀 Processar Fechamento (Anti-Repetição Histórica)", use_container_width=True, type="primary"):
+            if st.button("🚀 Iniciar Análise e Processar Fechamento", use_container_width=True, type="primary"):
                 if orcamento > st.session_state.banca:
-                    st.error("❌ Capital insuficiente.")
+                    st.error("❌ Capital insuficiente no Cofre.")
                 else:
-                    with st.spinner("Compilando dados e rejeitando históricos já sorteados..."):
+                    with st.spinner("IA assumindo o controle: Analisando Big Data, rejeitando históricos passados e calculando matriz..."):
+                        
+                        # A IA decide a matriz baseada no capital
+                        matriz = motor_inteligencia_autonoma(orcamento)
+                        st.info(f"🧬 A IA processou o seu capital e montou uma matriz de risco de {len(matriz)} dezenas: `{matriz}`")
+                        
                         jogos, caixa_temp = [], orcamento
+                        
                         if "Híbrida" in estrategia or "16" in estrategia:
                             qtd_16 = int(caixa_temp // PRECO_16)
                             if qtd_16 > 0:
@@ -174,16 +168,16 @@ if menu == "1. Gerador Matrix":
                             "data": datetime.now().strftime("%d/%m/%Y às %H:%M"),
                             "custo": custo, "bilhetes": jogos, "status": "Aguardando Sorteio"
                         }
-                    st.success("✅ Fechamento Gerado, Filtrado e Salvo na Memória!")
+                    st.success("✅ O Sistema concluiu o fechamento e blindou os jogos. Vá para a Aba 2.")
 
 # ---------------------------------------------------------------------
 # MÓDULO 2: BILHETES
 # ---------------------------------------------------------------------
 elif menu == "2. Os Meus Bilhetes":
-    st.header("🎫 Seus Bilhetes")
+    st.header("🎫 Gestão de Lote")
     lote = st.session_state.lote_ativo
     if not lote:
-        st.info("Nenhum lote ativo.")
+        st.info("Nenhum lote ativo. Utilize o Cérebro Autônomo no Módulo 1.")
     else:
         with st.container(border=True):
             col1, col2, col3 = st.columns(3)
@@ -200,53 +194,56 @@ elif menu == "2. Os Meus Bilhetes":
         txt = f"ALVO: {lote['concurso_alvo']}\n"
         for i, b in enumerate(lote["bilhetes"]):
             txt += f"Jogo {i+1} [{b['tipo']}]: " + " - ".join([f"{n:02d}" for n in sorted(b["dezenas"])]) + "\n"
-        st.download_button("📥 Exportar Jogos (.txt)", txt, "Jogos.txt", use_container_width=True)
+        st.download_button("📥 Exportar Jogos (.txt)", txt, "Jogos_LotoMatrix.txt", use_container_width=True)
         
+        st.markdown("---")
         for i, b in enumerate(lote["bilhetes"]):
             st.markdown(f"**Jogo {i+1:02d} ({b['tipo']} dez):** `{sorted(b['dezenas'])}`")
 
 # ---------------------------------------------------------------------
-# MÓDULO 3: CONFERÊNCIA (AGORA BLINDADA CONTRA SUMIÇO E COM BIG DATA)
+# MÓDULO 3: CONFERÊNCIA E BIG DATA
 # ---------------------------------------------------------------------
 elif menu == "3. Conferência e Resultados":
-    st.header("🎯 Auditoria Oficial e Big Data")
+    st.header("🎯 Auditoria Oficial e Sincronização Absoluta")
     
-    # NOVA FUNÇÃO DE BIG DATA
-    with st.expander("📥 Sincronização em Lote (Primeiro Acesso / Atualizar Base)", expanded=False):
-        st.write("Baixa os sorteios mais recentes diretamente da Caixa para alimentar a Inteligência Artificial.")
-        qtd_baixar = st.slider("Quantos sorteios recentes puxar?", 10, 100, 20)
-        if st.button("🔄 Executar Sincronização em Massa (Big Data)"):
-            with st.status("Extraindo dados da Caixa Econômica... isso pode levar um minuto.", expanded=True) as status:
+    with st.expander("📥 SINCRONIZAÇÃO TOTAL DE HISTÓRICO (Base Completa)", expanded=False):
+        st.write("Atenção: O sistema irá varrer desde o Concurso 1 até o último concurso oficial. Isto garantirá 100% de precisão para a IA.")
+        if st.button("🔄 INICIAR DOWNLOAD DE TODO O HISTÓRICO (Pode demorar minutos)"):
+            with st.status("Comandos enviados à Caixa... Iniciando download em massa.", expanded=True) as status:
                 res_ultimo = buscar_sorteio_caixa("")
                 if res_ultimo["sucesso"]:
                     ultimo = res_ultimo["concurso"]
-                    salvos = 0
-                    for c in range(ultimo - qtd_baixar + 1, ultimo + 1):
-                        if not any(d["concurso"] == c for d in st.session_state.historico_dados):
+                    concursos_ja_salvos = [d["concurso"] for d in st.session_state.historico_dados]
+                    salvos_agora = 0
+                    
+                    for c in range(1, ultimo + 1):
+                        if c not in concursos_ja_salvos:
                             dados_c = buscar_sorteio_caixa(c)
                             if dados_c["sucesso"]:
                                 st.session_state.historico_dados.append({"concurso": dados_c["concurso"], "dezenas": dados_c["dezenas"]})
-                                salvos += 1
-                                st.write(f"Concurso {c} salvo.")
+                                salvos_agora += 1
+                                if salvos_agora % 50 == 0:
+                                    st.write(f"📥 Progresso: {salvos_agora} sorteios baixados...")
+                    
                     st.session_state.ultimo_concurso_sincronizado = ultimo
-                    status.update(label=f"Concluído! {salvos} novos sorteios adicionados.", state="complete", expanded=False)
+                    status.update(label=f"Sincronização Absoluta Concluída! {salvos_agora} novos concursos armazenados.", state="complete", expanded=False)
                 else:
-                    status.update(label="Falha ao conectar com a Caixa.", state="error", expanded=False)
+                    status.update(label="Falha de conexão com os servidores oficiais.", state="error", expanded=False)
 
     st.markdown("---")
     
     if st.session_state.tela_conferencia:
         st.markdown(st.session_state.tela_conferencia, unsafe_allow_html=True)
-        if st.button("🗑️ Limpar Tela de Conferência", type="primary"):
+        if st.button("🗑️ Limpar Tela de Auditoria", type="primary"):
             st.session_state.tela_conferencia = None
             st.rerun()
         st.markdown("---")
 
     with st.container(border=True):
-        st.markdown("### 🔍 Conferência Unitária e Auditoria do Lote")
+        st.markdown("### 🔍 Conferência Unitária do Lote")
         concurso = st.text_input("Nº do Concurso para Auditar (Deixe vazio para o Último):")
-        if st.button("Sincronizar e Auditar Lote", use_container_width=True):
-            with st.spinner("Buscando..."):
+        if st.button("Sincronizar Sorteio e Auditar Lote", use_container_width=True):
+            with st.spinner("Conectando..."):
                 res = buscar_sorteio_caixa(concurso)
                 if res["sucesso"]:
                     conc, sorteadas = res["concurso"], res["dezenas"]
@@ -255,11 +252,11 @@ elif menu == "3. Conferência e Resultados":
                     if not any(d["concurso"] == conc for d in st.session_state.historico_dados):
                         st.session_state.historico_dados.append({"concurso": conc, "dezenas": sorteadas})
                     
-                    tela = f"<h3>Resultado Oficial {conc}: <code style='color:black;'>{sorteadas}</code></h3>"
+                    tela = f"<h3>Sorteio Oficial {conc}: <code style='color:black;'>{sorteadas}</code></h3>"
                     
                     if st.session_state.matriz_gerada:
                         acertos_matriz = len(set(st.session_state.matriz_gerada['completa']).intersection(sorteadas))
-                        tela += f"<div style='background:#1a237e; color:#fff; padding:10px; border-radius:5px;'>A Matriz da IA: {st.session_state.matriz_gerada['modo']} acertou <b>{acertos_matriz} dezenas</b> neste sorteio.</div><br>"
+                        tela += f"<div style='background:#1a237e; color:#fff; padding:10px; border-radius:5px;'>O Algoritmo Autônomo ({st.session_state.matriz_gerada['modo']}) acertou <b>{acertos_matriz} dezenas</b> da sua Matriz de Risco neste sorteio.</div><br>"
                     
                     lote = st.session_state.lote_ativo
                     if lote and lote["concurso_alvo"] == conc and lote["status"] != "Conferido e Liquidado":
@@ -288,9 +285,9 @@ elif menu == "3. Conferência e Resultados":
                         
                         st.session_state.banca += total_ganho
                         st.session_state.lote_ativo["status"] = "Conferido e Liquidado"
-                        tela += f"<h4>💰 Depositado no Caixa: {formatar_moeda(total_ganho)}</h4>"
+                        tela += f"<h4>💰 Resultado Financeiro: {formatar_moeda(total_ganho)} creditados no Caixa.</h4>"
                     else:
-                        tela += "<p>Nenhum jogo ativo pendente para a conferência deste concurso.</p>"
+                        tela += "<p>Nenhum bilhete correspondente aguardando conferência.</p>"
                     
                     st.session_state.tela_conferencia = tela
                     st.rerun()
@@ -301,23 +298,24 @@ elif menu == "3. Conferência e Resultados":
 # MÓDULO 4: COFRE
 # ---------------------------------------------------------------------
 elif menu == "4. Cofre (Backup)":
-    st.header("🏦 Cofre JSON")
+    st.header("🏦 Administração e Backup Total")
     with st.container(border=True):
-        st.metric("Saldo do Caixa", formatar_moeda(st.session_state.banca))
-        aporte = st.number_input("Adicionar Dinheiro (R$):", min_value=0.0, step=50.0)
-        if st.button("Depositar"):
+        st.metric("Saldo Líquido", formatar_moeda(st.session_state.banca))
+        aporte = st.number_input("Realizar Aporte (R$):", min_value=0.0, step=50.0)
+        if st.button("Confirmar Depósito"):
             st.session_state.banca += aporte
             st.rerun()
     
-    st.markdown("### 💾 Salvar / Restaurar Sistema")
+    st.markdown("### 💾 Salvar Progresso (Importante após Sincronização)")
     estado = {
         "banca": st.session_state.banca, "historico_dados": st.session_state.historico_dados,
         "lote_ativo": st.session_state.lote_ativo, "matriz_gerada": st.session_state.matriz_gerada,
         "ultimo_concurso_sincronizado": st.session_state.ultimo_concurso_sincronizado
     }
-    st.download_button("📤 Baixar Cofre (.json)", json.dumps(estado), "Cofre.json", "application/json", type="primary")
+    st.download_button("📤 Baixar Cofre de Segurança (.json)", json.dumps(estado), "Cofre.json", "application/json", type="primary")
     
-    arquivo = st.file_uploader("Restaurar Cofre (.json):", type=["json"])
+    st.markdown("### 📥 Restaurar Sistema")
+    arquivo = st.file_uploader("Selecione o arquivo Cofre.json:", type=["json"])
     if arquivo:
         d = json.load(arquivo)
         st.session_state.banca = d.get("banca", 0.0)
@@ -325,5 +323,5 @@ elif menu == "4. Cofre (Backup)":
         st.session_state.lote_ativo = d.get("lote_ativo", None)
         st.session_state.matriz_gerada = d.get("matriz_gerada", None)
         st.session_state.ultimo_concurso_sincronizado = d.get("ultimo_concurso_sincronizado", 3693)
-        st.success("Restaurado!")
+        st.success("✅ Sistema Restaurado e Inteligência Carregada!")
         st.rerun()
