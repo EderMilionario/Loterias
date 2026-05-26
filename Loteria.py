@@ -30,9 +30,10 @@ if not st.session_state.auth:
     st.stop()
 
 # =====================================================================
-# BLINDAGEM DE MEMÓRIA E SANITIZAÇÃO
+# BLINDAGEM DE MEMÓRIA E SANITIZAÇÃO ABSOLUTA
 # =====================================================================
 def sanitizar_dados(d):
+    """Higieniza o backup antigo para os padrões da nova IA e evita KeyError"""
     if "banca" not in d: d["banca"] = 0.0
     if "historico_dados" not in d: d["historico_dados"] = []
     if "jogos_salvos" not in d: d["jogos_salvos"] = []
@@ -40,42 +41,48 @@ def sanitizar_dados(d):
     if "ia_memoria" not in d: 
         d["ia_memoria"] = {"Tendencia": {"usos": 0, "pontos": 0}, "Reversao": {"usos": 0, "pontos": 0}}
     
+    # Arruma jogos antigos que não tinham todos os dados
     for j in d["jogos_salvos"]:
         if "id" not in j: j["id"] = str(uuid.uuid4())
+        if "concurso_alvo" not in j: j["concurso_alvo"] = "Legado (S/ Info)"
+        if "tamanho" not in j: j["tamanho"] = len(j.get("dezenas", []))
         if "status" not in j: j["status"] = "Aguardando Sorteio"
         if "acertos" not in j: j["acertos"] = 0
+        if "estrategia" not in j: j["estrategia"] = "Estratégia Antiga"
+        if "justificativa" not in j: j["justificativa"] = "Jogo recuperado de backup antigo."
     return d
 
 if 'data' not in st.session_state:
     st.session_state.data = sanitizar_dados({})
 
 # =====================================================================
-# FUNÇÕES DE CALLBACK (Botões sem bugs)
+# FUNÇÕES DE CALLBACK (Ações dos Botões)
 # =====================================================================
 def cb_depositar():
     valor = st.session_state.get("input_aporte", 0.0)
     if valor > 0:
         st.session_state.data['banca'] += valor
-        st.toast(f"R$ {valor:.2f} creditados com sucesso!", icon="💰")
+        st.toast(f"R$ {valor:.2f} creditados na banca!", icon="💰")
 
 def cb_excluir_jogo(jogo_id):
-    st.session_state.data['jogos_salvos'] = [j for j in st.session_state.data['jogos_salvos'] if j['id'] != jogo_id]
-    st.toast("Jogo excluído permanentemente.", icon="🗑️")
+    st.session_state.data['jogos_salvos'] = [j for j in st.session_state.data['jogos_salvos'] if j.get('id') != jogo_id]
+    st.toast("Bilhete excluído permanentemente.", icon="🗑️")
 
 def cb_excluir_todos():
     st.session_state.data['jogos_salvos'] = []
-    st.toast("Fila de espera apagada.", icon="🧹")
+    st.toast("Todos os jogos foram apagados da fila.", icon="🧹")
 
 def cb_carregar_cofre():
     file = st.session_state.uploader_cofre
     if file:
         try:
-            st.session_state.data = sanitizar_dados(json.load(file))
-            st.toast("Cofre sincronizado e higienizado com sucesso!", icon="✅")
-        except: st.error("Erro crítico ao ler o arquivo JSON.")
+            raw = json.load(file)
+            st.session_state.data = sanitizar_dados(raw)
+            st.toast("Cofre sincronizado e dados limpos!", icon="✅")
+        except Exception as e: st.error(f"Erro ao ler JSON: {e}")
 
 # =====================================================================
-# CÉREBRO DA IA (Análise Total, Livre e Protegida)
+# CÉREBRO DA IA (Análise Completa e Transparente)
 # =====================================================================
 def raciocinio_total_ia(historico, memoria):
     if not historico: return None
@@ -93,7 +100,6 @@ def raciocinio_total_ia(historico, memoria):
     media_primos = sum([sum(1 for n in h['dezenas'] if n in primos_lista) for h in ultimos_10]) / len(ultimos_10)
     media_moldura = sum([sum(1 for n in h['dezenas'] if n in moldura_lista) for h in ultimos_10]) / len(ultimos_10)
 
-    # Atrasos e Ciclos
     atrasos = {n: 0 for n in range(1, 26)}
     for h in reversed(historico):
         for n in range(1, 26):
@@ -107,34 +113,29 @@ def raciocinio_total_ia(historico, memoria):
         if len(ciclo) == 25: break
     faltam_ciclo = sorted(list(set(range(1, 26)) - ciclo))
 
-    # --- LIBERDADE DA IA: TAMANHO DA MATRIZ DINÂMICO ---
-    # A IA analisa o "caos" do ciclo para definir o tamanho da rede.
+    # --- LIBERDADE DA IA: TAMANHO DA MATRIZ ---
     if len(faltam_ciclo) >= 9: qtd_matriz = 23
     elif len(faltam_ciclo) >= 6: qtd_matriz = 21
     elif len(faltam_ciclo) >= 3: qtd_matriz = 19
-    else: qtd_matriz = 17
+    else: qtd_matriz = 18
 
-    # --- APRENDIZADO E PESOS (Blindados contra valores negativos) ---
+    # --- APRENDIZADO (MEMÓRIA) E PESOS MATEMÁTICOS ---
     pts_tend = memoria["Tendencia"]["pontos"] / max(1, memoria["Tendencia"]["usos"])
     pts_rev = memoria["Reversao"]["pontos"] / max(1, memoria["Reversao"]["usos"])
     
-    # Decide baseado na memória e na soma recente
     if media_soma > 198 or pts_rev > pts_tend:
         estrategia = "Reversão Estatística"
-        # max(1, x) garante que o peso NUNCA seja zero ou negativo
         pesos = {i: max(1, (freq_max - freq.get(i, 0)) + (atrasos.get(i, 0) * 5)) for i in range(1, 26)}
-        motivo_est = f"Memória de Reversão alta ({pts_rev:.1f} pts) ou Soma Estourada ({media_soma:.1f}). Focando em atrasadas."
+        motivo_est = f"A IA escolheu REVERSÃO. A soma está alta ({media_soma:.1f}) ou a memória provou que atrasadas dão mais lucro. Foco em quebra de padrão."
     else:
         estrategia = "Tendência de Frequência"
         pesos = {i: max(1, freq.get(i, 0) + 10) for i in range(1, 26)}
-        motivo_est = f"Soma equilibrada ({media_soma:.1f}) e/ou Memória favorável. Aproveitando a inércia das dezenas quentes."
+        motivo_est = f"A IA escolheu TENDÊNCIA. A soma está no padrão ({media_soma:.1f}). Aproveitaremos o ciclo das dezenas quentes."
 
-    # Seleciona o Grupo de Elite baseado na liberdade de qtd_matriz
     dezenas_ordenadas = sorted(range(1, 26), key=lambda x: pesos[x], reverse=True)
     matriz_base = sorted(dezenas_ordenadas[:qtd_matriz])
     
-    motivo_qtd = f"Como faltam {len(faltam_ciclo)} dezenas para o ciclo, a IA estabeleceu dinamicamente a Matriz em {qtd_matriz} dezenas."
-
+    motivo_qtd = f"Matriz fixada em {qtd_matriz} dezenas porque o ciclo ainda busca {len(faltam_ciclo)} números."
     alvo = (historico[-1]['concurso'] + 1) if historico else 1
 
     return {
@@ -146,12 +147,12 @@ def raciocinio_total_ia(historico, memoria):
     }
 
 # =====================================================================
-# ABAS DE OPERAÇÃO
+# INTERFACE (5 ABAS INTERLIGADAS)
 # =====================================================================
 st.markdown("<h2 style='text-align: center; color: #1f77b4;'>🧬 LotoMatrix PRO - Agente Autônomo</h2>", unsafe_allow_html=True)
 tabs = st.tabs(["📂 1. Banco de Dados", "🧠 2. Cérebro Analítico (IA)", "🤖 3. Geração Autônoma", "📜 4. Fila de Espera", "🏆 5. Sincronização & Rateio"])
 
-# --- TAB 1: GESTÃO ---
+# --- TAB 1: GESTÃO CENTRAL E BANCA ---
 with tabs[0]:
     st.markdown("### 💾 Gestão Central e Banca")
     c1, c2 = st.columns(2)
@@ -159,60 +160,62 @@ with tabs[0]:
         with st.container(border=True):
             st.file_uploader("📥 Carregar Cofre.json (Ativar Inteligência)", type="json", key="uploader_cofre", on_change=cb_carregar_cofre)
             st.info(f"📊 **Dados Oficiais na Memória:** {len(st.session_state.data['historico_dados'])} concursos.")
-            st.download_button("📤 Fazer Backup do Cofre", json.dumps(st.session_state.data), "Cofre_Atualizado.json", type="primary", use_container_width=True)
+            st.download_button("📤 Fazer Backup do Cofre Seguro", json.dumps(st.session_state.data), "Cofre_Atualizado.json", type="primary", use_container_width=True)
     with c2:
         with st.container(border=True):
-            st.metric("💰 Saldo em Banca", f"R$ {st.session_state.data['banca']:.2f}")
+            st.metric("💰 Saldo em Banca (R$)", f"{st.session_state.data['banca']:.2f}")
             st.number_input("Adicionar Saldo (R$):", min_value=0.0, step=10.0, key="input_aporte")
-            st.button("CONFIRMAR APORTE", on_click=cb_depositar, use_container_width=True)
+            st.button("CONFIRMAR DEPÓSITO", on_click=cb_depositar, use_container_width=True)
 
-# --- TAB 2: CÉREBRO ANALÍTICO (TUDO) ---
+# --- TAB 2: CÉREBRO ANALÍTICO COMPLETO ---
 with tabs[1]:
     if st.session_state.data["historico_dados"]:
         ia = raciocinio_total_ia(st.session_state.data["historico_dados"], st.session_state.data["ia_memoria"])
         st.session_state.data["matriz_viva_atual"] = ia["matriz_base"]
         
-        st.markdown(f"### 🧠 O Raio-X da Inteligência — Preparação Concurso `{ia['alvo']}`")
+        st.markdown(f"### 🧠 O Raio-X da Inteligência — Preparação para o Concurso `{ia['alvo']}`")
         
-        # O que ela aprendeu
-        st.markdown("#### 1️⃣ Memória de Aprendizado (O que funcionou no passado)")
-        c_m1, c_m2 = st.columns(2)
-        c_m1.info(f"**Performance da Estratégia TENDÊNCIA:** {ia['pts_tend']:.1f} pontos de média.")
-        c_m2.warning(f"**Performance da Estratégia REVERSÃO:** {ia['pts_rev']:.1f} pontos de média.")
+        # 1. Estratégia e Decisão
+        st.success(f"**💡 ESTRATÉGIA ATIVA:** {ia['estrategia']} \n\n**O PORQUÊ:** {ia['motivo_est']}")
+        st.info(f"**🎯 MATRIZ VIVA ({ia['qtd_matriz']} Dezenas):** {', '.join([f'{n:02d}' for n in ia['matriz_base']])} \n\n*{ia['motivo_qtd']}*")
         
-        # A Decisão da Matriz
-        st.markdown("#### 2️⃣ Decisão e Matriz Dinâmica")
-        st.success(f"**Decisão da IA:** {ia['estrategia']} | {ia['motivo_est']}")
-        st.success(f"**Liberdade de Matriz:** {ia['motivo_qtd']} \n\n**Dezenas Escolhidas:** {', '.join([f'{n:02d}' for n in ia['matriz_base']])}")
-
-        # Painel Profundo
-        st.markdown("#### 3️⃣ Leitura do Comportamento Global (Últimos 10 concursos)")
+        # 2. Resumo de Comportamento e Ciclo
+        st.markdown("#### ⚙️ Parâmetros Oficiais do Cenário Atual")
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Soma Global", f"{ia['soma']:.1f}", delta="Ideal: 195", delta_color="off")
-        c2.metric("Ímpares", f"{ia['impares']:.1f}", delta="Ideal: 7.5", delta_color="off")
-        c3.metric("Primos", f"{ia['primos']:.1f}", delta="Ideal: 5.5", delta_color="off")
-        c4.metric("Moldura", f"{ia['moldura']:.1f}", delta="Ideal: 10", delta_color="off")
-        
-        st.markdown("#### 4️⃣ O Caos do Ciclo Atual")
-        st.error(f"O ciclo está aberto há **{ia['ciclo_tam']}** sorteios. Faltam {len(ia['faltam_ciclo'])} dezenas para fechar: {ia['faltam_ciclo']}")
+        c1.metric("Soma Global (Ideal~195)", f"{ia['soma']:.1f}")
+        c2.metric("Ímpares (Ideal~7.5)", f"{ia['impares']:.1f}")
+        c3.metric("Primos (Ideal~5.5)", f"{ia['primos']:.1f}")
+        c4.metric("Moldura (Ideal~10)", f"{ia['moldura']:.1f}")
 
-        st.markdown("#### 5️⃣ O Mapa de Pesos Internos da IA")
-        st.write("*(Esta tabela mostra os pesos matemáticos exatos gerados agora. Bolas com peso maior são sugadas para a matriz).*")
-        df_pesos = pd.DataFrame.from_dict(ia['pesos'], orient='index', columns=['Peso Atribuído']).sort_index()
-        st.bar_chart(df_pesos)
-    else: st.warning("Por favor, carregue o Cofre na Aba 1 para ativar o Cérebro.")
+        st.warning(f"⏳ **O Ciclo:** Aberto há {ia['ciclo_tam']} sorteios. **Faltam:** {ia['faltam_ciclo']}")
+        
+        # 3. Gráficos de Frequência vs Atraso
+        col_f, col_a = st.columns(2)
+        with col_f:
+            st.markdown("🔥 **Ranking das Quentes**")
+            df_freq = pd.DataFrame.from_dict(ia['freq'], orient='index', columns=['Sorteios']).sort_values('Sorteios', ascending=False)
+            st.dataframe(df_freq.head(7), use_container_width=True)
+        with col_a:
+            st.markdown("❄️ **Ranking de Atrasos**")
+            df_atr = pd.DataFrame.from_dict(ia['atrasos'], orient='index', columns=['Sem Sair']).sort_values('Sem Sair', ascending=False)
+            st.dataframe(df_atr.head(7), use_container_width=True)
+            
+        st.markdown("#### 🧠 O que a IA aprendeu até agora (Memória Automática)")
+        st.write(f"Estratégia **Tendência**: {ia['pts_tend']:.1f} pts de média | Estratégia **Reversão**: {ia['pts_rev']:.1f} pts de média")
+
+    else: st.warning("Suba o Cofre na Aba 1 para despertar a inteligência.")
 
 # --- TAB 3: GERAÇÃO AUTÔNOMA ---
 with tabs[2]:
-    st.markdown("### 🚀 Algoritmo Combinatório Seguro")
+    st.markdown("### 🚀 Algoritmo de Criação Anti-Repetição")
     if st.session_state.data["historico_dados"]:
         ia = raciocinio_total_ia(st.session_state.data["historico_dados"], st.session_state.data["ia_memoria"])
         
-        orcamento = st.number_input("Autorizar orçamento para gerar jogos (R$):", min_value=3.5, max_value=max(3.5, st.session_state.data['banca']), step=3.5)
+        orcamento = st.number_input("Autorizar orçamento para apostar (R$):", min_value=3.5, max_value=max(3.5, st.session_state.data['banca']), step=3.5)
         
-        if st.button("🧬 GERAR JOGOS (SEM REPETIÇÃO)", type="primary", use_container_width=True):
+        if st.button("🧬 GERAR JOGOS EXCLUSIVOS", type="primary", use_container_width=True):
             if st.session_state.data['banca'] < orcamento:
-                st.error("Banca insuficiente. Aporte dinheiro na Aba 1.")
+                st.error("Banca insuficiente. Por favor, deposite na Aba 1.")
             else:
                 st.session_state.data['banca'] -= orcamento
                 historico_sets = [set(h['dezenas']) for h in st.session_state.data["historico_dados"]]
@@ -223,15 +226,15 @@ with tabs[2]:
                     custo = 56.0 if tam == 16 else 3.5
                     
                     dezenas_disponiveis = ia['matriz_base']
-                    # Garante extração de pesos sem erro
                     pesos_sublista = [ia['pesos'][i] for i in dezenas_disponiveis]
                     
                     tentativas = 0
                     jogo_inedito = []
-                    while tentativas < 500:
+                    while tentativas < 1000: # Proteção extra no loop
                         candidato = sorted(list(set(random.choices(dezenas_disponiveis, weights=pesos_sublista, k=tam))))
                         while len(candidato) < tam:
                             sobra = list(set(dezenas_disponiveis) - set(candidato))
+                            if not sobra: break
                             candidato.append(random.choice(sobra))
                             candidato = sorted(list(set(candidato)))
                         
@@ -244,54 +247,68 @@ with tabs[2]:
                         jogo_inedito = sorted(random.sample(dezenas_disponiveis, tam))
                         
                     st.session_state.data["jogos_salvos"].append({
-                        "id": str(uuid.uuid4()), "concurso_alvo": ia['alvo'], "dezenas": jogo_inedito,
-                        "tamanho": tam, "estrategia": ia['estrategia'], 
-                        "justificativa": f"Matriz {ia['qtd_matriz']} | {ia['estrategia']}",
-                        "status": "Aguardando Sorteio", "acertos": 0
+                        "id": str(uuid.uuid4()), 
+                        "concurso_alvo": ia['alvo'], 
+                        "dezenas": jogo_inedito,
+                        "tamanho": tam, 
+                        "estrategia": ia['estrategia'], 
+                        "justificativa": f"Matriz {ia['qtd_matriz']} Dz. Motivo: {ia['estrategia']}",
+                        "status": "Aguardando Sorteio", 
+                        "acertos": 0
                     })
                     gasto += custo
-                st.success(f"Geração concluída! R$ {gasto:.2f} investidos. Veja na Aba 4.")
+                st.success(f"Geração concluída! R$ {gasto:.2f} investidos da banca. Veja os cards na Aba 4.")
                 st.rerun()
-    else: st.warning("Por favor, carregue o Cofre na Aba 1.")
+    else: st.warning("Suba o Cofre na Aba 1.")
 
-# --- TAB 4: FILA DE JOGOS ---
+# --- TAB 4: FILA DE ESPERA (O CARD À PROVA DE BALAS) ---
 with tabs[3]:
-    st.markdown("### 🎫 Cartões na Fila de Sorteio")
+    st.markdown("### 🎫 Cartões Prontos na Fila de Sorteio")
     if st.session_state.data["jogos_salvos"]:
-        st.button("🚨 EXCLUIR TODO O LOTE", on_click=cb_excluir_todos, type="secondary")
+        st.button("🚨 APAGAR TODOS OS JOGOS DA TELA", on_click=cb_excluir_todos, type="secondary")
         st.divider()
         
         for j in st.session_state.data["jogos_salvos"]:
             with st.container(border=True):
                 c_card, c_del = st.columns([5, 1])
                 with c_card:
-                    cor = "green" if j['status'] == "Premiado" else "blue" if j['status'] == "Aguardando Sorteio" else "gray"
-                    st.markdown(f"🎯 **Alvo:** `{j['concurso_alvo']}` | **{j['tamanho']} Dezenas** | Status: :{cor}[{j['status']}]")
-                    st.code(" - ".join([f"{n:02d}" for n in j['dezenas']]))
-                    st.caption(f"💡 *{j['justificativa']}*")
+                    # O uso do .get() abaixo BLINDA a tela contra KeyErrors de arquivos antigos
+                    alvo = j.get('concurso_alvo', 'N/A')
+                    tam = j.get('tamanho', len(j.get('dezenas', [])))
+                    status = j.get('status', 'Aguardando Sorteio')
+                    dezenas = j.get('dezenas', [])
+                    justif = j.get('justificativa', 'Sem info.')
+                    
+                    cor = "green" if status == "Premiado" else "blue" if status == "Aguardando Sorteio" else "gray"
+                    
+                    st.markdown(f"🎯 **Alvo:** `{alvo}` | **{tam} Dezenas** | Status: :{cor}[{status}]")
+                    st.code(" - ".join([f"{n:02d}" for n in dezenas]))
+                    st.caption(f"💡 *Raciocínio:* {justif}")
                 with c_del:
-                    st.button("🗑️ Apagar", key=f"del_{j['id']}", on_click=cb_excluir_jogo, args=(j['id'],), use_container_width=True)
-    else: st.info("Sem jogos na fila.")
+                    jogo_id = j.get('id')
+                    if jogo_id:
+                        st.button("🗑️ Apagar", key=f"del_{jogo_id}", on_click=cb_excluir_jogo, args=(jogo_id,), use_container_width=True)
+    else: st.info("Não existem bilhetes na fila. Gere novos jogos na Aba 3.")
 
-# --- TAB 5: AUDITORIA E APRENDIZADO ---
+# --- TAB 5: AUDITORIA E SINCRONIZAÇÃO CAIXA ---
 with tabs[4]:
-    st.markdown("### 🏆 Sincronização e Ensino da IA")
+    st.markdown("### 🏆 Sincronização, Avaliação e Ensino da IA")
     
-    if st.button("🔄 SINCRONIZAR CAIXA E ENSINAR IA", type="primary", use_container_width=True):
-        with st.spinner("Conectando à Caixa e calculando matrizes..."):
+    if st.button("🔄 CONFERIR RESULTADO E ENSINAR A IA", type="primary", use_container_width=True):
+        with st.spinner("Puxando concurso oficial direto da Caixa..."):
             try:
                 res = requests.get("https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest", verify=False, timeout=10).json()
                 st.session_state.caixa_latest = res
                 sorteio_oficial = set(map(int, res['dezenas']))
                 
                 lucro = 0.0
-                for j in st.session_state.data["jogos_salvos"]:
-                    if j['status'] == "Aguardando Sorteio":
-                        pontos = len(set(j['dezenas']).intersection(sorteio_oficial))
+                for j in st.session_state.data.get("jogos_salvos", []):
+                    if j.get('status') == "Aguardando Sorteio":
+                        pontos = len(set(j.get('dezenas', [])).intersection(sorteio_oficial))
                         j['acertos'] = pontos
                         
-                        # IA APRENDENDO O RESULTADO DA ESTRATÉGIA!
-                        estr_nome = "Tendencia" if "Tendência" in j['estrategia'] else "Reversao"
+                        # --- IA APRENDENDO O RESULTADO! ---
+                        estr_nome = "Tendencia" if "Tendência" in j.get('estrategia', '') else "Reversao"
                         st.session_state.data["ia_memoria"][estr_nome]["usos"] += 1
                         st.session_state.data["ia_memoria"][estr_nome]["pontos"] += pontos
                         
@@ -302,23 +319,24 @@ with tabs[4]:
                         else: j['status'] = "Não Premiado"
                 
                 st.session_state.data["banca"] += lucro
-                st.success(f"Conferência concluída. Lucro: R$ {lucro:.2f}. A IA registrou as notas na Memória!")
-            except: st.error("Erro ao conectar na Caixa.")
+                st.success(f"Conferência concluída! Lucro processado: R$ {lucro:.2f}. A IA foi atualizada e aprendeu com a nota!")
+            except: st.error("Erro ao conectar nos servidores oficiais da Caixa Econômica.")
 
     if 'caixa_latest' in st.session_state:
         r = st.session_state.caixa_latest
-        if st.session_state.data["matriz_viva_atual"]:
+        if st.session_state.data.get("matriz_viva_atual"):
             mv = set(st.session_state.data["matriz_viva_atual"])
             sorteio_set = set(map(int, r['dezenas']))
             acertos_mv = len(mv.intersection(sorteio_set))
+            
             st.markdown(f"""
-            <div style="background: #ebf8ff; padding: 15px; border-left: 5px solid #2b6cb0; margin-bottom: 15px;">
-                <h4 style="margin:0; color:#2b6cb0;">📊 Auditoria da Matriz da IA</h4>
-                A IA havia escolhido <b>{len(mv)} dezenas</b>. No concurso oficial, <b>{acertos_mv} foram sorteadas</b> dentro dessa matriz.
+            <div style="background: #ebf8ff; padding: 15px; border-left: 5px solid #2b6cb0; margin-bottom: 15px; border-radius: 4px;">
+                <h4 style="margin:0; color:#2b6cb0;">📊 Análise Forense da Matriz IA</h4>
+                A Matriz construída continha <b>{len(mv)} dezenas</b>. No concurso oficial da Caixa, <b>{acertos_mv} dezenas</b> saíram de dentro da Matriz escolhida.
             </div>
             """, unsafe_allow_html=True)
 
         st.markdown(f"#### 🏛️ Concurso Oficial: {r['concurso']} ({r['data']})")
         st.code(" - ".join(r['dezenas']))
-        st.markdown("#### 💰 Rateio Oficial")
+        st.markdown("#### 💰 Tabela Oficial de Rateio")
         st.table(pd.DataFrame(r['premiacoes']))
