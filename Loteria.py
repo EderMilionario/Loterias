@@ -53,11 +53,11 @@ if 'ultima_matriz' not in st.session_state:
     st.session_state.ultima_matriz = []
 if 'alvo_atual' not in st.session_state:
     st.session_state.alvo_atual = 0
-if 'rateio_ultimo_sorteio' not in st.session_state:
-    st.session_state.rateio_ultimo_sorteio = None
+if 'lote_ja_auditado' not in st.session_state:
+    st.session_state.lote_ja_auditado = False
 
 # =====================================================================
-# FUNÇÕES DE CARREGAMENTO E BACKUP
+# FUNÇÕES DE CARREGAMENTO E API
 # =====================================================================
 def carregar_cofre_seguro(uploaded_file):
     try:
@@ -67,6 +67,7 @@ def carregar_cofre_seguro(uploaded_file):
         st.session_state.jogos_salvos = data.get("jogos_salvos", [])
         st.session_state.ultima_matriz = data.get("ultima_matriz", [])
         st.session_state.alvo_atual = data.get("alvo_atual", 0)
+        st.session_state.lote_ja_auditado = data.get("lote_ja_auditado", False)
         st.session_state.dados_carregados = True
         return True
     except Exception as e:
@@ -79,12 +80,10 @@ def gerar_backup():
         "historico_dados": st.session_state.historico_dados,
         "jogos_salvos": st.session_state.jogos_salvos,
         "ultima_matriz": st.session_state.ultima_matriz,
-        "alvo_atual": st.session_state.alvo_atual
+        "alvo_atual": st.session_state.alvo_atual,
+        "lote_ja_auditado": st.session_state.lote_ja_auditado
     }
 
-# =====================================================================
-# SINCRONIZAÇÃO API CAIXA
-# =====================================================================
 def sincronizar_api_caixa():
     try:
         url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
@@ -96,7 +95,7 @@ def sincronizar_api_caixa():
         return None
 
 # =====================================================================
-# INTELIGÊNCIA PERICIAL
+# INTELIGÊNCIA PERICIAL E FILTROS
 # =====================================================================
 def analisar_cenario_completo(historico):
     if not historico:
@@ -169,11 +168,11 @@ def calcular_premiacao_multipla(acertos, tamanho_jogo):
     return valor
 
 # =====================================================================
-# TELA DE UPLOAD DO COFRE
+# INJEÇÃO DO COFRE
 # =====================================================================
 if not st.session_state.dados_carregados:
     st.markdown("<h3 style='color:#006644;'>📥 Injeção do Banco de Dados (Cofre.json)</h3>", unsafe_allow_html=True)
-    st.info("Para ativar a inteligência, o sistema precisa ler o seu histórico de resultados e banca.")
+    st.info("Para ativar a inteligência, insira seu histórico de resultados e banca.")
     uploaded_file = st.file_uploader("Arraste seu Cofre.json aqui:", type=["json"])
     if st.button("🚀 INJETAR DADOS E ATIVAR IA", type="primary", use_container_width=True):
         if uploaded_file and carregar_cofre_seguro(uploaded_file):
@@ -192,55 +191,10 @@ alvo_calculado = cenario['total_concursos'] + 1
 st.markdown(f"## 🧬 LotoMatrix Premium Ativo")
 st.markdown(f"**Banca:** R$ {st.session_state.banca:.2f} | **Concursos Indexados:** {cenario['total_concursos']} | **🎯 Próximo Alvo:** Concurso {alvo_calculado}")
 
-tabs = st.tabs(["📊 Painel do Cenário & API", "🎯 Gerador Autônomo", "🏆 Conferência Pericial", "💾 Central do Cofre"])
+tabs = st.tabs(["📊 Painel do Cenário", "🎯 Gerador Autônomo", "🏆 Conferência Pericial (API)", "💾 Central do Cofre"])
 
-# ----------------- TAB 1: PAINEL DO CENÁRIO & API -----------------
+# ----------------- TAB 1: PAINEL DO CENÁRIO -----------------
 with tabs[0]:
-    st.markdown("### 📡 Sincronização e Rateio Oficial (API Caixa)")
-    
-    col_api1, col_api2 = st.columns([1, 2])
-    with col_api1:
-        if st.button("🔄 SINCRONIZAR COM A CAIXA", type="primary", use_container_width=True):
-            with st.spinner("Buscando resultados oficiais..."):
-                dados_api = sincronizar_api_caixa()
-                if dados_api:
-                    concurso_oficial = int(dados_api.get('concurso', 0))
-                    dezenas_oficiais = [int(x) for x in dados_api.get('dezenas', [])]
-                    
-                    st.session_state.rateio_ultimo_sorteio = dados_api
-                    
-                    # Atualiza o banco de dados se houver um concurso novo
-                    if st.session_state.historico_dados:
-                        ultimo_banco = st.session_state.historico_dados[-1]['concurso']
-                        if concurso_oficial > ultimo_banco:
-                            st.session_state.historico_dados.append({
-                                "concurso": concurso_oficial,
-                                "dezenas": dezenas_oficiais
-                            })
-                            st.success(f"Banco de dados atualizado com o Concurso {concurso_oficial}!")
-                            st.rerun()
-                        else:
-                            st.info("O seu banco de dados já está atualizado com o último concurso.")
-                else:
-                    st.error("Falha ao conectar na API. Tente novamente mais tarde.")
-
-    with col_api2:
-        if st.session_state.rateio_ultimo_sorteio:
-            dados = st.session_state.rateio_ultimo_sorteio
-            st.markdown(f"""
-            <div style='background-color:#ffffff; padding:15px; border-radius:8px; border-left:5px solid #006644; border: 1px solid #e2e8f0;'>
-                <h4 style='color:#006644; margin-top:0;'>🏆 Rateio Oficial - Concurso {dados.get('concurso')}</h4>
-                <p><b>Sorteio:</b> {' - '.join([f'{int(n):02d}' for n in dados.get('dezenas', [])])}</p>
-                <hr style='margin: 10px 0;'>
-                <ul style='list-style-type: none; padding-left: 0;'>
-            """, unsafe_allow_html=True)
-            
-            for premio in dados.get('premiacoes', []):
-                st.markdown(f"<li><b>{premio.get('acertos')} Acertos:</b> {premio.get('vencedores')} ganhadores (R$ {premio.get('premio', '0')})</li>", unsafe_allow_html=True)
-            
-            st.markdown("</ul></div>", unsafe_allow_html=True)
-
-    st.markdown("---")
     st.markdown("### 🔍 Ecossistema Analítico")
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -271,7 +225,7 @@ with tabs[1]:
     val_padrao = min(20.0, float(st.session_state.banca)) if st.session_state.banca >= 3.5 else 3.5
     
     orcamento = colA.number_input("Capital para a Operação (R$)", min_value=3.5, max_value=max_banca, value=val_padrao)
-    modo_jogo = colB.selectbox("Formato do Jogo", ["Híbrido (15 e 16)", "15 Dezenas", "16 Dezenas"], help="Híbrido: A IA comprará jogos poderosos de 16 dezenas e usará o 'troco' para comprar jogos de 15, otimizando o seu saldo.")
+    modo_jogo = colB.selectbox("Formato do Jogo", ["Híbrido (15 e 16 dezenas)", "15 Dezenas", "16 Dezenas"])
     
     if st.button("🚀 EXECUTAR ENGENHARIA", type="primary"):
         if st.session_state.banca < 3.5:
@@ -282,6 +236,7 @@ with tabs[1]:
                 ultimo_sorteio = historico[-1]['dezenas'] if historico else []
                 historico_sets = [set(h['dezenas']) for h in historico]
                 
+                # Montagem da Matriz Viva
                 matriz_viva = set(cenario['faltam_ciclo'])
                 for d in cenario['quentes'] + cenario['medias']:
                     if len(matriz_viva) >= 19: break
@@ -290,6 +245,7 @@ with tabs[1]:
                 
                 st.session_state.ultima_matriz = matriz_viva
                 st.session_state.alvo_atual = alvo_calculado
+                st.session_state.lote_ja_auditado = False # Libera nova auditoria
                 
                 jogos_gerados = []
                 tentativas, bloqueados = 0, 0
@@ -322,18 +278,15 @@ with tabs[1]:
                         "data": datetime.now().strftime("%d/%m/%Y %H:%M")
                     })
                 
-                custo_total = orcamento - orcamento_restante
-                st.session_state.banca -= custo_total
+                st.session_state.banca -= (orcamento - orcamento_restante)
                 st.rerun()
 
-    # --- EXIBIÇÃO TRANSPARENTE E CARTÕES ---
     if st.session_state.jogos_salvos:
         st.markdown("---")
-        
         st.markdown(f"""
         <div style='background-color:#ffffff; padding:15px; border-radius:8px; border-left:5px solid #2b6cb0; border: 1px solid #e2e8f0; margin-bottom: 20px;'>
             <h4 style='color:#2b6cb0; margin-top:0;'>📊 Transparência da Matriz Base</h4>
-            <p style='color:#4a5568; margin-bottom:5px;'>Para gerar estes jogos, a IA selecionou o seguinte grupo de <b>{len(st.session_state.ultima_matriz)} dezenas</b>:</p>
+            <p style='color:#4a5568; margin-bottom:5px;'>A IA filtrou as possibilidades usando este grupo de elite de <b>{len(st.session_state.ultima_matriz)} dezenas</b>:</p>
             <p style='font-family: monospace; font-size: 16px; font-weight: bold; color: #1a202c;'>{", ".join([f"{n:02d}" for n in st.session_state.ultima_matriz])}</p>
         </div>
         """, unsafe_allow_html=True)
@@ -365,72 +318,118 @@ with tabs[1]:
             </div>
             """, unsafe_allow_html=True)
 
-# ----------------- TAB 3: CONFERÊNCIA PERICIAL -----------------
+# ----------------- TAB 3: CONFERÊNCIA PERICIAL (COM API) -----------------
 with tabs[2]:
-    st.markdown("### 🏆 Auditoria Forense")
+    st.markdown("### 🏆 Auditoria Automática e Rateio")
     
     if not st.session_state.jogos_salvos:
-        st.info("Você ainda não gerou nenhum lote para auditar.")
+        st.info("Gere seus jogos na aba 'Gerador Autônomo' primeiro.")
     else:
-        if st.session_state.ultima_matriz:
-            st.markdown(f"""
-            <div style='background-color:#f7fafc; padding:15px; border-radius:8px; border: 1px solid #e2e8f0; margin-bottom: 20px;'>
-                <p style='margin:0; color:#4a5568;'><b>Matriz em Análise:</b> {len(st.session_state.ultima_matriz)} dezenas preparadas para o Concurso {st.session_state.alvo_atual}.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown(f"""
+        <div style='background-color:#f7fafc; padding:15px; border-radius:8px; border: 1px solid #e2e8f0; margin-bottom: 20px;'>
+            <p style='margin:0; color:#4a5568;'><b>Matriz Guardada:</b> O sistema rastreará o desempenho das {len(st.session_state.ultima_matriz)} dezenas escolhidas para o Concurso {st.session_state.alvo_atual}.</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-        with st.expander("👀 Ver Bilhetes Aguardando Conferência", expanded=False):
-            for idx, j in enumerate(st.session_state.jogos_salvos):
-                st.markdown(f"**Bilhete {idx+1} [{j['tamanho']}]**: {' - '.join([f'{n:02d}' for n in j['dezenas']])}")
-
-        resultado_str = st.text_input("Digite as 15 dezenas do sorteio oficial (separadas por espaço):")
+        col_sync, col_man = st.columns(2)
         
-        if st.button("🔍 AUDITAR RESULTADOS", type="primary"):
-            try:
-                sorteio_set = set([int(x) for x in resultado_str.split()])
-                if len(sorteio_set) != 15:
-                    st.error("Insira exatamente 15 números.")
+        sorteio_para_auditar = None
+        rateio_para_exibir = None
+
+        with col_sync:
+            if st.button("🔄 SINCRONIZAR E AUDITAR AUTOMATICAMENTE", type="primary", use_container_width=True):
+                with st.spinner("Conectando à Caixa e calculando matrizes..."):
+                    dados_api = sincronizar_api_caixa()
+                    if dados_api:
+                        conc_oficial = int(dados_api.get('concurso', 0))
+                        sorteio_para_auditar = [int(x) for x in dados_api.get('dezenas', [])]
+                        rateio_para_exibir = dados_api
+                        
+                        # Atualiza BD se for novo
+                        ultimo_bd = st.session_state.historico_dados[-1]['concurso'] if st.session_state.historico_dados else 0
+                        if conc_oficial > ultimo_bd:
+                            st.session_state.historico_dados.append({"concurso": conc_oficial, "dezenas": sorteio_para_auditar})
+                            st.toast(f"Banco atualizado: Concurso {conc_oficial}", icon="✅")
+                    else:
+                        st.error("Falha na API da Caixa. Use a conferência manual abaixo.")
+
+        with col_man:
+            resultado_manual = st.text_input("Ou insira os 15 números manualmente (com espaço):")
+            if st.button("🔍 AUDITAR MANUALMENTE", use_container_width=True):
+                try:
+                    sorteio_para_auditar = [int(x) for x in resultado_manual.split()]
+                    if len(set(sorteio_para_auditar)) != 15:
+                        st.error("Insira exatamente 15 dezenas únicas válidas.")
+                        sorteio_para_auditar = None
+                except:
+                    st.error("Erro de formato. Apenas números.")
+
+        # --- EXECUÇÃO DA AUDITORIA ---
+        if sorteio_para_auditar and len(sorteio_para_auditar) == 15:
+            sorteio_set = set(sorteio_para_auditar)
+            
+            st.markdown("---")
+            
+            # Exibe Rateio se veio da API
+            if rateio_para_exibir:
+                st.markdown(f"""
+                <div style='background-color:#ffffff; padding:15px; border-radius:8px; border-left:5px solid #006644; border: 1px solid #e2e8f0; margin-bottom: 20px;'>
+                    <h4 style='color:#006644; margin-top:0;'>🏛️ Rateio Oficial - Caixa (Concurso {rateio_para_exibir.get('concurso')})</h4>
+                    <p><b>Sorteio:</b> {' - '.join([f'{int(n):02d}' for n in rateio_para_exibir.get('dezenas', [])])}</p>
+                    <hr style='margin: 10px 0;'>
+                    <ul style='list-style-type: none; padding-left: 0;'>
+                """, unsafe_allow_html=True)
+                for premio in rateio_para_exibir.get('premiacoes', []):
+                    st.markdown(f"<li><b>{premio.get('acertos')} Acertos:</b> {premio.get('vencedores')} ganhadores (R$ {premio.get('premio', '0')})</li>", unsafe_allow_html=True)
+                st.markdown("</ul></div>", unsafe_allow_html=True)
+
+            # Desempenho da Inteligência
+            if st.session_state.ultima_matriz:
+                matriz_set = set(st.session_state.ultima_matriz)
+                acertos_matriz = len(matriz_set.intersection(sorteio_set))
+                st.markdown(f"""
+                <div style="background-color: #ebf8ff; color: #2b6cb0; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #bee3f8;">
+                    <h4 style="margin:0;">🎯 Desempenho da Inteligência</h4>
+                    <p style="margin-top: 5px; font-size:15px;">A IA escolheu <b>{len(matriz_set)} dezenas base</b>. Destas, <b>{acertos_matriz} foram sorteadas</b> no concurso oficial.</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # Conferência dos Bilhetes
+            ganho_lote = 0.0
+            for idx, j in enumerate(st.session_state.jogos_salvos):
+                acertos = len(set(j['dezenas']).intersection(sorteio_set))
+                premio = calcular_premiacao_multipla(acertos, j['tamanho'])
+                ganho_lote += premio
+                
+                exibicao_nums = " - ".join([
+                    f"<span style='color: {'#2f855a' if n in sorteio_set else '#a0aec0'}; font-weight: {'bold' if n in sorteio_set else 'normal'};'>{n:02d}</span>"
+                    for n in j['dezenas']
+                ])
+                
+                if acertos >= 11:
+                    cor_borda, icone, txt_cor = "#48bb78", "🎉", "#2f855a"
+                    status = f"PREMIADO! {acertos} Acertos | Lucro: R$ {premio:.2f}"
                 else:
-                    ganho_lote = 0.0
+                    cor_borda, icone, txt_cor = "#f56565", "❌", "#c53030"
+                    status = f"Não Premiado ({acertos} Acertos)"
                     
-                    if st.session_state.ultima_matriz:
-                        matriz_set = set(st.session_state.ultima_matriz)
-                        acertos_matriz = len(matriz_set.intersection(sorteio_set))
-                        st.markdown(f"""
-                        <div style="background-color: #ebf8ff; color: #2b6cb0; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #bee3f8;">
-                            <h4 style="margin:0;">🎯 Desempenho da Inteligência (Matriz)</h4>
-                            <p style="margin-top: 5px; font-size:15px;">A IA escolheu <b>{len(matriz_set)} dezenas</b>. Destas, <b>{acertos_matriz} caíram no sorteio oficial</b>.</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    
-                    for idx, j in enumerate(st.session_state.jogos_salvos):
-                        acertos = len(set(j['dezenas']).intersection(sorteio_set))
-                        premio = calcular_premiacao_multipla(acertos, j['tamanho'])
-                        ganho_lote += premio
-                        
-                        exibicao_nums = " - ".join([
-                            f"<span style='color: {'#2f855a' if n in sorteio_set else '#a0aec0'}; font-weight: {'bold' if n in sorteio_set else 'normal'};'>{n:02d}</span>"
-                            for n in j['dezenas']
-                        ])
-                        
-                        if acertos >= 11:
-                            cor_borda, icone, txt_cor = "#48bb78", "🎉", "#2f855a"
-                            status = f"PREMIADO! {acertos} Acertos | Retorno: R$ {premio:.2f}"
-                        else:
-                            cor_borda, icone, txt_cor = "#f56565", "❌", "#c53030"
-                            status = f"Não Premiado ({acertos} Acertos)"
-                            
-                        st.markdown(f"""
-                        <div style="background: #ffffff; padding: 15px; border-radius: 8px; margin-bottom: 12px; border-left: 6px solid {cor_borda}; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                            <h4 style="margin:0; color: {txt_cor};">{icone} Bilhete {idx+1} - {status}</h4>
-                            <p style="margin-top: 10px; font-family: monospace; font-size: 18px; background: #f7fafc; padding: 10px; border-radius: 4px; border: 1px solid #edf2f7;">{exibicao_nums}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    
-                    st.session_state.banca += ganho_lote
-                    st.success(f"💰 Lucro de R$ {ganho_lote:.2f} adicionado à banca.")
-            except:
-                st.error("Erro de digitação. Digite apenas números separados por espaço.")
+                st.markdown(f"""
+                <div style="background: #ffffff; padding: 15px; border-radius: 8px; margin-bottom: 12px; border-left: 6px solid {cor_borda}; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <h4 style="margin:0; color: {txt_cor};">{icone} Bilhete {idx+1} - {status}</h4>
+                    <p style="margin-top: 10px; font-family: monospace; font-size: 18px; background: #f7fafc; padding: 10px; border-radius: 4px; border: 1px solid #edf2f7;">{exibicao_nums}</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Adiciona saldo (Com Trava contra Duplicação)
+            if not st.session_state.lote_ja_auditado:
+                st.session_state.banca += ganho_lote
+                st.session_state.lote_ja_auditado = True
+                if ganho_lote > 0:
+                    st.success(f"💰 Lucro de R$ {ganho_lote:.2f} processado e enviado para o seu saldo da Central.")
+                else:
+                    st.info("Nenhum prêmio financeiro neste lote. Saldo mantido.")
+            else:
+                st.warning("Este lote já foi auditado e o saldo já foi contabilizado. Gere novos jogos para nova operação.")
 
 # ----------------- TAB 4: COFRE -----------------
 with tabs[3]:
@@ -438,14 +437,14 @@ with tabs[3]:
     
     st.markdown("""
     <div style='background-color:#fff3cd; padding:15px; border-radius:8px; border-left:5px solid #ffc107; margin-bottom: 20px; color:#856404;'>
-        <b>Atenção:</b> Sempre que gerar novos jogos ou auditar resultados, baixe o seu Cofre atualizado no botão abaixo para não perder sua banca e os jogos salvos!
+        <b>Atenção Essencial:</b> Sempre que gerar novos jogos, auditar resultados ou mudar seu saldo, <b>BAIXE SEU NOVO COFRE ABAIXO</b> para nunca perder sua memória!
     </div>
     """, unsafe_allow_html=True)
 
     c1, c2 = st.columns(2)
     with c1:
         with st.container(border=True):
-            st.metric("Saldo do Cofre", f"R$ {st.session_state.banca:.2f}")
+            st.metric("Saldo Líquido", f"R$ {st.session_state.banca:.2f}")
             nova_banca = st.number_input("Ajustar saldo manualmente (R$):", value=float(st.session_state.banca))
             if st.button("Atualizar Valor"):
                 st.session_state.banca = nova_banca
@@ -453,15 +452,15 @@ with tabs[3]:
                 
     with c2:
         with st.container(border=True):
-            st.markdown("#### 📥 Sobrescrever Banco de Dados")
+            st.markdown("#### 📥 Forçar Restauração Manual")
             novo_upload = st.file_uploader("Subir Backup Cofre.json:", type=["json"])
-            if st.button("🔄 CARREGAR NOVO BACKUP"):
+            if st.button("🔄 CARREGAR ESTE BACKUP"):
                 if novo_upload and carregar_cofre_seguro(novo_upload):
-                    st.success("Dados substituídos com sucesso!")
+                    st.success("Sistema sobrescrito com sucesso!")
                     st.rerun()
 
     st.markdown("---")
-    st.markdown("### 📤 Exportação de Segurança")
+    st.markdown("### 📤 Exportação de Segurança (Download)")
     doc_json = json.dumps(gerar_backup())
     st.download_button(
         label="💾 BAIXAR SEU COFRE ATUALIZADO (.JSON)",
