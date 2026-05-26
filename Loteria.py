@@ -292,6 +292,8 @@ with tabs[1]:
 
         # --- NOVO PAINEL DE PESOS ESTILIZADO EM BADGES GIGANTES ---
         st.markdown("#### ⚖️ Grade Dinâmica de Pesos Absolutos (Heatmap de Atração da IA)")
+        
+        # Correção da Quebra de Markdown: Gerado em uma linha contínua para o Streamlit renderizar o HTML perfeitamente
         html_pesos = "<div style='display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; font-family: sans-serif; margin-bottom: 25px;'>"
         for n in range(1, 26):
             p_val = ia['pesos'].get(n, 0.0)
@@ -300,17 +302,12 @@ with tabs[1]:
             border_color = "#0f5132" if no_grupo else "#dee2e6"
             label_elite = "<span style='background-color:#0f5132; color:white; padding:2px 6px; font-size:10px; border-radius:4px; margin-left:5px;'>ELITE</span>" if no_grupo else ""
             
-            html_pesos += f"""
-            <div style='background-color: {bg_color}; border: 2px solid {border_color}; border-radius: 8px; padding: 12px; text-align: center; color: #1a1a1a;'>
-                <span style='font-size: 20px; font-weight: bold; color: #111;'>{n:02d}</span>{label_elite}<br>
-                <span style='font-size: 13px; color: #444;'>Peso: <b>{p_val:.1f}</b></span>
-            </div>
-            """
+            html_pesos += f"<div style='background-color: {bg_color}; border: 2px solid {border_color}; border-radius: 8px; padding: 12px; text-align: center; color: #1a1a1a;'><span style='font-size: 20px; font-weight: bold; color: #111;'>{n:02d}</span>{label_elite}<br><span style='font-size: 13px; color: #444;'>Peso: <b>{p_val:.1f}</b></span></div>"
+        
         html_pesos += "</div>"
         st.markdown(html_pesos, unsafe_allow_html=True)
 
     else: st.warning("Aguardando inserção de dados do Cofre na Aba 1.")
-
 # --- TAB 3: GERADOR AUTÔNOMO ---
 with tabs[2]:
     st.markdown("### 🚀 Engenharia Combinatória por Verba")
