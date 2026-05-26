@@ -4,125 +4,120 @@ import json
 import pandas as pd
 from collections import Counter
 from datetime import datetime
-import urllib3
 
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# --- CONFIGURAÇÃO E SEGURANÇA ---
+st.set_page_config(page_title="LotoMatrix PRO - Agente Autônomo", layout="wide")
 
-# --- CONFIGURAÇÃO PROFISSIONAL ---
-st.set_page_config(page_title="LotoMatrix PRO - Sistema Autônomo", layout="wide")
-
-SENHA_ACESSO = "admin123"  # Mantenha sua senha aqui
-
-# --- SEGURANÇA E AUTENTICAÇÃO ---
+# Senha Hardcoded para acesso
 if 'autenticado' not in st.session_state: st.session_state.autenticado = False
-
 if not st.session_state.autenticado:
-    st.markdown("<h1 style='text-align: center; color: #006644;'>🔐 LotoMatrix PRO - Acesso Restrito</h1>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        with st.container(border=True):
-            senha_digitada = st.text_input("Digite a Senha:", type="password")
-            if st.button("ENTRAR", type="primary", use_container_width=True):
-                if senha_digitada == SENHA_ACESSO:
-                    st.session_state.autenticado = True
-                    st.rerun()
-                else:
-                    st.error("Acesso Negado.")
+    senha = st.text_input("Senha de Acesso:", type="password")
+    if st.button("ENTRAR"):
+        if senha == "admin123":
+            st.session_state.autenticado = True
+            st.rerun()
     st.stop()
 
-# --- INICIALIZAÇÃO E MIGRAÇÃO ---
-if 'historico_dados' not in st.session_state: st.session_state.historico_dados = []
-if 'jogos_salvos' not in st.session_state: st.session_state.jogos_salvos = []
-if 'banca' not in st.session_state: st.session_state.banca = 100.0
+# --- ESTADO DO SISTEMA (LIMPO) ---
+def inicializar_sistema():
+    st.session_state.historico_dados = []
+    st.session_state.jogos_salvos = []
+    st.session_state.banca = 0.0
 
-def migrar_estrutura(data):
-    if "jogos_salvos" not in data: data["jogos_salvos"] = []
-    for jogo in data["jogos_salvos"]:
-        if "justificativa" not in jogo: jogo["justificativa"] = "Jogo legado"
-        if "estrategia" not in jogo: jogo["estrategia"] = "Manual"
-    return data
+if 'historico_dados' not in st.session_state: inicializar_sistema()
 
-def carregar_dados(uploaded_file):
-    try:
-        data = json.load(uploaded_file)
-        data = migrar_estrutura(data)
+# --- MOTOR DE INTELIGÊNCIA (O CÉREBRO) ---
+class LotoEngine:
+    @staticmethod
+    def analisar(historico):
+        if not historico: return {"tipo": "Neutro", "peso": {i: 1 for i in range(1, 26)}}
+        
+        todas = [n for h in historico for n in h['dezenas']]
+        contagem = Counter(todas)
+        # Define estratégia baseada na média de frequência
+        if sum(contagem.values()) / 25 > 50:
+            return {"tipo": "Tendência", "pesos": {i: contagem[i] + 1 for i in range(1, 26)}}
+        return {"tipo": "Reversão", "pesos": {i: 100 - contagem[i] for i in range(1, 26)}}
+
+    @staticmethod
+    def gerar_jogo(tipo, pesos, tam=15):
+        numeros = list(range(1, 26))
+        pesos_list = [pesos[i] for i in numeros]
+        jogo = sorted(random.choices(numeros, weights=pesos_list, k=tam))
+        return list(set(jogo)) # Garante unicidade
+
+# --- UI PROFISSIONAL ---
+st.title("🧬 LotoMatrix PRO")
+
+# Sidebar - Gestão de Dados
+with st.sidebar:
+    st.header("Gestão de Cofre")
+    uploaded = st.file_uploader("Upload Cofre.json", type="json")
+    if uploaded:
+        data = json.load(uploaded)
         st.session_state.historico_dados = data.get("historico_dados", [])
         st.session_state.jogos_salvos = data.get("jogos_salvos", [])
-        st.session_state.banca = data.get("banca", 100.0)
-        return True
-    except: return False
-
-# --- MÓDULO DE INTELIGÊNCIA ---
-def analisar_cenario(historico):
-    if not historico: return None
-    todas = [n for h in historico for n in h['dezenas']]
-    contagem = Counter(todas)
+        st.session_state.banca = data.get("banca", 0.0)
+        st.success("Cofre Sincronizado.")
     
-    # Lógica simples de atraso baseada no histórico
-    atrasos = {n: 0 for n in range(1, 26)}
-    for h in reversed(historico):
-        for n in range(1, 26):
-            if n not in h['dezenas'] and atrasos[n] == 0: atrasos[n] += 1
-            elif n in h['dezenas'] and atrasos[n] == 0: pass 
-            
-    estilo = "Reversão" if any(v > 5 for v in atrasos.values()) else "Tendência"
-    
-    return {
-        "frequencia": contagem,
-        "atrasos": atrasos,
-        "estilo": estilo,
-        "motivo": f"O sistema analisou os últimos {len(historico)} sorteios e optou por estratégia de {estilo}."
-    }
+    st.metric("Banca", f"R$ {st.session_state.banca:.2f}")
+    if st.button("Download Backup"):
+        dados = {"historico_dados": st.session_state.historico_dados, "jogos_salvos": st.session_state.jogos_salvos, "banca": st.session_state.banca}
+        st.download_button("Baixar JSON", json.dumps(dados), "Cofre.json")
 
-# --- INTERFACE PRINCIPAL ---
-st.title("🧬 LotoMatrix PRO - Agente Autônomo")
-
-# Sidebar - Painel de Controle
-st.sidebar.metric("Banca Atual", f"R$ {st.session_state.banca:.2f}")
-if st.sidebar.button("💾 Exportar Cofre Atualizado"):
-    dados = {"historico_dados": st.session_state.historico_dados, "jogos_salvos": st.session_state.jogos_salvos, "banca": st.session_state.banca}
-    st.sidebar.download_button("Baixar JSON", json.dumps(dados), "Cofre_Backup.json")
-
-tab1, tab2, tab3 = st.tabs(["📊 Dashboard de IA", "🤖 Agente de Geração", "💾 Gestão do Cofre"])
+# Tabs Principais
+tab1, tab2, tab3 = st.tabs(["📊 Dashboard de IA", "🤖 Gerador Inteligente", "🏆 Auditoria"])
 
 with tab1:
-    st.subheader("Painel de Diagnóstico")
+    st.subheader("Painel de Raciocínio")
     if st.session_state.historico_dados:
-        stats = analisar_cenario(st.session_state.historico_dados)
-        col1, col2 = st.columns(2)
-        col1.bar_chart(pd.DataFrame.from_dict(stats['frequencia'], orient='index', columns=['Frequencia']))
-        col2.info(f"**Estratégia Ativa:** {stats['estilo']}")
-        col2.write(f"**Justificativa Técnica:** {stats['motivo']}")
+        analise = LotoEngine.analisar(st.session_state.historico_dados)
+        st.info(f"Modo Atual: **{analise['tipo']}**")
+        st.write("A IA está priorizando números baseada na frequência histórica.")
     else:
-        st.warning("Carregue dados na aba de Gestão.")
+        st.warning("Carregue o Cofre.")
 
 with tab2:
-    st.subheader("Gerador Autônomo")
-    if st.button("🚀 Gerar Lote com IA"):
-        analise = analisar_cenario(st.session_state.historico_dados)
-        pesos = [analise['frequencia'][i] if analise['estilo'] == "Tendência" else (100 - analise['frequencia'][i]) for i in range(1, 26)]
+    st.subheader("Geração Autônoma por Orçamento")
+    orcamento = st.number_input("Valor para esta rodada (R$)", min_value=3.5, step=3.5)
+    
+    if st.button("Gerar Jogos"):
+        analise = LotoEngine.analisar(st.session_state.historico_dados)
+        budget_left = orcamento
         
-        novo_jogo = sorted(random.choices(range(1, 26), weights=pesos, k=15))
-        
-        st.session_state.jogos_salvos.append({
-            "dezenas": novo_jogo,
-            "estrategia": analise['estilo'],
-            "justificativa": analise['motivo'],
-            "data": datetime.now().strftime("%d/%m/%Y")
-        })
+        while budget_left >= 3.5:
+            # IA decide se gera 16 ou 15 baseado no budget
+            tam = 16 if budget_left >= 56.0 and random.random() > 0.7 else 15
+            custo = 56.0 if tam == 16 else 3.5
+            
+            if budget_left >= custo:
+                jogo = LotoEngine.gerar_jogo(analise['tipo'], analise['pesos'], tam)
+                st.session_state.jogos_salvos.append({
+                    "dezenas": jogo,
+                    "tamanho": tam,
+                    "estrategia": analise['tipo'],
+                    "justificativa": f"IA usou modo {analise['tipo']} devido ao histórico."
+                })
+                budget_left -= custo
+        st.session_state.banca -= (orcamento - budget_left)
         st.rerun()
 
-    # Cards Profissionais
-    for idx, j in enumerate(st.session_state.jogos_salvos):
+    # Cards de Jogos
+    for i, j in enumerate(st.session_state.jogos_salvos):
         with st.container(border=True):
-            col_a, col_b = st.columns([3, 1])
-            col_a.markdown(f"**Jogo {idx+1}** • Estratégia: `{j.get('estrategia', 'N/A')}`")
-            col_a.code(" ".join(map(str, j['dezenas'])))
-            col_b.caption(f"🧠 Justificativa IA:")
-            col_b.write(j.get('justificativa', 'Sem info'))
+            cols = st.columns([3, 1])
+            cols[0].write(f"**Jogo {i+1}** ({j['tamanho']} dezenas) - Estratégia: {j['estrategia']}")
+            cols[0].code(str(j['dezenas']))
+            cols[1].write(f"🧠 IA: {j['justificativa']}")
 
 with tab3:
-    st.subheader("Cofre Central")
-    uploaded = st.file_uploader("Upload de Backup (JSON)", type="json")
-    if uploaded and carregar_dados(uploaded):
-        st.success("Dados carregados e migrados com sucesso.")
+    st.subheader("Auditoria de Resultados")
+    sorteio_str = st.text_input("Resultado Oficial (espaço entre números)")
+    if st.button("Auditar Lote"):
+        try:
+            sorteio = set(map(int, sorteio_str.split()))
+            for j in st.session_state.jogos_salvos:
+                acertos = len(set(j['dezenas']).intersection(sorteio))
+                j['acertos'] = acertos # Aqui a IA "aprende" o resultado
+            st.success("Auditoria concluída. O histórico foi atualizado com os acertos.")
+        except: st.error("Erro no formato.")
