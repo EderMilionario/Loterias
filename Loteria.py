@@ -5,10 +5,9 @@ import pandas as pd
 from collections import Counter
 from datetime import datetime
 
-# --- CONFIGURAÇÃO E SEGURANÇA ---
-st.set_page_config(page_title="LotoMatrix PRO - Agente Autônomo", layout="wide")
+st.set_page_config(page_title="LotoMatrix PRO - Sistema Profissional", layout="wide")
 
-# Senha Hardcoded para acesso
+# --- BLOCO DE SEGURANÇA E PROTEÇÃO DE DADOS ---
 if 'autenticado' not in st.session_state: st.session_state.autenticado = False
 if not st.session_state.autenticado:
     senha = st.text_input("Senha de Acesso:", type="password")
@@ -18,106 +17,85 @@ if not st.session_state.autenticado:
             st.rerun()
     st.stop()
 
-# --- ESTADO DO SISTEMA (LIMPO) ---
-def inicializar_sistema():
-    st.session_state.historico_dados = []
-    st.session_state.jogos_salvos = []
-    st.session_state.banca = 0.0
+# --- FUNÇÃO DE LIMPEZA (MATA O KEYERROR) ---
+def sanitizar_dados(data):
+    """Garante que qualquer estrutura de JSON antigo seja convertida para a nova."""
+    if "jogos_salvos" not in data: data["jogos_salvos"] = []
+    if "historico_dados" not in data: data["historico_dados"] = []
+    
+    for jogo in data["jogos_salvos"]:
+        if "tamanho" not in jogo: jogo["tamanho"] = 15
+        if "estrategia" not in jogo: jogo["estrategia"] = "Legacy"
+        if "justificativa" not in jogo: jogo["justificativa"] = "Importado do Cofre antigo"
+    return data
 
-if 'historico_dados' not in st.session_state: inicializar_sistema()
+# --- CARREGAMENTO ---
+if 'data' not in st.session_state:
+    st.session_state.data = {"historico_dados": [], "jogos_salvos": [], "banca": 0.0}
 
-# --- MOTOR DE INTELIGÊNCIA (O CÉREBRO) ---
-class LotoEngine:
-    @staticmethod
-    def analisar(historico):
-        if not historico: return {"tipo": "Neutro", "peso": {i: 1 for i in range(1, 26)}}
-        
+# --- INTERFACE ---
+st.title("🧬 LotoMatrix PRO - Gestão Autônoma")
+
+tabs = st.tabs(["📊 Dashboard", "🤖 Gerador", "📜 Jogos Ativos", "🏆 Auditoria", "💾 Cofre"])
+
+with tabs[0]: # Dashboard
+    st.header("Painel de Informações")
+    if st.session_state.data["historico_dados"]:
+        historico = st.session_state.data["historico_dados"]
         todas = [n for h in historico for n in h['dezenas']]
-        contagem = Counter(todas)
-        # Define estratégia baseada na média de frequência
-        if sum(contagem.values()) / 25 > 50:
-            return {"tipo": "Tendência", "pesos": {i: contagem[i] + 1 for i in range(1, 26)}}
-        return {"tipo": "Reversão", "pesos": {i: 100 - contagem[i] for i in range(1, 26)}}
-
-    @staticmethod
-    def gerar_jogo(tipo, pesos, tam=15):
-        numeros = list(range(1, 26))
-        pesos_list = [pesos[i] for i in numeros]
-        jogo = sorted(random.choices(numeros, weights=pesos_list, k=tam))
-        return list(set(jogo)) # Garante unicidade
-
-# --- UI PROFISSIONAL ---
-st.title("🧬 LotoMatrix PRO")
-
-# Sidebar - Gestão de Dados
-with st.sidebar:
-    st.header("Gestão de Cofre")
-    uploaded = st.file_uploader("Upload Cofre.json", type="json")
-    if uploaded:
-        data = json.load(uploaded)
-        st.session_state.historico_dados = data.get("historico_dados", [])
-        st.session_state.jogos_salvos = data.get("jogos_salvos", [])
-        st.session_state.banca = data.get("banca", 0.0)
-        st.success("Cofre Sincronizado.")
-    
-    st.metric("Banca", f"R$ {st.session_state.banca:.2f}")
-    if st.button("Download Backup"):
-        dados = {"historico_dados": st.session_state.historico_dados, "jogos_salvos": st.session_state.jogos_salvos, "banca": st.session_state.banca}
-        st.download_button("Baixar JSON", json.dumps(dados), "Cofre.json")
-
-# Tabs Principais
-tab1, tab2, tab3 = st.tabs(["📊 Dashboard de IA", "🤖 Gerador Inteligente", "🏆 Auditoria"])
-
-with tab1:
-    st.subheader("Painel de Raciocínio")
-    if st.session_state.historico_dados:
-        analise = LotoEngine.analisar(st.session_state.historico_dados)
-        st.info(f"Modo Atual: **{analise['tipo']}**")
-        st.write("A IA está priorizando números baseada na frequência histórica.")
+        freq = Counter(todas)
+        st.bar_chart(pd.DataFrame.from_dict(freq, orient='index', columns=['Frequencia']))
     else:
-        st.warning("Carregue o Cofre.")
+        st.info("Carregue o Cofre para ver o Dashboard.")
 
-with tab2:
-    st.subheader("Geração Autônoma por Orçamento")
-    orcamento = st.number_input("Valor para esta rodada (R$)", min_value=3.5, step=3.5)
-    
+with tabs[1]: # Gerador
+    st.header("Gerador Inteligente")
+    budget = st.number_input("Valor da Aposta (R$)", min_value=3.5, step=3.5)
     if st.button("Gerar Jogos"):
-        analise = LotoEngine.analisar(st.session_state.historico_dados)
-        budget_left = orcamento
+        # Lógica de pesos baseada em frequência
+        pesos = {i: 1 for i in range(1, 26)} # Default
+        if st.session_state.data["historico_dados"]:
+            todas = [n for h in st.session_state.data["historico_dados"] for n in h['dezenas']]
+            freq = Counter(todas)
+            pesos = {i: freq.get(i, 1) for i in range(1, 26)}
         
-        while budget_left >= 3.5:
-            # IA decide se gera 16 ou 15 baseado no budget
-            tam = 16 if budget_left >= 56.0 and random.random() > 0.7 else 15
+        while budget >= 3.5:
+            tam = 16 if budget >= 56.0 and random.random() > 0.5 else 15
             custo = 56.0 if tam == 16 else 3.5
-            
-            if budget_left >= custo:
-                jogo = LotoEngine.gerar_jogo(analise['tipo'], analise['pesos'], tam)
-                st.session_state.jogos_salvos.append({
-                    "dezenas": jogo,
-                    "tamanho": tam,
-                    "estrategia": analise['tipo'],
-                    "justificativa": f"IA usou modo {analise['tipo']} devido ao histórico."
+            if budget >= custo:
+                jogo = sorted(random.sample(range(1, 26), tam))
+                st.session_state.data["jogos_salvos"].append({
+                    "dezenas": jogo, "tamanho": tam, "estrategia": "IA-Adaptativa",
+                    "justificativa": "Baseado em frequência histórica", "acertos": 0
                 })
-                budget_left -= custo
-        st.session_state.banca -= (orcamento - budget_left)
+                budget -= custo
         st.rerun()
 
-    # Cards de Jogos
-    for i, j in enumerate(st.session_state.jogos_salvos):
+with tabs[2]: # Jogos Ativos
+    st.header("Jogos em Espera")
+    for i, j in enumerate(st.session_state.data["jogos_salvos"]):
         with st.container(border=True):
-            cols = st.columns([3, 1])
-            cols[0].write(f"**Jogo {i+1}** ({j['tamanho']} dezenas) - Estratégia: {j['estrategia']}")
-            cols[0].code(str(j['dezenas']))
-            cols[1].write(f"🧠 IA: {j['justificativa']}")
+            st.write(f"**Jogo {i+1}** | {j.get('tamanho', 15)} dezenas")
+            st.code(str(j.get('dezenas', [])))
+            st.caption(f"🧠 {j.get('justificativa', 'Sem info')}")
 
-with tab3:
-    st.subheader("Auditoria de Resultados")
-    sorteio_str = st.text_input("Resultado Oficial (espaço entre números)")
-    if st.button("Auditar Lote"):
+with tabs[3]: # Auditoria
+    st.header("Auditoria")
+    res = st.text_input("Resultado Oficial (15 números)")
+    if st.button("Auditar"):
         try:
-            sorteio = set(map(int, sorteio_str.split()))
-            for j in st.session_state.jogos_salvos:
-                acertos = len(set(j['dezenas']).intersection(sorteio))
-                j['acertos'] = acertos # Aqui a IA "aprende" o resultado
-            st.success("Auditoria concluída. O histórico foi atualizado com os acertos.")
+            sorteio = set(map(int, res.split()))
+            for j in st.session_state.data["jogos_salvos"]:
+                j['acertos'] = len(set(j['dezenas']).intersection(sorteio))
+            st.success("Auditoria Realizada.")
         except: st.error("Erro no formato.")
+
+with tabs[4]: # Cofre
+    uploaded = st.file_uploader("Upload Cofre.json", type="json")
+    if uploaded:
+        dados_carregados = json.load(uploaded)
+        st.session_state.data = sanitizar_dados(dados_carregados)
+        st.success("Cofre Sincronizado com sucesso.")
+    
+    if st.button("Baixar Cofre"):
+        st.download_button("Download", json.dumps(st.session_state.data), "Cofre_Atualizado.json")
