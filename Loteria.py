@@ -2,84 +2,99 @@ import streamlit as st
 import pandas as pd
 import requests
 import json
+import random
 from collections import Counter
+from datetime import datetime
 
-st.set_page_config(page_title="LotoMatrix PRO - Profissional", layout="wide")
+# --- CONFIGURAÇÃO ---
+st.set_page_config(page_title="LotoMatrix PRO - Sistema de Gestão", layout="wide")
 
-# --- GERENCIAMENTO DE DADOS ---
-if 'dados' not in st.session_state:
-    st.session_state.dados = {"banca": 0.0, "historico_dados": []}
+# --- LOGIN ---
+if 'auth' not in st.session_state: st.session_state.auth = False
+if not st.session_state.auth:
+    senha = st.text_input("Senha de Acesso:", type="password")
+    if st.button("ENTRAR"):
+        if senha == "admin123":
+            st.session_state.auth = True
+            st.rerun()
+    st.stop()
 
-def carregar_arquivo(file):
-    try:
-        content = json.load(file)
-        st.session_state.dados = content
-        return True
-    except Exception as e:
-        st.error(f"Erro ao ler JSON: {e}")
-        return False
+# --- ESTADO CENTRAL ---
+if 'data' not in st.session_state:
+    st.session_state.data = {"banca": 0.0, "historico_dados": [], "jogos_salvos": []}
 
-# --- MOTOR DE INTEGRAÇÃO (CAIXA) ---
-def buscar_resultado_caixa():
-    try:
-        url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
-        resp = requests.get(url, timeout=5)
-        if resp.status_code == 200:
-            return resp.json()
-        return None
-    except: return None
-
-# --- UI PRINCIPAL ---
-st.title("🧬 LotoMatrix PRO - Sistema de Gestão")
-
-tabs = st.tabs(["📂 Cofre e Sincronização", "📊 Dashboard", "🤖 Motor de IA", "🏆 Auditoria"])
-
-with tabs[0]:
-    st.header("Gestão de Dados")
-    uploaded_file = st.file_uploader("Upload do Cofre.json", type="json")
-    if uploaded_file and carregar_arquivo(uploaded_file):
-        st.success(f"Cofre carregado. Concursos lidos: {len(st.session_state.dados['historico_dados'])}")
+# --- FUNÇÕES DE ANÁLISE PROFISSIONAL ---
+def calcular_metricas(historico):
+    if not historico: return None
+    todas = [n for h in historico for n in h['dezenas']]
+    contagem = Counter(todas)
     
-    st.divider()
+    # Calcular atrasos (Concursos sem sair)
+    atrasos = {n: 0 for n in range(1, 26)}
+    for h in reversed(historico):
+        for n in range(1, 26):
+            if n not in h['dezenas'] and atrasos[n] == 0: atrasos[n] += 1
+    
+    # Calcular Ciclo
+    ciclo = set()
+    jogos_ciclo = 0
+    for h in reversed(historico):
+        ciclo.update(h['dezenas'])
+        jogos_ciclo += 1
+        if len(ciclo) == 25: break
+    
+    return {"freq": contagem, "atrasos": atrasos, "ciclo_tamanho": jogos_ciclo}
+
+# --- INTERFACE ---
+st.title("🧬 LotoMatrix PRO - Gestão Autônoma")
+tabs = st.tabs(["📂 Cofre", "📊 Painéis", "🤖 Motor IA", "🏆 Auditoria Real"])
+
+with tabs[0]: # COFRE
+    file = st.file_uploader("Upload Cofre.json", type="json")
+    if file:
+        st.session_state.data = json.load(file)
+        st.success("Dados carregados.")
+    if st.button("Exportar Backup"):
+        st.download_button("Baixar JSON", json.dumps(st.session_state.data), "Cofre_Atualizado.json")
+
+with tabs[1]: # PAINÉIS
+    if st.session_state.data["historico_dados"]:
+        m = calcular_metricas(st.session_state.data["historico_dados"])
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Ciclo Atual", f"{m['ciclo_tamanho']} concursos")
+        c2.write("### Dezenas Mais Frequentes")
+        c2.bar_chart(pd.Series(m['freq']).sort_values(ascending=False).head(10))
+        c3.write("### Dezenas Atrasadas")
+        c3.bar_chart(pd.Series(m['atrasos']).sort_values(ascending=False).head(10))
+    else: st.warning("Suba o Cofre.")
+
+with tabs[2]: # IA
+    budget = st.number_input("Budget (R$)", value=3.5)
+    if st.button("Gerar Jogos Inteligentes"):
+        m = calcular_metricas(st.session_state.data["historico_dados"])
+        # IA escolhe baseada no atraso
+        pesos = {n: (m['atrasos'][n] + 1) for n in range(1, 26)}
+        while budget >= 3.5:
+            tam = 16 if budget >= 56.0 else 15
+            custo = 56.0 if tam == 16 else 3.5
+            if budget < custo: break
+            
+            jogo = sorted(random.choices(range(1, 26), weights=[pesos[i] for i in range(1, 26)], k=tam))
+            st.session_state.data["jogos_salvos"].append({
+                "dezenas": list(set(jogo)), "tamanho": tam, "justificativa": "Foco em atrasadas"
+            })
+            budget -= custo
+        st.rerun()
+
+    for j in st.session_state.data["jogos_salvos"]:
+        with st.container(border=True):
+            st.write(f"Jogo: {j['dezenas']} | Motivo: {j['justificativa']}")
+
+with tabs[3]: # AUDITORIA CAIXA
     if st.button("Sincronizar com Caixa"):
-        res = buscar_resultado_caixa()
-        if res:
-            st.write(f"Último Concurso: {res['concurso']}")
-            st.write(f"Dezenas: {res['dezenas']}")
-            st.session_state.ultimo_resultado = res
-        else:
-            st.error("Falha na API da Caixa.")
-
-with tabs[1]:
-    st.header("Dashboard de Performance")
-    if st.session_state.dados['historico_dados']:
-        df = pd.DataFrame(st.session_state.dados['historico_dados'])
-        st.write("Estatísticas de Concursos:")
-        st.dataframe(df.head(10), use_container_width=True)
-        
-        # Gráfico de Frequência
-        all_nums = [n for sublist in df['dezenas'] for n in sublist]
-        st.bar_chart(pd.Series(all_nums).value_counts().sort_index())
-    else:
-        st.warning("Nenhum dado para exibir. Carregue o Cofre.")
-
-with tabs[2]:
-    st.header("Agente Autônomo")
-    if st.session_state.dados['historico_dados']:
-        st.info("O motor de IA está pronto. Ele usará a frequência das dezenas do Cofre para sugerir jogos.")
-        budget = st.number_input("Budget para esta rodada (R$)", value=3.5)
-        if st.button("Executar Estratégia"):
-            st.write("IA: Analisando padrões...")
-            # Lógica simples de IA (Baseada em frequência)
-            st.write("Estratégia: Tendência de alta frequência aplicada.")
-    else:
-        st.warning("Carregue o Cofre primeiro.")
-
-with tabs[3]:
-    st.header("Auditoria")
-    if 'ultimo_resultado' in st.session_state:
-        st.write(f"Auditoria do Concurso {st.session_state.ultimo_resultado['concurso']}")
-        # Aqui você implementaria a comparação real
-        st.success("Dados sincronizados e prontos para conferência.")
-    else:
-        st.info("Sincronize com a Caixa na primeira aba.")
+        res = requests.get("https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest").json()
+        st.write(f"### Concurso {res['concurso']}")
+        st.write(f"Dezenas: {res['dezenas']}")
+        st.write("### Rateio Oficial")
+        df_premio = pd.DataFrame(res['premiacoes'])
+        st.table(df_premio)
