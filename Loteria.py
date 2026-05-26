@@ -50,9 +50,11 @@ if 'banca' not in st.session_state:
 if 'jogos_salvos' not in st.session_state:
     st.session_state.jogos_salvos = []
 if 'ultima_matriz' not in st.session_state:
-    st.session_state.ultima_matriz = [] # Guarda as dezenas escolhidas pela IA
+    st.session_state.ultima_matriz = []
 if 'alvo_atual' not in st.session_state:
     st.session_state.alvo_atual = 0
+if 'rateio_ultimo_sorteio' not in st.session_state:
+    st.session_state.rateio_ultimo_sorteio = None
 
 # =====================================================================
 # FUNÇÕES DE CARREGAMENTO E BACKUP
@@ -79,6 +81,19 @@ def gerar_backup():
         "ultima_matriz": st.session_state.ultima_matriz,
         "alvo_atual": st.session_state.alvo_atual
     }
+
+# =====================================================================
+# SINCRONIZAÇÃO API CAIXA
+# =====================================================================
+def sincronizar_api_caixa():
+    try:
+        url = "https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest"
+        response = requests.get(url, verify=False, timeout=10)
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except:
+        return None
 
 # =====================================================================
 # INTELIGÊNCIA PERICIAL
@@ -121,24 +136,21 @@ def filtrar_jogo(jogo, ultimo_sorteio, historico_sets, volume_jogos):
     primos_lista = [2, 3, 5, 7, 11, 13, 17, 19, 23]
     primos = sum(1 for n in jogo if n in primos_lista)
     
-    # Filtro Histórico e Repetição do Concurso Anterior (Inteligência Central)
     if set(jogo) in historico_sets: return False
     if ultimo_sorteio:
         repetidas = len(set(jogo).intersection(set(ultimo_sorteio)))
         if repetidas < 8 or repetidas > 10: return False
         
-    # Curvas de Sino Baseadas em Volume
     if volume_jogos < 10:
         if not (180 <= soma <= 220): return False
         if not (7 <= impares <= 8): return False
         if not (5 <= primos <= 6): return False
     else:
-        if random.random() > 0.15: # 15% fora do padrão para pegar zebras
+        if random.random() > 0.15: 
             if not (170 <= soma <= 230): return False
             if not (6 <= impares <= 9): return False
             if not (4 <= primos <= 7): return False
             
-    # Filtro de Gaps
     jogo_ordenado = sorted(jogo)
     for i in range(len(jogo_ordenado)-1):
         if jogo_ordenado[i+1] - jogo_ordenado[i] > 5:
@@ -157,7 +169,7 @@ def calcular_premiacao_multipla(acertos, tamanho_jogo):
     return valor
 
 # =====================================================================
-# TELA DE UPLOAD DO COFRE (LOGIN DE DADOS)
+# TELA DE UPLOAD DO COFRE
 # =====================================================================
 if not st.session_state.dados_carregados:
     st.markdown("<h3 style='color:#006644;'>📥 Injeção do Banco de Dados (Cofre.json)</h3>", unsafe_allow_html=True)
@@ -180,10 +192,55 @@ alvo_calculado = cenario['total_concursos'] + 1
 st.markdown(f"## 🧬 LotoMatrix Premium Ativo")
 st.markdown(f"**Banca:** R$ {st.session_state.banca:.2f} | **Concursos Indexados:** {cenario['total_concursos']} | **🎯 Próximo Alvo:** Concurso {alvo_calculado}")
 
-tabs = st.tabs(["📊 Painel do Cenário", "🎯 Gerador Autônomo", "🏆 Conferência Pericial", "💾 Central do Cofre"])
+tabs = st.tabs(["📊 Painel do Cenário & API", "🎯 Gerador Autônomo", "🏆 Conferência Pericial", "💾 Central do Cofre"])
 
-# ----------------- TAB 1: PAINEL DO CENÁRIO -----------------
+# ----------------- TAB 1: PAINEL DO CENÁRIO & API -----------------
 with tabs[0]:
+    st.markdown("### 📡 Sincronização e Rateio Oficial (API Caixa)")
+    
+    col_api1, col_api2 = st.columns([1, 2])
+    with col_api1:
+        if st.button("🔄 SINCRONIZAR COM A CAIXA", type="primary", use_container_width=True):
+            with st.spinner("Buscando resultados oficiais..."):
+                dados_api = sincronizar_api_caixa()
+                if dados_api:
+                    concurso_oficial = int(dados_api.get('concurso', 0))
+                    dezenas_oficiais = [int(x) for x in dados_api.get('dezenas', [])]
+                    
+                    st.session_state.rateio_ultimo_sorteio = dados_api
+                    
+                    # Atualiza o banco de dados se houver um concurso novo
+                    if st.session_state.historico_dados:
+                        ultimo_banco = st.session_state.historico_dados[-1]['concurso']
+                        if concurso_oficial > ultimo_banco:
+                            st.session_state.historico_dados.append({
+                                "concurso": concurso_oficial,
+                                "dezenas": dezenas_oficiais
+                            })
+                            st.success(f"Banco de dados atualizado com o Concurso {concurso_oficial}!")
+                            st.rerun()
+                        else:
+                            st.info("O seu banco de dados já está atualizado com o último concurso.")
+                else:
+                    st.error("Falha ao conectar na API. Tente novamente mais tarde.")
+
+    with col_api2:
+        if st.session_state.rateio_ultimo_sorteio:
+            dados = st.session_state.rateio_ultimo_sorteio
+            st.markdown(f"""
+            <div style='background-color:#ffffff; padding:15px; border-radius:8px; border-left:5px solid #006644; border: 1px solid #e2e8f0;'>
+                <h4 style='color:#006644; margin-top:0;'>🏆 Rateio Oficial - Concurso {dados.get('concurso')}</h4>
+                <p><b>Sorteio:</b> {' - '.join([f'{int(n):02d}' for n in dados.get('dezenas', [])])}</p>
+                <hr style='margin: 10px 0;'>
+                <ul style='list-style-type: none; padding-left: 0;'>
+            """, unsafe_allow_html=True)
+            
+            for premio in dados.get('premiacoes', []):
+                st.markdown(f"<li><b>{premio.get('acertos')} Acertos:</b> {premio.get('vencedores')} ganhadores (R$ {premio.get('premio', '0')})</li>", unsafe_allow_html=True)
+            
+            st.markdown("</ul></div>", unsafe_allow_html=True)
+
+    st.markdown("---")
     st.markdown("### 🔍 Ecossistema Analítico")
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -214,7 +271,7 @@ with tabs[1]:
     val_padrao = min(20.0, float(st.session_state.banca)) if st.session_state.banca >= 3.5 else 3.5
     
     orcamento = colA.number_input("Capital para a Operação (R$)", min_value=3.5, max_value=max_banca, value=val_padrao)
-    modo_jogo = colB.selectbox("Formato do Jogo", ["Híbrido (15 e 16)", "15 Dezenas", "16 Dezenas"])
+    modo_jogo = colB.selectbox("Formato do Jogo", ["Híbrido (15 e 16)", "15 Dezenas", "16 Dezenas"], help="Híbrido: A IA comprará jogos poderosos de 16 dezenas e usará o 'troco' para comprar jogos de 15, otimizando o seu saldo.")
     
     if st.button("🚀 EXECUTAR ENGENHARIA", type="primary"):
         if st.session_state.banca < 3.5:
@@ -225,14 +282,12 @@ with tabs[1]:
                 ultimo_sorteio = historico[-1]['dezenas'] if historico else []
                 historico_sets = [set(h['dezenas']) for h in historico]
                 
-                # INTELIGÊNCIA: Montagem da Matriz Viva (Ciclo + Quentes/Médias)
                 matriz_viva = set(cenario['faltam_ciclo'])
                 for d in cenario['quentes'] + cenario['medias']:
                     if len(matriz_viva) >= 19: break
                     matriz_viva.add(d)
                 matriz_viva = sorted(list(matriz_viva))
                 
-                # Salva a matriz escolhida na sessão para TRANSPARÊNCIA
                 st.session_state.ultima_matriz = matriz_viva
                 st.session_state.alvo_atual = alvo_calculado
                 
@@ -275,11 +330,10 @@ with tabs[1]:
     if st.session_state.jogos_salvos:
         st.markdown("---")
         
-        # Painel de Transparência
         st.markdown(f"""
         <div style='background-color:#ffffff; padding:15px; border-radius:8px; border-left:5px solid #2b6cb0; border: 1px solid #e2e8f0; margin-bottom: 20px;'>
             <h4 style='color:#2b6cb0; margin-top:0;'>📊 Transparência da Matriz Base</h4>
-            <p style='color:#4a5568; margin-bottom:5px;'>Para gerar estes jogos com a máxima eficiência matemática, a IA selecionou o seguinte grupo de <b>{len(st.session_state.ultima_matriz)} dezenas</b>:</p>
+            <p style='color:#4a5568; margin-bottom:5px;'>Para gerar estes jogos, a IA selecionou o seguinte grupo de <b>{len(st.session_state.ultima_matriz)} dezenas</b>:</p>
             <p style='font-family: monospace; font-size: 16px; font-weight: bold; color: #1a202c;'>{", ".join([f"{n:02d}" for n in st.session_state.ultima_matriz])}</p>
         </div>
         """, unsafe_allow_html=True)
@@ -296,14 +350,13 @@ with tabs[1]:
             st.session_state.ultima_matriz = []
             st.rerun()
             
-        # Cartões HTML Bonitos
         for idx, j in enumerate(st.session_state.jogos_salvos):
             cor_tag = "#e6f4ea" if j['tamanho'] == 15 else "#ebf8ff"
             cor_txt_tag = "#006644" if j['tamanho'] == 15 else "#2b6cb0"
             dezenas_str = " - ".join([f"{n:02d}" for n in j['dezenas']])
             
             st.markdown(f"""
-            <div style="background: #ffffff; border-radius: 10px; padding: 15px; margin-bottom: 15px; border-left: 6px solid {cor_txt_tag}; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-top: 1px solid #edf2f7; border-right: 1px solid #edf2f7; border-bottom: 1px solid #edf2f7;">
+            <div style="background: #ffffff; border-radius: 10px; padding: 15px; margin-bottom: 15px; border-left: 6px solid {cor_txt_tag}; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #edf2f7;">
                 <div style="margin-bottom: 8px;">
                     <span style="background: #f7fafc; color: #4a5568; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; border: 1px solid #e2e8f0;">🎯 ALVO: {j.get('alvo', 'N/A')}</span>
                     <span style="background: {cor_tag}; color: {cor_txt_tag}; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-left: 8px;">BILHETE {idx+1} • {j['tamanho']} DEZENAS</span>
@@ -319,7 +372,6 @@ with tabs[2]:
     if not st.session_state.jogos_salvos:
         st.info("Você ainda não gerou nenhum lote para auditar.")
     else:
-        # Exibição da Matriz Antes de Auditar
         if st.session_state.ultima_matriz:
             st.markdown(f"""
             <div style='background-color:#f7fafc; padding:15px; border-radius:8px; border: 1px solid #e2e8f0; margin-bottom: 20px;'>
@@ -327,7 +379,6 @@ with tabs[2]:
             </div>
             """, unsafe_allow_html=True)
 
-        # Mostra os cartões antes da auditoria para visibilidade
         with st.expander("👀 Ver Bilhetes Aguardando Conferência", expanded=False):
             for idx, j in enumerate(st.session_state.jogos_salvos):
                 st.markdown(f"**Bilhete {idx+1} [{j['tamanho']}]**: {' - '.join([f'{n:02d}' for n in j['dezenas']])}")
@@ -342,7 +393,6 @@ with tabs[2]:
                 else:
                     ganho_lote = 0.0
                     
-                    # Desempenho da Matriz
                     if st.session_state.ultima_matriz:
                         matriz_set = set(st.session_state.ultima_matriz)
                         acertos_matriz = len(matriz_set.intersection(sorteio_set))
@@ -353,7 +403,6 @@ with tabs[2]:
                         </div>
                         """, unsafe_allow_html=True)
                     
-                    # Cartões de Auditoria
                     for idx, j in enumerate(st.session_state.jogos_salvos):
                         acertos = len(set(j['dezenas']).intersection(sorteio_set))
                         premio = calcular_premiacao_multipla(acertos, j['tamanho'])
