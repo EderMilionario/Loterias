@@ -21,9 +21,9 @@ if not st.session_state.auth:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         with st.container(border=True):
-            senha = st.text_input("Digite a Senha (admin123):", type="password")
+            senha = st.text_input("Digite a Senha de Acesso:", type="password")
             if st.button("ENTRAR NO SISTEMA", type="primary", use_container_width=True):
-                if senha == "admin123":
+                if senha == "777":
                     st.session_state.auth = True
                     st.rerun()
                 else: st.error("Acesso Negado.")
