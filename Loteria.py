@@ -317,24 +317,31 @@ with tabs[2]:
         
         orcamento = st.number_input("Defina a verba máxima para geração (R$):", min_value=3.5, max_value=max(3.5, st.session_state.data['banca']), step=3.5)
         
-        if st.button("🧬 DISPARAR MOTOR DE GERAÇÃO INÉDITA", type="primary", use_container_width=True):
+        if st.button("🧬 DISPARAR MOTOR DE GERAÇÃO INÉDITA E ORTOGONAL", type="primary", use_container_width=True):
             if st.session_state.data['banca'] < orcamento:
                 st.error("Banca insuficiente para a operação.")
             else:
                 st.session_state.data['banca'] -= orcamento
+                
+                # Bloqueio histórico (Inteligência original mantida)
                 historico_sets = [set(h['dezenas']) for h in st.session_state.data["historico_dados"]]
+                jogos_neste_lote = [] # Armazena os jogos criados AGORA para a matemática Ortogonal
                 gasto = 0.0
                 
                 while (orcamento - gasto) >= 3.5:
+                    # Lógica financeira original (Trava de 16 e dinheiro)
                     tam = 16 if (orcamento - gasto) >= 56.0 and random.random() > 0.85 else 15
                     custo = 56.0 if tam == 16 else 3.5
                     
                     dezenas_disponiveis = ia['matriz_base']
                     pesos_sublista = [ia['pesos'][i] for i in dezenas_disponiveis]
                     
-                    tentativas = 0
-                    jogo_inedito = []
-                    while tentativas < 1000:
+                    melhor_candidato = []
+                    melhor_score = -999999
+                    
+                    # MÁQUINA ORTOGONAL: Gera 150 simulações internas para encontrar o jogo perfeito da rodada
+                    for _ in range(150):
+                        # 1. Cria protótipo puxando os pesos da IA
                         candidato = sorted(list(set(random.choices(dezenas_disponiveis, weights=pesos_sublista, k=tam))))
                         while len(candidato) < tam:
                             sobra = list(set(dezenas_disponiveis) - set(candidato))
@@ -342,24 +349,51 @@ with tabs[2]:
                             candidato.append(random.choice(sobra))
                             candidato = sorted(list(set(candidato)))
                         
-                        if set(candidato) not in historico_sets:
-                            jogo_inedito = candidato
-                            break
-                        tentativas += 1
+                        # 2. INTELIGÊNCIA ORIGINAL: Se o jogo já saiu na história, ele morre aqui
+                        if set(candidato) in historico_sets: continue
+                        
+                        # 3. TEORIA DOS JOGOS: Impede o que o público joga. Rejeita 8 ou mais dezenas grudadas.
+                        max_c = 1
+                        atual_c = 1
+                        for i in range(1, len(candidato)):
+                            if candidato[i] == candidato[i-1] + 1:
+                                atual_c += 1
+                                max_c = max(max_c, atual_c)
+                            else: atual_c = 1
+                        if max_c > 7: continue # Prevenção contra rateio dividido (evita prêmio pequeno)
+
+                        # 4. AVALIAÇÃO ORTOGONAL: Pontuação baseada na Força da IA menos a Repetição
+                        score_ia = sum(ia['pesos'][n] for n in candidato)
+                        penalidade_ortogonal = 0
+                        
+                        for jogo_ja_feito in jogos_neste_lote:
+                            intersecao = len(set(candidato).intersection(jogo_ja_feito))
+                            # Se bater 11 ou mais dezenas com um jogo que a IA acabou de gerar no mesmo lote, penaliza duro
+                            if intersecao >= 11:
+                                penalidade_ortogonal += (intersecao ** 3)
+                        
+                        score_final = score_ia - penalidade_ortogonal
+                        
+                        # A IA seleciona apenas a combinação que tiver o maior Score Final
+                        if score_final > melhor_score:
+                            melhor_score = score_final
+                            melhor_candidato = candidato
                     
-                    if not jogo_inedito: jogo_inedito = sorted(random.sample(dezenas_disponiveis, tam))
+                    # Fallback de proteção (Gatilho de segurança raríssimo)
+                    if not melhor_candidato: melhor_candidato = sorted(random.sample(dezenas_disponiveis, tam))
+                    
+                    jogos_neste_lote.append(set(melhor_candidato))
                         
                     st.session_state.data["jogos_salvos"].append({
-                        "id": str(uuid.uuid4()), "concurso_alvo": ia['alvo'], "dezenas": jogo_inedito,
+                        "id": str(uuid.uuid4()), "concurso_alvo": ia['alvo'], "dezenas": melhor_candidato,
                         "tamanho": tam, "estrategia": ia['cod_estrategia'], 
-                        "justificativa": f"Matriz adaptativa gerada sob influência direta do alvo {ia['alvo']}. Foco em {ia['cod_estrategia']} e pesos combinados.",
+                        "justificativa": f"Matriz {ia['cod_estrategia']}. Cobertura Ortogonal Ativada. Sobreposição com outros bilhetes evitada (Teoria dos Jogos).",
                         "status": "Aguardando Sorteio", "acertos": 0, "premio_valor": 0.0
                     })
                     gasto += custo
-                st.success("Lote Inédito processado. O saldo foi deduzido.")
+                st.success("Lote Inédito processado com Teoria dos Jogos e Matriz Ortogonal.")
                 st.rerun()
     else: st.warning("Suba o Cofre na Aba 1.")
-
 # --- TAB 4: FILA DE SORTEIO ---
 with tabs[3]:
     st.markdown("### 🎫 Cartões Ativos e Auditados")
