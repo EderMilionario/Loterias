@@ -461,8 +461,7 @@ with tabs[3]:
             st.info("Esta versão de jogo não tem a matriz de origem salva.")
     else:
         st.info("Sem jogos ativos na fila para auditar.")
-    else:
-        st.info("Visite a Aba 2 para calcular o Grupo de Elite da IA e ver a auditoria aqui.")
+   
     # --- PAINEL DE DESEMPENHO DAS DEZENAS ESCOLHIDAS ---
     if jogos_em_espera:
         dezenas_na_fila = [n for j in jogos_em_espera for n in j["dezenas"]]
