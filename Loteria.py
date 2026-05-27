@@ -421,6 +421,7 @@ with tabs[2]:
 # --- TAB 4: FILA DE SORTEIO ---
 with tabs[3]:
     st.markdown("### 🎫 Cartões Ativos e Auditados")
+    
     # --- MÉTRICAS DE RESUMO DA FILA ---
     jogos_em_espera = [j for j in st.session_state.data["jogos_salvos"] if j.get('status') == "Aguardando Sorteio"]
     total_premio = sum(j.get("premio_valor", 0) for j in st.session_state.data["jogos_salvos"] if j.get('status') == "Premiado")
@@ -429,59 +430,61 @@ with tabs[3]:
     c1.metric("🎫 Jogos em Espera", len(jogos_em_espera))
     c2.metric("💰 Premiação Total Acumulada", f"R$ {total_premio:.2f}")
     c3.metric("📊 Bilhetes Auditados", len([j for j in st.session_state.data["jogos_salvos"] if j.get('status') != "Aguardando Sorteio"]))
-    # --- AUDITORIA E VISUALIZAÇÃO DO GRUPO DE ELITE (DNA) ---
+    
+    # =====================================================================
+    # MATRIZ QUE GEROU OS JOGOS (SEM GRÁFICOS, MOSTRA O RESULTADO REAL)
+    # =====================================================================
     st.markdown("---")
-    st.markdown("#### 🎯 O DNA dos seus Jogos em Espera")
-
-    if jogos_em_espera:
-        # Pega o primeiro jogo que está na fila de espera
-        primeiro_jogo = jogos_em_espera[0]
-        alvo = primeiro_jogo.get("concurso_alvo")
-        matriz_usada = primeiro_jogo.get("matriz_origem")
-
+    st.markdown("#### 🎯 A Matriz de Origem vs Sorteio Alvo")
+    
+    if st.session_state.data.get("jogos_salvos") and st.session_state.data.get("historico_dados"):
+        num_ultimo_oficial = int(st.session_state.data["historico_dados"][-1]["concurso"])
+        
+        # Pega o alvo do ÚLTIMO jogo salvo na base (esteja ele em espera ou já auditado)
+        ultimo_jogo_criado = st.session_state.data["jogos_salvos"][-1]
+        alvo_foco = ultimo_jogo_criado.get("concurso_alvo")
+        matriz_usada = ultimo_jogo_criado.get("matriz_origem")
+        
         if matriz_usada:
             elite_group = set(matriz_usada)
+            tamanho_matriz = len(elite_group)
             
-            # Procura se esse concurso 'alvo' (ex: 3695) JÁ SAIU no histórico da Caixa
-            resultado_oficial = next((h for h in st.session_state.data.get("historico_dados", []) if int(h["concurso"]) == int(alvo)), None)
-
             col_a1, col_a2 = st.columns([1, 2])
             
-            if resultado_oficial:
-                # O SORTEIO JÁ ACONTECEU! Vamos auditar os acertos.
-                sorteio_real = set(resultado_oficial["dezenas"])
-                acertos_elite = len(elite_group.intersection(sorteio_real))
+            # SE O SORTEIO ALVO JÁ ACONTECEU (E VOCÊ JÁ AUDITOU)
+            if alvo_foco <= num_ultimo_oficial:
+                resultado_oficial = next((h for h in st.session_state.data["historico_dados"] if int(h["concurso"]) == int(alvo_foco)), None)
                 
-                with col_a1:
-                    st.metric(label=f"Acertos da Matriz (Sorteio {alvo})", value=f"{acertos_elite} / 15")
-                with col_a2:
-                    st.write(f"**Matriz de Elite que gerou os jogos do concurso {alvo}:**")
-                    st.code(", ".join([f"{n:02d}" for n in sorted(list(elite_group))]))
-                
-                if acertos_elite >= 11:
-                    st.success(f"🚀 O Grupo de Elite original capturou uma premiação no concurso {alvo}!")
-                else:
-                    st.warning(f"O Grupo de Elite original não atingiu a zona de premiação no concurso {alvo}.")
+                if resultado_oficial:
+                    sorteio_real = set(resultado_oficial["dezenas"])
+                    acertos_elite = len(elite_group.intersection(sorteio_real))
+                    
+                    with col_a1:
+                        st.metric(label=f"Acertos da Matriz (Sorteio {alvo_foco})", value=f"{acertos_elite} / {tamanho_matriz}")
+                    with col_a2:
+                        st.write(f"**Matriz de {tamanho_matriz} dezenas usada para gerar os jogos:**")
+                        st.code(", ".join([f"{n:02d}" for n in sorted(list(elite_group))]))
+                    
+                    if acertos_elite >= 11:
+                        st.success(f"🎯 A Matriz de {tamanho_matriz} dezenas acertou {acertos_elite} pontos no concurso {alvo_foco}!")
+                    else:
+                        st.warning(f"A Matriz de {tamanho_matriz} dezenas não atingiu 11 pontos no concurso {alvo_foco}.")
             
+            # SE O SORTEIO ALVO AINDA NÃO ACONTECEU (ESTÁ ESPERANDO)
             else:
-                # O SORTEIO AINDA NÃO ACONTECEU! (É O SEU CASO AGORA: Alvo 3695)
                 with col_a1:
-                    st.metric(label=f"Sorteio Alvo", value=f"{alvo}", delta="Aguardando Resultado", delta_color="off")
+                    st.metric(label=f"Sorteio Alvo", value=f"{alvo_foco}", delta="Aguardando Resultado...", delta_color="off")
                 with col_a2:
-                    st.write(f"**A Matriz de Elite em espera para o concurso {alvo} é:**")
+                    st.write(f"**Matriz de {tamanho_matriz} dezenas que gerou seus jogos:**")
                     st.code(", ".join([f"{n:02d}" for n in sorted(list(elite_group))]))
-                
-                st.info(f"⏳ Quando o concurso {alvo} for sorteado e você sincronizar a Aba 5, a auditoria aparecerá aqui.")
-        
         else:
-            st.info("Os jogos atuais na fila são antigos e não têm o DNA (Matriz de Origem) salvo.")
+            st.info("Os jogos atuais são antigos e não têm a Matriz salva.")
     else:
-        st.info("Não há jogos em espera na fila para analisar.")
-   
-    # --- PAINEL DE DESEMPENHO DAS DEZENAS ESCOLHIDAS ---
-    if jogos_em_espera:
-        dezenas_na_fila = [n for j in jogos_em_espera for n in j["dezenas"]]
-        render_performance_grid(dezenas_na_fila, "📈 Distribuição de Dezenas na Fila de Sorteio")
+        st.info("Gere jogos na Aba 3 para visualizar a matriz de origem.")
+
+    # =====================================================================
+    # BOTÕES DE LIMPAR E EXPORTAR
+    # =====================================================================
     if st.session_state.data["jogos_salvos"]:
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
