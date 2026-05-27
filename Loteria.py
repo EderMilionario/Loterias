@@ -498,7 +498,7 @@ with tabs[3]:
                 linhas_export.append(f"📌 JOGO {i:02d} • ({qtd} Dezenas)\n{dezenas_formatadas}\n")
     
             conteudo_export = "\n".join(linhas_export)   
-            
+            st.download_button("📤 EXPORTAR JOGOS PARA APOSTA (TXT)", data=conteudo_export, file_name="Meus_Jogos_Loto.txt", type="primary", use_container_width=True)
         st.divider()
         
         for j in reversed(st.session_state.data["jogos_salvos"]):
