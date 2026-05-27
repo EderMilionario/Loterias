@@ -11,6 +11,14 @@ import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+def render_performance_grid(dezenas_lista, titulo):
+    contagem = Counter(dezenas_lista)
+    # Criar DataFrame para visualizar melhor
+    df = pd.DataFrame.from_dict(contagem, orient='index', columns=['Frequência']).sort_index()
+    st.markdown(f"#### {titulo}")
+    # Usar um gráfico de barras simples e elegante
+    st.bar_chart(df)
+
 # =====================================================================
 # CONFIGURAÇÃO E LOGIN
 # =====================================================================
@@ -290,6 +298,15 @@ with tabs[1]:
         """
         st.markdown(html_dossie, unsafe_allow_html=True)
 
+        # --- PAINEL DE DESEMPENHO DOS JOGOS ATIVOS (Aba 2) ---
+        jogos_ativos = [j for j in st.session_state.data["jogos_salvos"] if j.get('status') == "Aguardando Sorteio"]
+        if jogos_ativos:
+            st.markdown("---")
+            dezenas_ativos = [n for j in jogos_ativos for n in j["dezenas"]]
+            render_performance_grid(dezenas_ativos, "🧬 Dezenas que a IA selecionou para os seus Jogos Ativos")
+        else:
+            st.info("Nenhum jogo ativo na fila no momento.")
+
         # --- NOVO PAINEL DE PESOS ESTILIZADO EM BADGES GIGANTES ---
         st.markdown("#### ⚖️ Grade Dinâmica de Pesos Absolutos (Heatmap de Atração da IA)")
         
@@ -397,6 +414,19 @@ with tabs[2]:
 # --- TAB 4: FILA DE SORTEIO ---
 with tabs[3]:
     st.markdown("### 🎫 Cartões Ativos e Auditados")
+    # --- MÉTRICAS DE RESUMO DA FILA ---
+    jogos_em_espera = [j for j in st.session_state.data["jogos_salvos"] if j.get('status') == "Aguardando Sorteio"]
+    total_premio = sum(j.get("premio_valor", 0) for j in st.session_state.data["jogos_salvos"] if j.get('status') == "Premiado")
+    
+    c1, c2, c3 = st.columns(3)
+    c1.metric("🎫 Jogos em Espera", len(jogos_em_espera))
+    c2.metric("💰 Premiação Total Acumulada", f"R$ {total_premio:.2f}")
+    c3.metric("📊 Bilhetes Auditados", len([j for j in st.session_state.data["jogos_salvos"] if j.get('status') != "Aguardando Sorteio"]))
+    
+    # --- PAINEL DE DESEMPENHO DAS DEZENAS ESCOLHIDAS ---
+    if jogos_em_espera:
+        dezenas_na_fila = [n for j in jogos_em_espera for n in j["dezenas"]]
+        render_performance_grid(dezenas_na_fila, "📈 Distribuição de Dezenas na Fila de Sorteio")
     if st.session_state.data["jogos_salvos"]:
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
