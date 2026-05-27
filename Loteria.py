@@ -490,8 +490,14 @@ with tabs[3]:
         with col_btn1:
             st.button("🗑️ LIMPAR ABSOLUTAMENTE TODOS OS JOGOS", on_click=cb_excluir_todos, type="secondary", use_container_width=True)
         with col_btn2:
-            conteudo_export = "\n".join([" ".join([f"{n:02d}" for n in j.get('dezenas', [])]) for j in st.session_state.data["jogos_salvos"]])
-            st.download_button("📤 EXPORTAR JOGOS PARA APOSTA (TXT)", data=conteudo_export, file_name="Meus_Jogos_Loto.txt", type="primary", use_container_width=True)
+            linhas_export = []
+            for i, j in enumerate(st.session_state.data["jogos_salvos"], 1):
+                dezenas = j.get('dezenas', [])
+                qtd = len(dezenas)
+                dezenas_formatadas = " - ".join([f"{n:02d}" for n in dezenas])
+                linhas_export.append(f"📌 JOGO {i:02d} • ({qtd} Dezenas)\n{dezenas_formatadas}\n")
+    
+            conteudo_export = "\n".join(linhas_export)   
             
         st.divider()
         
