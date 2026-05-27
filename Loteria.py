@@ -460,44 +460,40 @@ with tabs[3]:
 
 # --- TAB 5: AUDITORIA REAL, ATUALIZAÇÃO DA BASE E ENTRADA MANUAL ---
 with tabs[4]:
-    # --- BLOCO CORRIGIDO: SINCRONIZAÇÃO E AUDITORIA ---
+    # --- BOTÃO CORRIGIDO (SEM ERRO DE FICHEIRO) ---
     st.markdown("---")
-    st.subheader("🔄 Sincronização Global do Sistema")
+    st.subheader("🔄 Sincronização e Auditoria (Memória Ativa)")
     
-    if st.button("🚀 SINCRONIZAR TUDO, ATUALIZAR IA E AUDITAR BILHETES", type="primary", use_container_width=True):
-        # 1. Reler o ficheiro Cofre.json
-        with open('Cofre.json', 'r', encoding='utf-8') as f:
-            st.session_state.data = json.load(f)
-        
-        # 2. Limpar cache da IA para forçar novo processamento
-        if 'ia_memoria' in st.session_state:
-            del st.session_state.ia_memoria
-            
-        # 3. MOTOR DE AUDITORIA: Comparar bilhetes pendentes com o ÚLTIMO resultado no histórico
-        if st.session_state.data["historico_dados"]:
+    if st.button("🚀 AUDITAR BILHETES E ATUALIZAR IA", type="primary", use_container_width=True):
+        # 1. Verifica se temos histórico carregado na memória
+        if st.session_state.data.get("historico_dados"):
             ultimo_resultado = st.session_state.data["historico_dados"][-1]
             sorteio_oficial = set(ultimo_resultado['dezenas'])
-            concurso_referencia = int(ultimo_resultado['concurso'])
             
-            # Valores base para a auditoria
+            # 2. Audita os bilhetes que estão na memória (sem precisar ler ficheiro)
             v11, v12, v13, v14, v15 = 7.0, 14.0, 35.0, 1500.0, 1500000.0
             
             for j in st.session_state.data.get("jogos_salvos", []):
-                # Se o bilhete estiver em espera ou foi gerado para um concurso passado
                 if j.get('status') == "Aguardando Sorteio":
                     pontos = len(set(j.get('dezenas', [])).intersection(sorteio_oficial))
                     j['acertos'] = pontos
+                    # Calcula o prêmio usando a sua função que já existe no topo do código
                     j['premio_valor'] = calcular_premio_multiplo(j.get('tamanho', 15), pontos, v11, v12, v13, v14, v15)
                     
                     if pontos >= 11:
                         j['status'] = "Premiado"
                     else:
                         j['status'] = "Não Premiado"
-        
-        # Feedback Visual
-        st.success("✅ IA Sincronizada! Bilhetes auditados contra o concurso " + str(concurso_referencia) + ".")
-        st.balloons()
-        st.rerun()
+            
+            # 3. Limpa o cache da IA para forçar o recálculo com os dados atuais
+            if 'ia_memoria' in st.session_state:
+                del st.session_state.ia_memoria
+            
+            st.success(f"✅ Auditoria concluída! Bilhetes auditados contra o concurso {ultimo_resultado['concurso']}.")
+            st.balloons()
+            st.rerun()
+        else:
+            st.error("Nenhum histórico de dados encontrado na memória. Carregue o Cofre na Aba 1.")
     st.markdown("### 🏆 Extração de Resultados, Pagamentos e Aprendizado da IA")
     
     # Módulos Colunados para Separação Clara das Funcionalidades
