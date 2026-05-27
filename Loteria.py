@@ -422,7 +422,37 @@ with tabs[3]:
     c1.metric("🎫 Jogos em Espera", len(jogos_em_espera))
     c2.metric("💰 Premiação Total Acumulada", f"R$ {total_premio:.2f}")
     c3.metric("📊 Bilhetes Auditados", len([j for j in st.session_state.data["jogos_salvos"] if j.get('status') != "Aguardando Sorteio"]))
+    # --- AUDITORIA DE PERFORMANCE DO GRUPO DE ELITE ---
+    st.markdown("---")
+    st.markdown("#### 🎯 Auditoria: Grupo de Elite vs. Concurso Real")
     
+    if "matriz_viva_atual" in st.session_state.data and st.session_state.data["historico_dados"]:
+        # Pega o último concurso oficial
+        ultimo_concurso = st.session_state.data["historico_dados"][-1]
+        
+        # Pega o grupo de elite gerado pela IA (calculado na Aba 2)
+        elite_group = set(st.session_state.data["matriz_viva_atual"])
+        sorteio_real = set(ultimo_concurso["dezenas"])
+        
+        # Calcula acertos
+        acertos_elite = len(elite_group.intersection(sorteio_real))
+        
+        # Exibição visual do resultado
+        col_a1, col_a2 = st.columns([1, 2])
+        with col_a1:
+            st.metric(label=f"Acertos do Elite (Conc. {ultimo_concurso['concurso']})", value=f"{acertos_elite} / 15")
+        
+        with col_a2:
+            st.write(f"**Grupo de Elite utilizado:**")
+            st.code(", ".join([f"{n:02d}" for n in sorted(list(elite_group))]))
+            
+        # Feedback visual rápido
+        if acertos_elite >= 11:
+            st.success(f"🚀 O Grupo de Elite capturou uma premiação no último sorteio!")
+        else:
+            st.warning(f"O Grupo de Elite não atingiu a zona de premiação neste concurso.")
+    else:
+        st.info("Visite a Aba 2 para calcular o Grupo de Elite da IA e ver a auditoria aqui.")
     # --- PAINEL DE DESEMPENHO DAS DEZENAS ESCOLHIDAS ---
     if jogos_em_espera:
         dezenas_na_fila = [n for j in jogos_em_espera for n in j["dezenas"]]
