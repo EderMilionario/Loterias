@@ -401,11 +401,18 @@ with tabs[2]:
                     
                     jogos_neste_lote.append(set(melhor_candidato))
                         
+                    # Agora o jogo já nasce com o "DNA" da matriz que o criou
                     st.session_state.data["jogos_salvos"].append({
-                        "id": str(uuid.uuid4()), "concurso_alvo": ia['alvo'], "dezenas": melhor_candidato,
-                        "tamanho": tam, "estrategia": ia['cod_estrategia'], 
+                        "id": str(uuid.uuid4()), 
+                        "concurso_alvo": ia['alvo'], 
+                        "dezenas": melhor_candidato,
+                        "tamanho": tam, 
+                        "estrategia": ia['cod_estrategia'], 
                         "justificativa": f"Matriz {ia['cod_estrategia']}. Cobertura Ortogonal Ativada. Sobreposição com outros bilhetes evitada (Teoria dos Jogos).",
-                        "status": "Aguardando Sorteio", "acertos": 0, "premio_valor": 0.0
+                        "status": "Aguardando Sorteio", 
+                        "acertos": 0, 
+                        "premio_valor": 0.0,
+                        "matriz_origem": st.session_state.data["matriz_viva_atual"] # <--- AQUI ESTÁ O DNA DO JOGO
                     })
                     gasto += custo
                 st.success("Lote Inédito processado com Teoria dos Jogos e Matriz Ortogonal.")
@@ -422,35 +429,38 @@ with tabs[3]:
     c1.metric("🎫 Jogos em Espera", len(jogos_em_espera))
     c2.metric("💰 Premiação Total Acumulada", f"R$ {total_premio:.2f}")
     c3.metric("📊 Bilhetes Auditados", len([j for j in st.session_state.data["jogos_salvos"] if j.get('status') != "Aguardando Sorteio"]))
-    # --- AUDITORIA DE PERFORMANCE DO GRUPO DE ELITE ---
+    # --- AUDITORIA DE PERFORMANCE (CORRIGIDO PARA LER O HISTÓRICO DO JOGO) ---
     st.markdown("---")
-    st.markdown("#### 🎯 Auditoria: Grupo de Elite vs. Concurso Real")
+    st.markdown("#### 🎯 Auditoria: Grupo de Elite que gerou estes jogos")
     
-    if "matriz_viva_atual" in st.session_state.data and st.session_state.data["historico_dados"]:
-        # Pega o último concurso oficial
-        ultimo_concurso = st.session_state.data["historico_dados"][-1]
+    # Pegamos o primeiro jogo da fila para extrair a matriz original
+    if jogos_em_espera:
+        # Pega a matriz do primeiro jogo da fila
+        matriz_usada = jogos_em_espera[0].get("matriz_origem")
         
-        # Pega o grupo de elite gerado pela IA (calculado na Aba 2)
-        elite_group = set(st.session_state.data["matriz_viva_atual"])
-        sorteio_real = set(ultimo_concurso["dezenas"])
-        
-        # Calcula acertos
-        acertos_elite = len(elite_group.intersection(sorteio_real))
-        
-        # Exibição visual do resultado
-        col_a1, col_a2 = st.columns([1, 2])
-        with col_a1:
-            st.metric(label=f"Acertos do Elite (Conc. {ultimo_concurso['concurso']})", value=f"{acertos_elite} / 15")
-        
-        with col_a2:
-            st.write(f"**Grupo de Elite utilizado:**")
-            st.code(", ".join([f"{n:02d}" for n in sorted(list(elite_group))]))
+        if matriz_usada and st.session_state.data["historico_dados"]:
+            ultimo_concurso = st.session_state.data["historico_dados"][-1]
+            elite_group = set(matriz_usada) # Usa a matriz que gerou o jogo
+            sorteio_real = set(ultimo_concurso["dezenas"])
+            acertos_elite = len(elite_group.intersection(sorteio_real))
             
-        # Feedback visual rápido
-        if acertos_elite >= 11:
-            st.success(f"🚀 O Grupo de Elite capturou uma premiação no último sorteio!")
+            # Exibição visual
+            col_a1, col_a2 = st.columns([1, 2])
+            with col_a1:
+                st.metric(label=f"Acertos do Elite (Conc. {ultimo_concurso['concurso']})", value=f"{acertos_elite} / 15")
+            
+            with col_a2:
+                st.write(f"**Grupo de Elite que gerou estes jogos:**")
+                st.code(", ".join([f"{n:02d}" for n in sorted(list(elite_group))]))
+            
+            if acertos_elite >= 11:
+                st.success(f"🚀 O Grupo de Elite que gerou estes jogos capturou premiação!")
+            else:
+                st.warning(f"O Grupo de Elite original não atingiu a zona de premiação neste concurso.")
         else:
-            st.warning(f"O Grupo de Elite não atingiu a zona de premiação neste concurso.")
+            st.info("Esta versão de jogo não tem a matriz de origem salva.")
+    else:
+        st.info("Sem jogos ativos na fila para auditar.")
     else:
         st.info("Visite a Aba 2 para calcular o Grupo de Elite da IA e ver a auditoria aqui.")
     # --- PAINEL DE DESEMPENHO DAS DEZENAS ESCOLHIDAS ---
