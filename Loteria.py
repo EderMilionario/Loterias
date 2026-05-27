@@ -460,20 +460,44 @@ with tabs[3]:
 
 # --- TAB 5: AUDITORIA REAL, ATUALIZAÇÃO DA BASE E ENTRADA MANUAL ---
 with tabs[4]:
-    # --- ADICIONE ISTO NA ABA 5 ---
-    # --- BOTÃO DE SINCRONIZAÇÃO CORRIGIDO ---
+    # --- BLOCO CORRIGIDO: SINCRONIZAÇÃO E AUDITORIA ---
     st.markdown("---")
     st.subheader("🔄 Sincronização Global do Sistema")
-    st.write("Clique abaixo para resetar a IA e forçar o recálculo dos pesos com os dados já carregados.")
-
-    if st.button("🚀 SINCRONIZAR TUDO E ATUALIZAR ABAS", type="primary"):
-        # Apenas limpamos a memória da IA para forçar o recálculo
+    
+    if st.button("🚀 SINCRONIZAR TUDO, ATUALIZAR IA E AUDITAR BILHETES", type="primary", use_container_width=True):
+        # 1. Reler o ficheiro Cofre.json
+        with open('Cofre.json', 'r', encoding='utf-8') as f:
+            st.session_state.data = json.load(f)
+        
+        # 2. Limpar cache da IA para forçar novo processamento
         if 'ia_memoria' in st.session_state:
             del st.session_state.ia_memoria
             
-        st.success("Sincronização forçada! A IA irá recalcular tudo com os dados atuais.")
+        # 3. MOTOR DE AUDITORIA: Comparar bilhetes pendentes com o ÚLTIMO resultado no histórico
+        if st.session_state.data["historico_dados"]:
+            ultimo_resultado = st.session_state.data["historico_dados"][-1]
+            sorteio_oficial = set(ultimo_resultado['dezenas'])
+            concurso_referencia = int(ultimo_resultado['concurso'])
+            
+            # Valores base para a auditoria
+            v11, v12, v13, v14, v15 = 7.0, 14.0, 35.0, 1500.0, 1500000.0
+            
+            for j in st.session_state.data.get("jogos_salvos", []):
+                # Se o bilhete estiver em espera ou foi gerado para um concurso passado
+                if j.get('status') == "Aguardando Sorteio":
+                    pontos = len(set(j.get('dezenas', [])).intersection(sorteio_oficial))
+                    j['acertos'] = pontos
+                    j['premio_valor'] = calcular_premio_multiplo(j.get('tamanho', 15), pontos, v11, v12, v13, v14, v15)
+                    
+                    if pontos >= 11:
+                        j['status'] = "Premiado"
+                    else:
+                        j['status'] = "Não Premiado"
+        
+        # Feedback Visual
+        st.success("✅ IA Sincronizada! Bilhetes auditados contra o concurso " + str(concurso_referencia) + ".")
         st.balloons()
-        st.rerun() # O comando que força a atualização de todas as abas
+        st.rerun()
     st.markdown("### 🏆 Extração de Resultados, Pagamentos e Aprendizado da IA")
     
     # Módulos Colunados para Separação Clara das Funcionalidades
