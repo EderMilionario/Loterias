@@ -460,6 +460,25 @@ with tabs[3]:
 
 # --- TAB 5: AUDITORIA REAL, ATUALIZAÇÃO DA BASE E ENTRADA MANUAL ---
 with tabs[4]:
+    # --- ADICIONE ISTO NA ABA 5 ---
+    st.markdown("---")
+    st.subheader("🔄 Sincronização Global do Sistema")
+    st.write("Clique abaixo para forçar a IA a reler o arquivo de dados e atualizar todos os cálculos das abas 2 e 4.")
+
+    if st.button("🚀 SINCRONIZAR TUDO E ATUALIZAR ABAS", type="primary"):
+        # 1. Aqui forçamos a limpeza do estado de dados
+        # Isso faz com que o sistema entenda que precisa buscar o JSON atualizado
+        with open('Cofre.json', 'r', encoding='utf-8') as f:
+            st.session_state.data = json.load(f)
+    
+        # 2. Forçamos a limpeza de cálculos antigos (se houver cache nas outras abas)
+        # Isso garante que a Aba 2 e 4 leiam o estado atualizado na próxima renderização
+        if 'ia_memoria' in st.session_state:
+            del st.session_state.ia_memoria
+        
+        st.success("Sincronização forçada com sucesso! Todas as abas foram atualizadas com o novo histórico.")
+        st.balloons()
+        st.rerun() # O comando vital que força a atualização visual de toda a aplicação
     st.markdown("### 🏆 Extração de Resultados, Pagamentos e Aprendizado da IA")
     
     # Módulos Colunados para Separação Clara das Funcionalidades
