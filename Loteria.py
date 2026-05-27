@@ -429,48 +429,54 @@ with tabs[3]:
     c1.metric("🎫 Jogos em Espera", len(jogos_em_espera))
     c2.metric("💰 Premiação Total Acumulada", f"R$ {total_premio:.2f}")
     c3.metric("📊 Bilhetes Auditados", len([j for j in st.session_state.data["jogos_salvos"] if j.get('status') != "Aguardando Sorteio"]))
-    # --- AUDITORIA DE PERFORMANCE (O DNA QUE ACERTOU O ALVO) ---
+    # --- AUDITORIA E VISUALIZAÇÃO DO GRUPO DE ELITE (DNA) ---
     st.markdown("---")
-    st.markdown("#### 🎯 Auditoria: A Matriz de Elite vs Sorteio Alvo")
+    st.markdown("#### 🎯 O DNA dos seus Jogos em Espera")
 
-    # Verifica se temos histórico e se temos jogos criados
-    if st.session_state.data.get("historico_dados") and st.session_state.data.get("jogos_salvos"):
-        
-        # 1. Pega o último resultado real que acabou de ser sincronizado
-        ultimo_concurso = st.session_state.data["historico_dados"][-1]
-        num_ultimo = int(ultimo_concurso["concurso"])
-        
-        # 2. Procura na sua base os bilhetes que foram gerados TENDO ESTE CONCURSO COMO ALVO
-        jogos_do_alvo = [j for j in st.session_state.data["jogos_salvos"] if j.get("concurso_alvo") == num_ultimo]
-        
-        if jogos_do_alvo:
-            # 3. Pega a "foto" da matriz que gerou esses jogos lá no passado
-            matriz_usada = jogos_do_alvo[0].get("matriz_origem")
+    if jogos_em_espera:
+        # Pega o primeiro jogo que está na fila de espera
+        primeiro_jogo = jogos_em_espera[0]
+        alvo = primeiro_jogo.get("concurso_alvo")
+        matriz_usada = primeiro_jogo.get("matriz_origem")
+
+        if matriz_usada:
+            elite_group = set(matriz_usada)
             
-            if matriz_usada:
-                # 4. Compara a Matriz do Passado com o Sorteio Real de Agora
-                elite_group = set(matriz_usada)
-                sorteio_real = set(ultimo_concurso["dezenas"])
+            # Procura se esse concurso 'alvo' (ex: 3695) JÁ SAIU no histórico da Caixa
+            resultado_oficial = next((h for h in st.session_state.data.get("historico_dados", []) if int(h["concurso"]) == int(alvo)), None)
+
+            col_a1, col_a2 = st.columns([1, 2])
+            
+            if resultado_oficial:
+                # O SORTEIO JÁ ACONTECEU! Vamos auditar os acertos.
+                sorteio_real = set(resultado_oficial["dezenas"])
                 acertos_elite = len(elite_group.intersection(sorteio_real))
                 
-                # Mostra o painel que você tanto queria
-                col_a1, col_a2 = st.columns([1, 2])
                 with col_a1:
-                    st.metric(label=f"Acertos da Matriz (Alvo: {num_ultimo})", value=f"{acertos_elite} / 15")
+                    st.metric(label=f"Acertos da Matriz (Sorteio {alvo})", value=f"{acertos_elite} / 15")
                 with col_a2:
-                    st.write(f"**A Matriz exata que a IA escolheu LÁ ATRÁS para este sorteio:**")
+                    st.write(f"**Matriz de Elite que gerou os jogos do concurso {alvo}:**")
                     st.code(", ".join([f"{n:02d}" for n in sorted(list(elite_group))]))
                 
                 if acertos_elite >= 11:
-                    st.success("🚀 A Matriz Base conseguiu atingir a zona de premiação!")
+                    st.success(f"🚀 O Grupo de Elite original capturou uma premiação no concurso {alvo}!")
                 else:
-                    st.warning("A Matriz Base original não atingiu 11 pontos neste concurso alvo.")
+                    st.warning(f"O Grupo de Elite original não atingiu a zona de premiação no concurso {alvo}.")
+            
             else:
-                st.info(f"Os jogos do concurso {num_ultimo} são antigos e não têm o DNA salvo.")
+                # O SORTEIO AINDA NÃO ACONTECEU! (É O SEU CASO AGORA: Alvo 3695)
+                with col_a1:
+                    st.metric(label=f"Sorteio Alvo", value=f"{alvo}", delta="Aguardando Resultado", delta_color="off")
+                with col_a2:
+                    st.write(f"**A Matriz de Elite em espera para o concurso {alvo} é:**")
+                    st.code(", ".join([f"{n:02d}" for n in sorted(list(elite_group))]))
+                
+                st.info(f"⏳ Quando o concurso {alvo} for sorteado e você sincronizar a Aba 5, a auditoria aparecerá aqui.")
+        
         else:
-            st.info(f"Você não gerou bilhetes direcionados para o concurso {num_ultimo}, logo não há matriz antiga para auditar contra ele.")
+            st.info("Os jogos atuais na fila são antigos e não têm o DNA (Matriz de Origem) salvo.")
     else:
-        st.info("Aguardando histórico e jogos para auditar.")
+        st.info("Não há jogos em espera na fila para analisar.")
    
     # --- PAINEL DE DESEMPENHO DAS DEZENAS ESCOLHIDAS ---
     if jogos_em_espera:
