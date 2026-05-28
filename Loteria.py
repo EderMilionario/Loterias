@@ -589,7 +589,105 @@ with tabs[4]:
         else:
             st.error("Nenhum histórico de dados encontrado na memória. Carregue o Cofre na Aba 1.")
     st.markdown("### 🏆 Extração de Resultados, Pagamentos e Aprendizado da IA")
-    
+    # -----------------------------------------------------------------
+    # NOVO MÓDULO: SINCRONIZAÇÃO EM MASSA (O CORTA-GAP)
+    # -----------------------------------------------------------------
+    with st.container(border=True):
+        st.markdown("#### 🛸 Sincronização Automática em Massa (Recuperar Gap Temporal)")
+        st.write("Ficou dias sem abrir o sistema? Este motor detecta os sorteios que faltam e baixa todos sequencialmente.")
+        btn_massa = st.button("🛸 BUSCAR TODOS OS SORTEIOS FALTANTES AGORA", type="primary", use_container_width=True)
+
+    if btn_massa:
+        historico = st.session_state.data.get("historico_dados", [])
+        if not historico:
+            st.error("Seu banco está vazio. Insira pelo menos 1 resultado na entrada manual abaixo para ancorar o sistema.")
+        else:
+            ultimo_salvo = int(historico[-1]["concurso"])
+            
+            with st.spinner("Consultando servidores oficiais para medir o tamanho do atraso..."):
+                try:
+                    import time # Importação defensiva para gerenciar o tráfego de rede
+                    res_latest = requests.get("https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest", verify=False, timeout=10).json()
+                    ultimo_oficial = int(res_latest['concurso'])
+                    
+                    if ultimo_salvo >= ultimo_oficial:
+                        st.info(f"O seu sistema já está 100% atualizado! O último concurso oficial é o {ultimo_oficial}.")
+                    else:
+                        concursos_faltantes = list(range(ultimo_salvo + 1, ultimo_oficial + 1))
+                        qtd = len(concursos_faltantes)
+                        
+                        st.warning(f"Gap detectado: Faltam {qtd} concursos (do {ultimo_salvo + 1} ao {ultimo_oficial}). Iniciando extração cirúrgica...")
+                        
+                        barra = st.progress(0)
+                        texto_status = st.empty()
+                        
+                        sucessos = 0
+                        
+                        for i, num in enumerate(concursos_faltantes):
+                            texto_status.text(f"⏳ Extraindo e fundindo concurso {num} ({i+1}/{qtd})...")
+                            
+                            try:
+                                url_req = f"https://loteriascaixa-api.herokuapp.com/api/lotofacil/{num}"
+                                res_conc = requests.get(url_req, verify=False, timeout=10).json()
+                                
+                                if 'concurso' in res_conc:
+                                    dezenas_sorteadas = sorted([int(d) for d in res_conc['dezenas']])
+                                    
+                                    # Injeção na linha do tempo garantindo a ordem cronológica
+                                    st.session_state.data["historico_dados"].append({
+                                        "concurso": num, 
+                                        "dezenas": dezenas_sorteadas, 
+                                        "data": res_conc['data']
+                                    })
+                                    sucessos += 1
+                                    
+                                    # Auditoria Silenciosa (Proteção caso existam bilhetes pendentes esquecidos)
+                                    sorteio_set = set(dezenas_sorteadas)
+                                    v11, v12, v13, v14, v15 = 7.0, 14.0, 35.0, 1500.0, 1500000.0
+                                    if 'premiacoes' in res_conc:
+                                        for p in res_conc['premiacoes']:
+                                            if p['acertos'] == 11: v11 = p['premio']
+                                            elif p['acertos'] == 12: v12 = p['premio']
+                                            elif p['acertos'] == 13: v13 = p['premio']
+                                            elif p['acertos'] == 14: v14 = p['premio']
+                                            elif p['acertos'] == 15: v15 = p['premio']
+                                            
+                                    for j in st.session_state.data.get("jogos_salvos", []):
+                                        if j.get('status') == "Aguardando Sorteio" and j.get('concurso_alvo') == num:
+                                            pontos = len(set(j.get('dezenas', [])).intersection(sorteio_set))
+                                            j['acertos'] = pontos
+                                            j['premio_valor'] = calcular_premio_multiplo(j.get('tamanho', 15), pontos, v11, v12, v13, v14, v15)
+                                            if pontos >= 11:
+                                                j['status'] = "Premiado"
+                                                st.session_state.data["banca"] += j['premio_valor']
+                                            else:
+                                                j['status'] = "Não Premiado"
+                                                
+                                            # Memória IA recalibra os pesos
+                                            est_usada = j.get('estrategia')
+                                            if est_usada in st.session_state.data.get("ia_memoria", {}):
+                                                st.session_state.data["ia_memoria"][est_usada]["usos"] += 1
+                                                st.session_state.data["ia_memoria"][est_usada]["pontos"] += pontos
+
+                            except Exception as e:
+                                pass # Ignora erro isolado para não quebrar a sequência de download
+                                
+                            barra.progress((i + 1) / qtd)
+                            time.sleep(0.4) # PROTEÇÃO PERICIAL: Evita banimento de IP por limite de requisições da API
+                        
+                        texto_status.empty()
+                        barra.empty()
+                        
+                        if sucessos > 0:
+                            st.success(f"✔️ Sincronização de Elite Finalizada! {sucessos} sorteios foram fundidos à IA com sucesso.")
+                            st.balloons()
+                            time.sleep(2)
+                            st.rerun()
+                        else:
+                            st.error("Falha na comunicação com a Caixa. Nenhum sorteio pôde ser extraído no momento. Tente novamente mais tarde.")
+
+                except Exception as e:
+                    st.error(f"Erro crítico ao acessar a rede da Caixa Econômica: {e}")
     # Módulos Colunados para Separação Clara das Funcionalidades
     col_sync1, col_sync2 = st.columns(2)
     
