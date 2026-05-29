@@ -61,7 +61,31 @@ def calcular_premio_multiplo(tamanho, acertos, v11=7.0, v12=14.0, v13=35.0, v14=
         elif acertos == 15: premio = (1 * v15) + (15 * v14)
     
     return premio
-
+# =====================================================================
+# SENSOR DE DNA DA LOTOFÁCIL (FUNÇÃO DE APTIDÃO)
+# =====================================================================
+def avaliar_dna_lotofacil(dezenas_geradas, dezenas_ultimo_sorteio):
+    primos_loto = {2, 3, 5, 7, 11, 13, 17, 19, 23}
+    pares = sum(1 for n in dezenas_geradas if n % 2 == 0)
+    impares = len(dezenas_geradas) - pares
+    primos = sum(1 for n in dezenas_geradas if n in primos_loto)
+    repetidas = len(set(dezenas_geradas).intersection(set(dezenas_ultimo_sorteio)))
+    
+    tamanho = len(dezenas_geradas)
+    score_padrao = 0
+    
+    # 🎯 ALVOS DINÂMICOS: O sensor se adapta a jogos de 15 ou 16 dezenas
+    if tamanho == 15:
+        if impares in [7, 8]: score_padrao += 10
+        if primos in [4, 5, 6]: score_padrao += 10
+        if repetidas in [8, 9, 10]: score_padrao += 15 
+    elif tamanho >= 16:
+        if impares in [7, 8, 9]: score_padrao += 10
+        if primos in [5, 6, 7]: score_padrao += 10
+        if repetidas in [9, 10, 11]: score_padrao += 15
+            
+    dna_texto = f"🧬 DNA: {impares} Ímpares • {pares} Pares • {primos} Primos • {repetidas} Repetidas"
+    return score_padrao, dna_texto
 # =====================================================================
 # BLINDAGEM DE MEMÓRIA E SANITIZAÇÃO ABSOLUTA
 # =====================================================================
@@ -222,6 +246,38 @@ with tabs[1]:
         st.session_state.data["matriz_viva_atual"] = ia["matriz_base"]
         
         st.markdown(f"### 🧠 Diagnóstico Autônomo — Concurso Alvo `{ia['alvo']}`")
+
+        # =====================================================================
+        # NOVO PAINEL: RAIO-X DO ÚLTIMO SORTEIO OFICIAL (DNA)
+        # =====================================================================
+        historico_painel = st.session_state.data.get("historico_dados", [])
+        if len(historico_painel) >= 2:
+            ultimo_sort = historico_painel[-1]
+            penultimo_sort = historico_painel[-2]
+            
+            dez_ult = ultimo_sort['dezenas']
+            dez_pen = penultimo_sort['dezenas']
+            
+            primos_loto_set = {2, 3, 5, 7, 11, 13, 17, 19, 23}
+            pares_ult = sum(1 for n in dez_ult if n % 2 == 0)
+            impares_ult = 15 - pares_ult
+            primos_ult = sum(1 for n in dez_ult if n in primos_loto_set)
+            repetidas_ult = len(set(dez_ult).intersection(set(dez_pen)))
+            
+            dezenas_ult_formatadas = " - ".join([f"{n:02d}" for n in dez_ult])
+            
+            # Caixa de destaque com as 15 dezenas do último concurso
+            st.info(f"**🎯 Último Sorteio Oficial (Concurso {ultimo_sort['concurso']}):** {dezenas_ult_formatadas}")
+            
+            # 4 Cartões elegantes de métricas do DNA do concurso
+            col_rx1, col_rx2, col_rx3, col_rx4 = st.columns(4)
+            col_rx1.metric("Ímpares", impares_ult)
+            col_rx2.metric("Pares", pares_ult)
+            col_rx3.metric("Primos", primos_ult)
+            col_rx4.metric("Repetidas do Anterior", repetidas_ult, help=f"Quantidade de dezenas que se repetiram do concurso {penultimo_sort['concurso']}")
+            
+            st.divider() # Linha de separação sutil para não embolar com o resto da Aba 2
+        # =====================================================================
         
         st.success(f"**⚡ LINHA TÁTICA ATIVADA:** {ia['estrategia']} \n\n**DIRETRIZ DA DECISÃO:** {ia['motivo_est']}")
         st.info(f"**🎯 GRUPO DE ELITE ({ia['qtd_matriz']} DEZENAS COMPILADAS):** {', '.join([f'{n:02d}' for n in ia['matriz_base']])}")
@@ -389,12 +445,16 @@ with tabs[2]:
                             if intersecao >= 11:
                                 penalidade_ortogonal += (intersecao ** 3)
                         
-                        score_final = score_ia - penalidade_ortogonal
+                        ultimo_sorteio = st.session_state.data["historico_dados"][-1]["dezenas"] if st.session_state.data["historico_dados"] else []
+                        score_dna, dna_texto_candidato = avaliar_dna_lotofacil(candidato, ultimo_sorteio)
+                        score_final = score_ia + score_dna - penalidade_ortogonal
                         
                         # A IA seleciona apenas a combinação que tiver o maior Score Final
                         if score_final > melhor_score:
                             melhor_score = score_final
                             melhor_candidato = candidato
+                            melhor_dna = dna_texto_candidato
+                        
                     
                     # Fallback de proteção (Gatilho de segurança raríssimo)
                     if not melhor_candidato: melhor_candidato = sorted(random.sample(dezenas_disponiveis, tam))
@@ -412,7 +472,8 @@ with tabs[2]:
                         "status": "Aguardando Sorteio", 
                         "acertos": 0, 
                         "premio_valor": 0.0,
-                        "matriz_origem": st.session_state.data["matriz_viva_atual"] # <--- AQUI ESTÁ O DNA DO JOGO
+                        "matriz_origem": st.session_state.data["matriz_viva_atual"], # <--- AQUI ESTÁ O DNA DO JOGO
+                        "dna": melhor_dna if 'melhor_dna' in locals() else "🧬 DNA Não Biometrado"
                     })
                     gasto += custo
                 st.success("Lote Inédito processado com Teoria dos Jogos e Matriz Ortogonal.")
@@ -514,6 +575,10 @@ with tabs[3]:
                     <span style="color: #4d5156; font-size: 13px; font-weight: 500;">Espera do Concurso Alvo: {alvo}</span><br>
                     <span style="color: #5f6368; font-size: 12px;">Estratégia Operante: {j.get('estrategia')}</span><br>
                     <span style="color: #5f6368; font-size: 12px; font-style: italic;">Especificações da estratégia: {j.get('justificativa', 'Padrão autônomo.')}</span>
+                    <span style="color: #5f6368; font-size: 12px;">Estratégia Operante: {j.get('estrategia')}</span><br>
+                    <span style="color: #5f6368; font-size: 12px; font-style: italic;">Especificações da estratégia: {j.get('justificativa', 'Padrão autônomo.')}</span><br>
+                    <span style="color: #006644; font-size: 13px; font-weight: bold;">{j.get('dna', '🧬 DNA Padrão Pós-Atualização')}</span>
+               
                 </div>
                 """
                 st.markdown(html_card, unsafe_allow_html=True)
