@@ -568,48 +568,37 @@ with tabs[3]:
             alvo = j.get('concurso_alvo', 'N/A')
             premio_ganho = j.get('premio_valor', 0.0)
             
-            if status == "Premiado":
-                html_card = f"""
-                <div style="background-color: #e6f4ea; border: 2px solid #137333; border-radius: 8px; padding: 15px; margin-bottom: 10px;">
-                    <span style="color: #137333; font-weight: bold; font-size: 15px;">🏆 PREMIADO: {acertos} ACERTOS | Valor do Rateio: R$ {premio_ganho:.2f}</span><br>
-                    <span style="color: #4d5156; font-size: 13px; font-weight: 500;">Espera do Concurso Alvo: {alvo}</span><br>
-                    <span style="color: #5f6368; font-size: 12px;">Estratégia Operante: {j.get('estrategia')}</span><br>
-                    <span style="color: #5f6368; font-size: 12px; font-style: italic;">Especificações da estratégia: {j.get('justificativa', 'Padrão autônomo.')}</span>
-                    <span style="color: #5f6368; font-size: 12px;">Estratégia Operante: {j.get('estrategia')}</span><br>
-                    <span style="color: #5f6368; font-size: 12px; font-style: italic;">Especificações da estratégia: {j.get('justificativa', 'Padrão autônomo.')}</span><br>
-                    <span style="color: #006644; font-size: 13px; font-weight: bold;">{j.get('dna', '🧬 DNA Padrão Pós-Atualização')}</span>
-               
-                </div>
-                """
-                st.markdown(html_card, unsafe_allow_html=True)
-                with st.container():
-                    st.code(" - ".join([f"{n:02d}" for n in j.get('dezenas', [])]))
-                    st.button("Remover Bilhete", key=f"del_{j['id']}", on_click=cb_excluir_jogo, args=(j['id'],))
-                    st.markdown("<br>", unsafe_allow_html=True)
-            
-            elif status == "Não Premiado":
-                html_card = f"""
-                <div style="background-color: #f1f3f4; border: 1px solid #dadce0; border-radius: 6px; padding: 12px; margin-bottom: 5px; opacity: 0.75;">
-                    <span style="color: #5f6368; font-weight: normal; font-size: 14px;">❌ Sem Premiação ({acertos} acertos)</span><br>
-                    <span style="color: #70757a; font-size: 12px; font-weight: 500;">Espera do Concurso Alvo: {alvo}</span><br>
-                    <span style="color: #70757a; font-size: 11px;">Estratégia: {j.get('estrategia')}</span>
-                </div>
-                """
-                st.markdown(html_card, unsafe_allow_html=True)
-                with st.container():
-                    st.text(" - ".join([f"{n:02d}" for n in j.get('dezenas', [])]))
-                    st.button("Descartar", key=f"del_{j['id']}", on_click=cb_excluir_jogo, args=(j['id'],))
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    
-            else:
-                html_card = f"""
-                <div style="background-color: #f8f9fa; border-left: 5px solid #1a73e8; border-top: 1px solid #dadce0; border-right: 1px solid #dadce0; border-bottom: 1px solid #dadce0; border-radius: 6px; padding: 15px; margin-bottom: 10px;">
-                    <span style="color: #1a73e8; font-weight: bold; font-size: 14px;">⏳ AGUARDANDO SORTEIO</span><br>
-                    <span style="color: #4d5156; font-size: 13px; font-weight: 500;">Espera do Concurso Alvo: {alvo} | Grade: {j.get('tamanho')} Dezenas</span><br>
-                    <span style="color: #5f6368; font-size: 12px;">Estratégia Operante: {j.get('estrategia')}</span><br>
-                    <span style="color: #5f6368; font-size: 12px; font-style: italic;">Especificações da estratégia: {j.get('justificativa', 'Padrão autônomo.')}</span>
-                </div>
-                """
+            with col_info:
+                if j.get('status') == "Premiado":
+                    st.markdown(f"""
+                    <div style="background-color: #f8f9fa; padding: 10px; border-radius: 8px; border-left: 5px solid #28a745; margin-bottom: 10px;">
+                        <span style="color: #28a745; font-size: 14px; font-weight: bold;">✅ PREMIADO ({j.get('acertos')} Acertos) - R$ {j.get('premio_valor'):.2f}</span><br>
+                        <span style="color: #333; font-size: 13px;">Concurso Alvo: <b>{j.get('concurso_alvo')}</b> | Grade: <b>{j.get('tamanho')} Dezenas</b></span><br>
+                        <span style="color: #5f6368; font-size: 12px;">Estratégia Operante: {j.get('estrategia')}</span><br>
+                        <span style="color: #5f6368; font-size: 12px; font-style: italic;">Especificações da estratégia: {j.get('justificativa', 'Padrão autônomo.')}</span><br>
+                        <span style="color: #006644; font-size: 13px; font-weight: bold;">{j.get('dna', '🧬 DNA Padrão Pós-Atualização')}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                elif j.get('status') == "Não Premiado":
+                    st.markdown(f"""
+                    <div style="background-color: #f8f9fa; padding: 10px; border-radius: 8px; border-left: 5px solid #dc3545; margin-bottom: 10px;">
+                        <span style="color: #dc3545; font-size: 14px; font-weight: bold;">❌ NÃO PREMIADO ({j.get('acertos')} Acertos)</span><br>
+                        <span style="color: #333; font-size: 13px;">Concurso Alvo: <b>{j.get('concurso_alvo')}</b> | Grade: <b>{j.get('tamanho')} Dezenas</b></span><br>
+                        <span style="color: #5f6368; font-size: 12px;">Estratégia Operante: {j.get('estrategia')}</span><br>
+                        <span style="color: #5f6368; font-size: 12px; font-style: italic;">Especificações da estratégia: {j.get('justificativa', 'Padrão autônomo.')}</span><br>
+                        <span style="color: #006644; font-size: 13px; font-weight: bold;">{j.get('dna', '🧬 DNA Padrão Pós-Atualização')}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown(f"""
+                    <div style="background-color: #f8f9fa; padding: 10px; border-radius: 8px; border-left: 5px solid #ffcc00; margin-bottom: 10px;">
+                        <span style="color: #666; font-size: 14px; font-weight: bold;">⏳ AGUARDANDO SORTEIO</span><br>
+                        <span style="color: #333; font-size: 13px;">Espera do Concurso Alvo: <b>{j.get('concurso_alvo')}</b> | Grade: <b>{j.get('tamanho')} Dezenas</b></span><br>
+                        <span style="color: #5f6368; font-size: 12px;">Estratégia Operante: {j.get('estrategia')}</span><br>
+                        <span style="color: #5f6368; font-size: 12px; font-style: italic;">Especificações da estratégia: {j.get('justificativa', 'Padrão autônomo.')}</span><br>
+                        <span style="color: #006644; font-size: 13px; font-weight: bold;">{j.get('dna', '🧬 DNA Padrão Pós-Atualização')}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
                 st.markdown(html_card, unsafe_allow_html=True)
                 with st.container():
                     st.code(" - ".join([f"{n:02d}" for n in j.get('dezenas', [])]))
