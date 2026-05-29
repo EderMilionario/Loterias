@@ -62,29 +62,44 @@ def calcular_premio_multiplo(tamanho, acertos, v11=7.0, v12=14.0, v13=35.0, v14=
     
     return premio
 # =====================================================================
-# SENSOR DE DNA DA LOTOFÁCIL (FUNÇÃO DE APTIDÃO)
+# SENSOR DE DNA QUÂNTICO DA LOTOFÁCIL (FUNÇÃO DE APTIDÃO)
 # =====================================================================
 def avaliar_dna_lotofacil(dezenas_geradas, dezenas_ultimo_sorteio):
-    primos_loto = {2, 3, 5, 7, 11, 13, 17, 19, 23}
+    primos_set = {2, 3, 5, 7, 11, 13, 17, 19, 23}
+    fibo_set = {1, 2, 3, 5, 8, 13, 21}
+    mult3_set = {3, 6, 9, 12, 15, 18, 21, 24}
+
     pares = sum(1 for n in dezenas_geradas if n % 2 == 0)
     impares = len(dezenas_geradas) - pares
-    primos = sum(1 for n in dezenas_geradas if n in primos_loto)
+    primos = sum(1 for n in dezenas_geradas if n in primos_set)
+    fibos = sum(1 for n in dezenas_geradas if n in fibo_set)
+    mult3 = sum(1 for n in dezenas_geradas if n in mult3_set)
     repetidas = len(set(dezenas_geradas).intersection(set(dezenas_ultimo_sorteio)))
-    
+
     tamanho = len(dezenas_geradas)
     score_padrao = 0
-    
-    # 🎯 ALVOS DINÂMICOS: O sensor se adapta a jogos de 15 ou 16 dezenas
+
+    # 🎯 ALVOS DINÂMICOS
     if tamanho == 15:
         if impares in [7, 8]: score_padrao += 10
         if primos in [4, 5, 6]: score_padrao += 10
+        if fibos in [4, 5]: score_padrao += 10
+        if mult3 in [4, 5, 6]: score_padrao += 10
         if repetidas in [8, 9, 10]: score_padrao += 15 
     elif tamanho >= 16:
         if impares in [7, 8, 9]: score_padrao += 10
         if primos in [5, 6, 7]: score_padrao += 10
+        if fibos in [4, 5, 6]: score_padrao += 10
+        if mult3 in [5, 6, 7]: score_padrao += 10
         if repetidas in [9, 10, 11]: score_padrao += 15
-            
-    dna_texto = f"🧬 DNA: {impares} Ímpares • {pares} Pares • {primos} Primos • {repetidas} Repetidas"
+
+    # 🕸️ TEIA DE CORRELAÇÃO (Bônus Magnético)
+    par_ouro = st.session_state.get('par_ouro', None)
+    if par_ouro and par_ouro[0] in dezenas_geradas and par_ouro[1] in dezenas_geradas:
+        score_padrao += 25 # Recompensa altíssima se a IA conseguir juntar o par simbiótico!
+
+    # Carimbo Visual Compacto e Lindo
+    dna_texto = f"🧬 {impares} Ímp • {pares} Par • {primos} Pri • {fibos} Fib • {mult3} Múlt • {repetidas} Rep"
     return score_padrao, dna_texto
 # =====================================================================
 # BLINDAGEM DE MEMÓRIA E SANITIZAÇÃO ABSOLUTA
@@ -248,35 +263,88 @@ with tabs[1]:
         st.markdown(f"### 🧠 Diagnóstico Autônomo — Concurso Alvo `{ia['alvo']}`")
 
         # =====================================================================
-        # NOVO PAINEL: RAIO-X DO ÚLTIMO SORTEIO OFICIAL (DNA)
+        # SUPER PAINEL INSTITUCIONAL: RAIO-X, RISCO E CORRELAÇÃO
         # =====================================================================
         historico_painel = st.session_state.data.get("historico_dados", [])
         if len(historico_painel) >= 2:
             ultimo_sort = historico_painel[-1]
             penultimo_sort = historico_painel[-2]
-            
             dez_ult = ultimo_sort['dezenas']
             dez_pen = penultimo_sort['dezenas']
             
-            primos_loto_set = {2, 3, 5, 7, 11, 13, 17, 19, 23}
+            # 1. EXPANSÃO BIOMÉTRICA (DNA do Sorteio)
+            primos_set = {2, 3, 5, 7, 11, 13, 17, 19, 23}
+            fibo_set = {1, 2, 3, 5, 8, 13, 21}
+            mult3_set = {3, 6, 9, 12, 15, 18, 21, 24}
+
             pares_ult = sum(1 for n in dez_ult if n % 2 == 0)
             impares_ult = 15 - pares_ult
-            primos_ult = sum(1 for n in dez_ult if n in primos_loto_set)
+            primos_ult = sum(1 for n in dez_ult if n in primos_set)
+            fibo_ult = sum(1 for n in dez_ult if n in fibo_set)
+            mult3_ult = sum(1 for n in dez_ult if n in mult3_set)
             repetidas_ult = len(set(dez_ult).intersection(set(dez_pen)))
             
             dezenas_ult_formatadas = " - ".join([f"{n:02d}" for n in dez_ult])
-            
-            # Caixa de destaque com as 15 dezenas do último concurso
             st.info(f"**🎯 Último Sorteio Oficial (Concurso {ultimo_sort['concurso']}):** {dezenas_ult_formatadas}")
             
-            # 4 Cartões elegantes de métricas do DNA do concurso
-            col_rx1, col_rx2, col_rx3, col_rx4 = st.columns(4)
+            # 6 Cartões com a nova leitura do Universo Lotofácil
+            col_rx1, col_rx2, col_rx3, col_rx4, col_rx5, col_rx6 = st.columns(6)
             col_rx1.metric("Ímpares", impares_ult)
             col_rx2.metric("Pares", pares_ult)
             col_rx3.metric("Primos", primos_ult)
-            col_rx4.metric("Repetidas do Anterior", repetidas_ult, help=f"Quantidade de dezenas que se repetiram do concurso {penultimo_sort['concurso']}")
+            col_rx4.metric("Fibonacci", fibo_ult)
+            col_rx5.metric("Múltiplos 3", mult3_ult)
+            col_rx6.metric("Repetidas", repetidas_ult)
             
-            st.divider() # Linha de separação sutil para não embolar com o resto da Aba 2
+            st.divider()
+
+            # 2. MOTOR APRIORI (Cálculo em tempo real do Par Magnético)
+            amostra_corr = historico_painel[-100:] if len(historico_painel) > 100 else historico_painel
+            pares_count = {}
+            for sorteio in amostra_corr:
+                d_sort = sorteio['dezenas']
+                for i in range(len(d_sort)):
+                    for j in range(i+1, len(d_sort)):
+                        par = (d_sort[i], d_sort[j])
+                        pares_count[par] = pares_count.get(par, 0) + 1
+            top_par = max(pares_count, key=pares_count.get) if pares_count else (0,0)
+            st.session_state.par_ouro = top_par # Salva para o motor de DNA ler!
+
+            # 3. TERMÔMETRO DE RISCO E CORRELAÇÃO
+            col_risk, col_corr = st.columns(2)
+            
+            with col_risk:
+                st.markdown("#### 🌡️ Termômetro de Risco (Critério de Kelly)")
+                # A IA cruza o momento do Ciclo com o tamanho da Matriz para calcular o Risco
+                qtd_m = ia.get('qtd_matriz', 18)
+                if qtd_m >= 21:
+                    n_risco = "ALTO (Início de Ciclo / Caos Aleatório)"
+                    c_risco = "#dc3545"; d_banca = "Recomendação: Operar com orçamento defensivo."
+                elif qtd_m == 19:
+                    n_risco = "MÉDIO (Meio de Ciclo / Transição)"
+                    c_risco = "#ffcc00"; d_banca = "Recomendação: Operar com orçamento padrão."
+                else:
+                    n_risco = "BAIXO (Fim de Ciclo / Alta Previsibilidade)"
+                    c_risco = "#28a745"; d_banca = "Recomendação: Janela de Ataque. Risco Mínimo."
+
+                st.markdown(f"""
+                <div style='background-color: #f8f9fa; border-left: 5px solid {c_risco}; padding: 15px; border-radius: 6px;'>
+                    <span style='color: {c_risco}; font-weight: bold; font-size: 15px;'>Nível Atual: {n_risco}</span><br>
+                    <span style='color: #4d5156; font-size: 13px;'><b>Diretriz Institucional:</b> {d_banca}</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col_corr:
+                st.markdown("#### 🕸️ Teia de Correlação (Apriori)")
+                st.markdown(f"""
+                <div style='background-color: #f8f9fa; border-left: 5px solid #1a73e8; padding: 15px; border-radius: 6px;'>
+                    <span style='color: #1a73e8; font-weight: bold; font-size: 15px;'>Par Simbiótico Atual: {top_par[0]:02d} e {top_par[1]:02d}</span><br>
+                    <span style='color: #4d5156; font-size: 13px;'>Essas duas dezenas são as que mais saíram juntas nos últimos 100 concursos. O DNA recompensará bilhetes que contiverem essa dupla.</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.divider()
+        
         # =====================================================================
         
         st.success(f"**⚡ LINHA TÁTICA ATIVADA:** {ia['estrategia']} \n\n**DIRETRIZ DA DECISÃO:** {ia['motivo_est']}")
