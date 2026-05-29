@@ -64,6 +64,9 @@ def calcular_premio_multiplo(tamanho, acertos, v11=7.0, v12=14.0, v13=35.0, v14=
 # =====================================================================
 # SENSOR DE DNA QUÂNTICO DA LOTOFÁCIL (FUNÇÃO DE APTIDÃO)
 # =====================================================================
+# =====================================================================
+# SENSOR DE DNA QUÂNTICO DA LOTOFÁCIL (FUNÇÃO DE APTIDÃO)
+# =====================================================================
 def avaliar_dna_lotofacil(dezenas_geradas, dezenas_ultimo_sorteio):
     primos_set = {2, 3, 5, 7, 11, 13, 17, 19, 23}
     fibo_set = {1, 2, 3, 5, 8, 13, 21}
@@ -79,7 +82,7 @@ def avaliar_dna_lotofacil(dezenas_geradas, dezenas_ultimo_sorteio):
     tamanho = len(dezenas_geradas)
     score_padrao = 0
 
-    # 🎯 ALVOS DINÂMICOS
+    # 🎯 1. ALVOS DINÂMICOS (Estrutura Base)
     if tamanho == 15:
         if impares in [7, 8]: score_padrao += 10
         if primos in [4, 5, 6]: score_padrao += 10
@@ -93,13 +96,59 @@ def avaliar_dna_lotofacil(dezenas_geradas, dezenas_ultimo_sorteio):
         if mult3 in [5, 6, 7]: score_padrao += 10
         if repetidas in [9, 10, 11]: score_padrao += 15
 
-    # 🕸️ TEIA DE CORRELAÇÃO (Bônus Magnético)
+    # 🕸️ 2. TEIA DE CORRELAÇÃO (Bônus Magnético Apriori)
     par_ouro = st.session_state.get('par_ouro', None)
     if par_ouro and par_ouro[0] in dezenas_geradas and par_ouro[1] in dezenas_geradas:
-        score_padrao += 25 # Recompensa altíssima se a IA conseguir juntar o par simbiótico!
+        score_padrao += 25 
 
-    # Carimbo Visual Compacto e Lindo
-    dna_texto = f"🧬 {impares} Ímp • {pares} Par • {primos} Pri • {fibos} Fib • {mult3} Múlt • {repetidas} Rep"
+    # 🚫 3. VAZIOS DE LINHA E COLUNA (Filtro Cartesiano)
+    # Lapeia o volante de 5x5 e identifica anomalias geométricas de abismos.
+    linhas = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+    colunas = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+    for n in dezenas_geradas:
+        linhas[(n - 1) // 5 + 1] += 1
+        colunas[(n - 1) % 5 + 1] += 1
+    
+    linhas_vazias = sum(1 for v in linhas.values() if v == 0)
+    colunas_vazias = sum(1 for v in colunas.values() if v == 0)
+    # Punição matemática letal: a IA vai expurgar jogos que deixam corredores vazios
+    if linhas_vazias > 0: score_padrao -= (linhas_vazias * 80)
+    if colunas_vazias > 0: score_padrao -= (colunas_vazias * 80)
+
+    # 🚫 4. BLOQUEIO DE SEQUENCIAMENTO EXTREMO (Filtro Anti-Escadinha)
+    maior_seq = 1
+    seq_atual = 1
+    dezenas_ordenadas = sorted(dezenas_geradas)
+    for i in range(1, len(dezenas_ordenadas)):
+        if dezenas_ordenadas[i] == dezenas_ordenadas[i-1] + 1:
+            seq_atual += 1
+            if seq_atual > maior_seq: maior_seq = seq_atual
+        else:
+            seq_atual = 1
+    # Punição severa se o bilhete formar uma "cobra" de 7 ou mais números grudados
+    if maior_seq >= 7: score_padrao -= 100
+
+    # ⚖️ 5. MASSA GRAVITACIONAL (Curva de Gauss da Soma)
+    soma_total = sum(dezenas_geradas)
+    media_soma = soma_total / tamanho
+    # Normalizamos o intervalo Gaussiano: se 180~215 é o ideal para 15 dezenas, 
+    # a média perfeita por dezena é de 12.0 a 14.33. Isso faz a IA funcionar perfeitamente
+    # mesmo se você decidir gerar bilhetes múltiplos (16+ dezenas).
+    if 12.0 <= media_soma <= 14.33:
+        score_padrao += 15
+    else:
+        # Se a soma estourar a normalidade estatística, corta a força do bilhete
+        score_padrao -= 30
+
+    # 🏷️ CARIMBO VISUAL DO DNA (Agora mostrando Soma Total e Alertas)
+    dna_texto = f"🧬 {impares} Ímp • {pares} Par • {primos} Pri • {fibos} Fib • {mult3} Múlt • {repetidas} Rep • Σ {soma_total}"
+    
+    # Flags visuais inseridas no bilhete gerado, caso a IA (num caso extremo sem saída) seja obrigada a usar um desses padrões.
+    if maior_seq >= 7: 
+        dna_texto += " ⚠️ SeqExtrema"
+    if linhas_vazias > 0 or colunas_vazias > 0: 
+        dna_texto += " ⚠️ VaziosNoVolante"
+
     return score_padrao, dna_texto
 # =====================================================================
 # BLINDAGEM DE MEMÓRIA E SANITIZAÇÃO ABSOLUTA
@@ -156,19 +205,32 @@ def cb_carregar_cofre():
         except Exception as e: st.error(f"Erro ao ler JSON: {e}")
 
 # =====================================================================
-# CÉREBRA MULTI-ESTRATÉGICO DA IA (4 Linhas de Análise)
+# CÉREBRA MULTI-ESTRATÉGICO DA IA (4 Linhas de Análise Evoluídas)
 # =====================================================================
 def raciocinio_total_ia(historico, memoria):
     if not historico: return None
     
+    # 🧠 JANELA DE ESQUECIMENTO (A base para curar a Inércia Estatística)
+    # A IA agora enxerga a frequência global para fins de log, mas usa o horizonte recente para decisão.
+    historico_recente = historico[-50:] if len(historico) >= 50 else historico
+    todas_dezenas_recentes = [n for h in historico_recente for n in h['dezenas']]
+    freq_recente = Counter(todas_dezenas_recentes)
+    freq_recente_max = max(freq_recente.values()) if freq_recente else 1
+    
+    # Frequência Absoluta (Mantida para não quebrar outras leituras do painel)
     todas_dezenas = [n for h in historico for n in h['dezenas']]
     freq = Counter(todas_dezenas)
-    freq_max = max(freq.values()) if freq else 1
     
     primos_lista = [2, 3, 5, 7, 11, 13, 17, 19, 23]
     moldura_lista = [1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25]
     
+    # Fragmentação Temporal para o Viés Direcional
     ultimos_10 = historico[-10:] if len(historico) >= 10 else historico
+    penultimos_10 = historico[-20:-10] if len(historico) >= 20 else historico[-10:]
+    
+    freq_ult_10 = Counter([n for h in ultimos_10 for n in h['dezenas']])
+    freq_pen_10 = Counter([n for h in penultimos_10 for n in h['dezenas']])
+
     media_soma = sum([sum(h['dezenas']) for h in ultimos_10]) / len(ultimos_10)
     media_impares = sum([sum(1 for n in h['dezenas'] if n % 2 != 0) for h in ultimos_10]) / len(ultimos_10)
     media_primos = sum([sum(1 for n in h['dezenas'] if n in primos_lista) for h in ultimos_10]) / len(ultimos_10)
@@ -193,32 +255,53 @@ def raciocinio_total_ia(historico, memoria):
     elif len(faltam_ciclo) >= 3: qtd_matriz = 19
     else: qtd_matriz = 18
 
-    # --- AVALIAÇÃO DE DESEMPENHO (MEMÓRIA) ---
+    # --- AVALIAÇÃO DE DESEMPENHO (MEMÓRIA BLINDADA CONTRA OVERFITTING) ---
     perf = {}
     for est in ["Tendencia", "Reversao", "Ciclo", "Simetria"]:
         usos = memoria.get(est, {}).get("usos", 0)
         pontos = memoria.get(est, {}).get("pontos", 0)
+        # Taxa de Decaimento virtual: Impede que uma estratégia fique congelada no topo por ter 500 usos passados.
+        if usos > 30: 
+            pontos = (pontos / usos) * 30
+            usos = 30
         perf[est] = pontos / usos if usos > 0 else 11.0 
         
     melhor_est = max(perf, key=perf.get)
 
-    # --- MUTAÇÃO DE PESOS DA IA CONFORME DECISÃO ---
+    # --- MUTAÇÃO DE PESOS DA IA CONFORME DECISÃO (CORE ATUALIZADO) ---
     if melhor_est == "Ciclo" and len(faltam_ciclo) > 0:
         estrategia = "Ciclo Otimizado"
-        pesos = {i: 100 if i in faltam_ciclo else freq.get(i, 0) for i in range(1, 26)}
+        # Ciclo usa freq_recente como base secundária
+        pesos = {i: 100 if i in faltam_ciclo else freq_recente.get(i, 0) for i in range(1, 26)}
         motivo_est = "A IA priorizou o Fechamento de Ciclo. Dezenas ausentes receberam força máxima."
+        
     elif melhor_est == "Simetria":
         estrategia = "Simetria de Borda"
-        pesos = {i: freq.get(i, 0) + 30 if i in moldura_lista else freq.get(i, 0) for i in range(1, 26)}
-        motivo_est = "A IA adotou o método de Simetria de Borda, focando nas extremidades do volante."
+        pesos = {}
+        for i in range(1, 26):
+            # SIMETRIA REAL (Espelhamento Direcionado): i e (26-i). 
+            # Se o espelho de 'i' está saindo POUCO, a dezena 'i' recebe peso alto para COMPENSAR o eixo.
+            espelho = 26 - i
+            peso_compensacao = freq_recente_max - freq_recente.get(espelho, 0)
+            bonus_borda = 15 if i in moldura_lista else 0
+            pesos[i] = peso_compensacao + bonus_borda + freq_recente.get(i, 0)
+        motivo_est = "A IA adotou Simetria Analítica. Compensando quadrantes fracos através de espelhamento."
+        
     elif melhor_est == "Reversao" or media_soma > 198:
         estrategia = "Reversão Estatística"
-        pesos = {i: max(1, (freq_max - freq.get(i, 0)) + (atrasos.get(i, 0) * 5)) for i in range(1, 26)}
-        motivo_est = "A IA ativou Reversão Estatística. Tendência forte de desaceleração de dezenas saturadas."
+        # Agora usando ESTRITAMENTE a Janela de Esquecimento para não ser sufocada pelo passado
+        pesos = {i: max(1, (freq_recente_max - freq_recente.get(i, 0)) + (atrasos.get(i, 0) * 5)) for i in range(1, 26)}
+        motivo_est = "A IA ativou Reversão Estatística focada no curto prazo (Janela de Esquecimento)."
+        
     else:
         estrategia = "Tendência de Frequência"
-        pesos = {i: max(1, freq.get(i, 0) + 10) for i in range(1, 26)}
-        motivo_est = "A IA escolheu seguir a Inércia de Frequência. Padrões quentes mantidos."
+        pesos = {}
+        for i in range(1, 26):
+            # VIÉS DIRECIONAL (Momentum de Aceleração vs Desaceleração)
+            aceleracao = freq_ult_10.get(i, 0) - freq_pen_10.get(i, 0) 
+            peso_base = freq_recente.get(i, 0)
+            pesos[i] = max(1, peso_base + (aceleracao * 3))
+        motivo_est = "A IA escolheu Tendência com Viés Direcional. Dezenas em aceleração no momento foram priorizadas."
 
     dezenas_ordenadas = sorted(range(1, 26), key=lambda x: pesos[x], reverse=True)
     matriz_base = sorted(dezenas_ordenadas[:qtd_matriz])
@@ -298,18 +381,55 @@ with tabs[1]:
             
             st.divider()
 
-            # 2. MOTOR APRIORI (Cálculo em tempo real do Par Magnético)
+            # 2. MOTOR APRIORI (Cálculo Restrito à Matriz de Elite - Rota A)
             amostra_corr = historico_painel[-100:] if len(historico_painel) > 100 else historico_painel
             pares_count = {}
+            matriz_atual_set = set(ia['matriz_base']) # O filtro matemático que você percebeu faltar
+
             for sorteio in amostra_corr:
-                d_sort = sorteio['dezenas']
+                # Intersecção: cruza a história oficial com a matriz eleita pela IA
+                d_sort = [n for n in sorteio['dezenas'] if n in matriz_atual_set]
                 for i in range(len(d_sort)):
                     for j in range(i+1, len(d_sort)):
-                        par = (d_sort[i], d_sort[j])
+                        par = tuple(sorted((d_sort[i], d_sort[j])))
                         pares_count[par] = pares_count.get(par, 0) + 1
+            
             top_par = max(pares_count, key=pares_count.get) if pares_count else (0,0)
-            st.session_state.par_ouro = top_par # Salva para o motor de DNA ler!
+            st.session_state.par_ouro = top_par # Salva a dupla magnética real para o DNA!
 
+            # 3. TERMÔMETRO DE RISCO E CORRELAÇÃO
+            col_risk, col_corr = st.columns(2)
+            
+            with col_risk:
+                st.markdown("#### 🌡️ Termômetro de Risco (Critério de Kelly)")
+                qtd_m = ia.get('qtd_matriz', 18)
+                if qtd_m >= 21:
+                    n_risco = "ALTO (Início de Ciclo / Caos Aleatório)"
+                    c_risco = "#dc3545"; d_banca = "Recomendação: Operar com orçamento defensivo."
+                elif qtd_m == 19:
+                    n_risco = "MÉDIO (Meio de Ciclo / Transição)"
+                    c_risco = "#ffcc00"; d_banca = "Recomendação: Operar com orçamento padrão."
+                else:
+                    n_risco = "BAIXO (Fim de Ciclo / Alta Previsibilidade)"
+                    c_risco = "#28a745"; d_banca = "Recomendação: Janela de Ataque. Risco Mínimo."
+
+                st.markdown(f"""
+                <div style='background-color: #f8f9fa; border-left: 5px solid {c_risco}; padding: 15px; border-radius: 6px;'>
+                    <span style='color: {c_risco}; font-weight: bold; font-size: 15px;'>Nível Atual: {n_risco}</span><br>
+                    <span style='color: #4d5156; font-size: 13px;'><b>Diretriz Institucional:</b> {d_banca}</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col_corr:
+                st.markdown("#### 🕸️ Teia de Correlação (Matriz Filtrada)")
+                st.markdown(f"""
+                <div style='background-color: #f8f9fa; border-left: 5px solid #1a73e8; padding: 15px; border-radius: 6px;'>
+                    <span style='color: #1a73e8; font-weight: bold; font-size: 15px;'>Par Magnético da Elite: {top_par[0]:02d} e {top_par[1]:02d}</span><br>
+                    <span style='color: #4d5156; font-size: 13px;'>Esta é a dupla mais quente <b>possível de ser gerada</b> pela matriz atual. O Motor DNA vai garantir a recompensa quântica por agrupá-las.</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.divider()
             # 3. TERMÔMETRO DE RISCO E CORRELAÇÃO
             col_risk, col_corr = st.columns(2)
             
