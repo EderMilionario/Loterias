@@ -464,6 +464,51 @@ with tabs[1]:
                 """, unsafe_allow_html=True)
 
             st.divider()
+            # =====================================================================
+            # PANEL INFORMATIVO: DIRETRIZ DE DIMENSIONAMENTO DA MATRIZ (REGRA DO CICLO)
+            # =====================================================================
+            st.markdown("### 📐 Lógica de Dimensionamento da Matriz Base")
+            
+            # Identificação dinâmica de qual regra está ativa no momento
+            qtd_em_falta = len(ia['faltam_ciclo'])
+            r23 = "border: 2px solid #dc3545; background-color: #fff5f5;" if qtd_em_falta >= 9 else "opacity: 0.6;"
+            r21 = "border: 2px solid #fd7e14; background-color: #fff9f5;" if 6 <= qtd_em_falta <= 8 else "opacity: 0.6;"
+            r19 = "border: 2px solid #0dcaf0; background-color: #f5fcff;" if 3 <= qtd_em_falta <= 5 else "opacity: 0.6;"
+            r18 = "border: 2px solid #28a745; background-color: #f5fbf6;" if qtd_em_falta < 3 else "opacity: 0.6;"
+
+            st.markdown(f"""
+            <div style='background-color: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e0e0e0;'>
+                <p style='margin-top: 0; font-weight: bold; color: #1f77b4; font-size: 16px;'>
+                    🎯 Critério de Flutuação Escalar da IA (Mapeamento do Relógio da Caixa)
+                </p>
+                <p style='color: #4d5156; font-size: 14px; margin-bottom: 15px;'>
+                    A IA calcula o tamanho da rede de proteção (Matriz de Elite) medindo o nível de entropia do ciclo atual. 
+                    Abaixo está a tabela de diretrizes. A regra iluminada indica o cenário ativo para este concurso:
+                </p>
+                
+                <div style='display: flex; flex-direction: column; gap: 8px;'>
+                    <div style='padding: 10px; border-radius: 6px; {r23} font-size: 14px;'>
+                        ➡️ <b>Se faltam 9 ou mais dezenas para fechar o ciclo</b> — Matriz: <b>23 Dezenas</b> <span style='color: #dc3545; font-weight: bold;'>(Modo Caos / Defensivo)</span>
+                    </div>
+                    <div style='padding: 10px; border-radius: 6px; {r21} font-size: 14px;'>
+                        ➡️ <b>Se faltam de 6 a 8 dezenas para fechar o ciclo</b> — Matriz: <b>21 Dezenas</b> <span style='color: #fd7e14; font-weight: bold;'>(Modo Transição)</span>
+                    </div>
+                    <div style='padding: 10px; border-radius: 6px; {r19} font-size: 14px;'>
+                        ➡️ <b>Se faltam de 3 a 5 dezenas para fechar o ciclo</b> — Matriz: <b>19 Dezenas</b> <span style='color: #0dcaf0; font-weight: bold;'>(Modo Ataque)</span>
+                    </div>
+                    <div style='padding: 10px; border-radius: 6px; {r18} font-size: 14px;'>
+                        ➡️ <b>Se faltam menos de 3 dezenas (1 ou 2) para fechar o ciclo</b> — Matriz: <b>18 Dezenas</b> <span style='color: #28a745; font-weight: bold;'>(Modo Sniper / Baixo Risco)</span>
+                    </div>
+                </div>
+                
+                <div style='margin-top: 15px; padding-top: 12px; border-top: 1px solid #e0e0e0; font-size: 13px; color: #5f6368;'>
+                    📊 <b>Diagnóstico em Tempo Real:</b> Atualmente restam <b>{qtd_em_falta} dezenas</b> para o encerramento do ciclo. 
+                    Por consequência mecânica, a IA travou a segurança do próximo sorteio em uma janela cirúrgica de <b>{ia['qtd_matriz']} dezenas</b>.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.divider()    
         
         # =====================================================================
         
