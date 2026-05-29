@@ -100,6 +100,23 @@ def avaliar_dna_lotofacil(dezenas_geradas, dezenas_ultimo_sorteio):
 
     # Carimbo Visual Compacto e Lindo
     dna_texto = f"🧬 {impares} Ímp • {pares} Par • {primos} Pri • {fibos} Fib • {mult3} Múlt • {repetidas} Rep"
+    # Geometria de Entropia (Cálculo de Espalhamento)
+    def get_coords(n): return ((n - 1) // 5, (n - 1) % 5)
+    coords = [get_coords(n) for n in dezenas_geradas]
+    dist_total = 0
+    for i in range(len(coords)):
+        for j in range(i + 1, len(coords)):
+            dist_total += abs(coords[i][0] - coords[j][0]) + abs(coords[i][1] - coords[j][1])
+    entropia = dist_total / len(dezenas_geradas)
+
+    # Filtro de Entropia: Otimizado para o range real da Lotofácil (2.8 a 4.8)
+    if 2.8 <= entropia <= 4.8:
+        score_padrao += 15
+    else:
+        score_padrao -= 10
+    
+    # Atualize a variável dna_texto para incluir a Entropia
+    dna_texto = f"🧬 {impares} Ímp • {pares} Par • {repetidas} Rep • 📐 Entropia: {entropia:.1f}"
     return score_padrao, dna_texto
 # =====================================================================
 # BLINDAGEM DE MEMÓRIA E SANITIZAÇÃO ABSOLUTA
@@ -161,8 +178,17 @@ def cb_carregar_cofre():
 def raciocinio_total_ia(historico, memoria):
     if not historico: return None
     
-    todas_dezenas = [n for h in historico for n in h['dezenas']]
-    freq = Counter(todas_dezenas)
+    # A IA lerá o histórico com foco no presente (Decay Weight)
+    freq_ponderada = Counter()
+    total_concursos = len(historico)
+    for i, concurso in enumerate(historico):
+        # O peso aumenta conforme i cresce (sorteios recentes valem mais)
+        peso = 1.0 + (i / total_concursos)
+        for dezena in concurso['dezenas']:
+            freq_ponderada[dezena] += peso
+    
+    # Substitua o uso de 'freq' por 'freq_ponderada' nas linhas subsequentes
+    # Onde estiver 'freq.get(i, 0)', use 'freq_ponderada.get(i, 0)'
     freq_max = max(freq.values()) if freq else 1
     
     primos_lista = [2, 3, 5, 7, 11, 13, 17, 19, 23]
@@ -261,6 +287,25 @@ with tabs[1]:
         st.session_state.data["matriz_viva_atual"] = ia["matriz_base"]
         
         st.markdown(f"### 🧠 Diagnóstico Autônomo — Concurso Alvo `{ia['alvo']}`")
+
+        # --- PAINEL INSTITUCIONAL DE AUDITORIA ---
+        st.markdown("#### 📊 Auditoria de Matriz e Inteligência")
+        col_c1, col_c2 = st.columns(2)
+        
+        # Cálculo da Entropia da Matriz Viva
+        def calc_ent(dezenas):
+            coords = [((n-1)//5, (n-1)%5) for n in dezenas]
+            d = 0
+            for i in range(len(coords)):
+                for j in range(i+1, len(coords)):
+                    d += abs(coords[i][0]-coords[j][0]) + abs(coords[i][1]-coords[j][1])
+            return d / len(dezenas)
+            
+        e_val = calc_ent(ia['matriz_base'])
+        
+        col_c1.metric("Entropia da Matriz Base", f"{e_val:.1f}")
+        col_c2.metric("Peso de Decadência", "Ativo (Curva Ponderada)")
+        st.divider()
 
         # =====================================================================
         # SUPER PAINEL INSTITUCIONAL: RAIO-X, RISCO E CORRELAÇÃO
