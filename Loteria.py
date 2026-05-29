@@ -562,48 +562,45 @@ with tabs[3]:
             st.download_button("📤 EXPORTAR JOGOS PARA APOSTA (TXT)", data=conteudo_export, file_name="Meus_Jogos_Loto.txt", type="primary", use_container_width=True)
         st.divider()
         
-        for j in reversed(st.session_state.data["jogos_salvos"]):
-            status = j.get('status', 'Aguardando Sorteio')
-            acertos = j.get('acertos', 0)
-            alvo = j.get('concurso_alvo', 'N/A')
-            premio_ganho = j.get('premio_valor', 0.0)
+        for j in st.session_state.data["jogos_salvos"]:
+            alvo = j.get('concurso_alvo')
             
-            with col_info:
-                if j.get('status') == "Premiado":
-                    st.markdown(f"""
-                    <div style="background-color: #f8f9fa; padding: 10px; border-radius: 8px; border-left: 5px solid #28a745; margin-bottom: 10px;">
-                        <span style="color: #28a745; font-size: 14px; font-weight: bold;">✅ PREMIADO ({j.get('acertos')} Acertos) - R$ {j.get('premio_valor'):.2f}</span><br>
-                        <span style="color: #333; font-size: 13px;">Concurso Alvo: <b>{j.get('concurso_alvo')}</b> | Grade: <b>{j.get('tamanho')} Dezenas</b></span><br>
-                        <span style="color: #5f6368; font-size: 12px;">Estratégia Operante: {j.get('estrategia')}</span><br>
-                        <span style="color: #5f6368; font-size: 12px; font-style: italic;">Especificações da estratégia: {j.get('justificativa', 'Padrão autônomo.')}</span><br>
-                        <span style="color: #006644; font-size: 13px; font-weight: bold;">{j.get('dna', '🧬 DNA Padrão Pós-Atualização')}</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-                elif j.get('status') == "Não Premiado":
-                    st.markdown(f"""
-                    <div style="background-color: #f8f9fa; padding: 10px; border-radius: 8px; border-left: 5px solid #dc3545; margin-bottom: 10px;">
-                        <span style="color: #dc3545; font-size: 14px; font-weight: bold;">❌ NÃO PREMIADO ({j.get('acertos')} Acertos)</span><br>
-                        <span style="color: #333; font-size: 13px;">Concurso Alvo: <b>{j.get('concurso_alvo')}</b> | Grade: <b>{j.get('tamanho')} Dezenas</b></span><br>
-                        <span style="color: #5f6368; font-size: 12px;">Estratégia Operante: {j.get('estrategia')}</span><br>
-                        <span style="color: #5f6368; font-size: 12px; font-style: italic;">Especificações da estratégia: {j.get('justificativa', 'Padrão autônomo.')}</span><br>
-                        <span style="color: #006644; font-size: 13px; font-weight: bold;">{j.get('dna', '🧬 DNA Padrão Pós-Atualização')}</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.markdown(f"""
-                    <div style="background-color: #f8f9fa; padding: 10px; border-radius: 8px; border-left: 5px solid #ffcc00; margin-bottom: 10px;">
-                        <span style="color: #666; font-size: 14px; font-weight: bold;">⏳ AGUARDANDO SORTEIO</span><br>
-                        <span style="color: #333; font-size: 13px;">Espera do Concurso Alvo: <b>{j.get('concurso_alvo')}</b> | Grade: <b>{j.get('tamanho')} Dezenas</b></span><br>
-                        <span style="color: #5f6368; font-size: 12px;">Estratégia Operante: {j.get('estrategia')}</span><br>
-                        <span style="color: #5f6368; font-size: 12px; font-style: italic;">Especificações da estratégia: {j.get('justificativa', 'Padrão autônomo.')}</span><br>
-                        <span style="color: #006644; font-size: 13px; font-weight: bold;">{j.get('dna', '🧬 DNA Padrão Pós-Atualização')}</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-                st.markdown(html_card, unsafe_allow_html=True)
-                with st.container():
-                    st.code(" - ".join([f"{n:02d}" for n in j.get('dezenas', [])]))
-                    st.button("Apagar", key=f"del_{j['id']}", on_click=cb_excluir_jogo, args=(j['id'],))
-                    st.markdown("<br>", unsafe_allow_html=True)
+            if j.get('status') == "Premiado":
+                html_card = f"""
+                <div style="border-top: 5px solid #28a745; background-color: #f8f9fa; border-left: 1px solid #dadce0; border-right: 1px solid #dadce0; border-bottom: 1px solid #dadce0; border-radius: 6px; padding: 15px; margin-bottom: 10px;">
+                    <span style="color: #28a745; font-weight: bold; font-size: 14px;">✅ PREMIADO ({j.get('acertos')} Acertos) - R$ {j.get('premio_valor'):.2f}</span><br>
+                    <span style="color: #4d5156; font-size: 13px; font-weight: 500;">Concurso Alvo: {alvo} | Grade: {j.get('tamanho')} Dezenas</span><br>
+                    <span style="color: #5f6368; font-size: 12px;">Estratégia Operante: {j.get('estrategia')}</span><br>
+                    <span style="color: #5f6368; font-size: 12px; font-style: italic;">Especificações da estratégia: {j.get('justificativa', 'Padrão autônomo.')}</span><br>
+                    <span style="color: #006644; font-size: 13px; font-weight: bold;">{j.get('dna', '🧬 DNA Padrão Pós-Atualização')}</span>
+                </div>
+                """
+            elif j.get('status') == "Não Premiado":
+                html_card = f"""
+                <div style="border-top: 5px solid #dc3545; background-color: #f8f9fa; border-left: 1px solid #dadce0; border-right: 1px solid #dadce0; border-bottom: 1px solid #dadce0; border-radius: 6px; padding: 15px; margin-bottom: 10px;">
+                    <span style="color: #dc3545; font-weight: bold; font-size: 14px;">❌ NÃO PREMIADO ({j.get('acertos')} Acertos)</span><br>
+                    <span style="color: #4d5156; font-size: 13px; font-weight: 500;">Concurso Alvo: {alvo} | Grade: {j.get('tamanho')} Dezenas</span><br>
+                    <span style="color: #5f6368; font-size: 12px;">Estratégia Operante: {j.get('estrategia')}</span><br>
+                    <span style="color: #5f6368; font-size: 12px; font-style: italic;">Especificações da estratégia: {j.get('justificativa', 'Padrão autônomo.')}</span><br>
+                    <span style="color: #006644; font-size: 13px; font-weight: bold;">{j.get('dna', '🧬 DNA Padrão Pós-Atualização')}</span>
+                </div>
+                """
+            else:
+                html_card = f"""
+                <div style="border-top: 5px solid #ffcc00; background-color: #f8f9fa; border-left: 1px solid #dadce0; border-right: 1px solid #dadce0; border-bottom: 1px solid #dadce0; border-radius: 6px; padding: 15px; margin-bottom: 10px;">
+                    <span style="color: #1a73e8; font-weight: bold; font-size: 14px;">⏳ AGUARDANDO SORTEIO</span><br>
+                    <span style="color: #4d5156; font-size: 13px; font-weight: 500;">Espera do Concurso Alvo: {alvo} | Grade: {j.get('tamanho')} Dezenas</span><br>
+                    <span style="color: #5f6368; font-size: 12px;">Estratégia Operante: {j.get('estrategia')}</span><br>
+                    <span style="color: #5f6368; font-size: 12px; font-style: italic;">Especificações da estratégia: {j.get('justificativa', 'Padrão autônomo.')}</span><br>
+                    <span style="color: #006644; font-size: 13px; font-weight: bold;">{j.get('dna', '🧬 DNA Padrão Pós-Atualização')}</span>
+                </div>
+                """
+            
+            st.markdown(html_card, unsafe_allow_html=True)
+            with st.container():
+                st.code(" - ".join([f"{n:02d}" for n in j.get('dezenas', [])]))
+                st.button("Apagar", key=f"del_{j['id']}", on_click=cb_excluir_jogo, args=(j['id'],))
+                st.markdown("<br>", unsafe_allow_html=True)
     else: st.info("Sem bilhetes registrados na fila atual.")
 
 # --- TAB 5: AUDITORIA REAL, ATUALIZAÇÃO DA BASE E ENTRADA MANUAL ---
