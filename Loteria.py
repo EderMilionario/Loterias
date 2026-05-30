@@ -10,24 +10,25 @@ from datetime import datetime
 import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 def salvar_dados(dados):
-    """Gravação robusta: força a serialização dos jogos para evitar falhas"""
+    """
+    Versão corrigida: Converte tipos complexos (set/uuid) para formato 
+    que o JSON entende, garantindo que o salvamento nunca falhe.
+    """
     import json
     
-    # Função interna para converter o que o JSON não entende (set, uuid)
-    def conversor_universal(obj):
+    # Esta função interna traduz o que o JSON não conhece
+    def conversor(obj):
         if isinstance(obj, (set, frozenset)):
             return list(obj)
-        if hasattr(obj, 'hex'): # Converte UUIDs para string
+        if hasattr(obj, 'hex'): # Trata UUIDs
             return str(obj)
         return str(obj)
 
-    try:
-        with open("Cofre.json", "w", encoding='utf-8') as f:
-            # O parâmetro 'default' abaixo é o que resolve seu problema
-            json.dump(dados, f, ensure_ascii=False, indent=4, default=conversor_universal)
-    except Exception as e:
-        st.error(f"ERRO FATAL AO SALVAR: {e}") # Agora você vai ver o erro se acontecer
+    # Abre o arquivo e força a escrita com o conversor
+    with open("Cofre.json", "w", encoding='utf-8') as f:
+        json.dump(dados, f, ensure_ascii=False, indent=4, default=conversor)
 
 def render_performance_grid(dezenas_lista, titulo):
     contagem = Counter(dezenas_lista)
