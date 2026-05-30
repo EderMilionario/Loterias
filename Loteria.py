@@ -11,13 +11,23 @@ import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 def salvar_dados(dados):
-    """Força a gravação silenciosa da memória da IA no arquivo local do PC"""
+    """Gravação robusta: força a serialização dos jogos para evitar falhas"""
+    import json
+    
+    # Função interna para converter o que o JSON não entende (set, uuid)
+    def conversor_universal(obj):
+        if isinstance(obj, (set, frozenset)):
+            return list(obj)
+        if hasattr(obj, 'hex'): # Converte UUIDs para string
+            return str(obj)
+        return str(obj)
+
     try:
-        import json
         with open("Cofre.json", "w", encoding='utf-8') as f:
-            json.dump(dados, f, ensure_ascii=False, indent=4)
+            # O parâmetro 'default' abaixo é o que resolve seu problema
+            json.dump(dados, f, ensure_ascii=False, indent=4, default=conversor_universal)
     except Exception as e:
-        pass
+        st.error(f"ERRO FATAL AO SALVAR: {e}") # Agora você vai ver o erro se acontecer
 
 def render_performance_grid(dezenas_lista, titulo):
     contagem = Counter(dezenas_lista)
