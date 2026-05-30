@@ -440,40 +440,7 @@ with tabs[1]:
                 """, unsafe_allow_html=True)
 
             st.divider()
-            # 3. TERMÔMETRO DE RISCO E CORRELAÇÃO
-            col_risk, col_corr = st.columns(2)
             
-            with col_risk:
-                st.markdown("#### 🌡️ Termômetro de Risco (Critério de Kelly)")
-                # A IA cruza o momento do Ciclo com o tamanho da Matriz para calcular o Risco
-                qtd_m = ia.get('qtd_matriz', 18)
-                if qtd_m >= 21:
-                    n_risco = "ALTO (Início de Ciclo / Caos Aleatório)"
-                    c_risco = "#dc3545"; d_banca = "Recomendação: Operar com orçamento defensivo."
-                elif qtd_m == 19:
-                    n_risco = "MÉDIO (Meio de Ciclo / Transição)"
-                    c_risco = "#ffcc00"; d_banca = "Recomendação: Operar com orçamento padrão."
-                else:
-                    n_risco = "BAIXO (Fim de Ciclo / Alta Previsibilidade)"
-                    c_risco = "#28a745"; d_banca = "Recomendação: Janela de Ataque. Risco Mínimo."
-
-                st.markdown(f"""
-                <div style='background-color: #f8f9fa; border-left: 5px solid {c_risco}; padding: 15px; border-radius: 6px;'>
-                    <span style='color: {c_risco}; font-weight: bold; font-size: 15px;'>Nível Atual: {n_risco}</span><br>
-                    <span style='color: #4d5156; font-size: 13px;'><b>Diretriz Institucional:</b> {d_banca}</span>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col_corr:
-                st.markdown("#### 🕸️ Teia de Correlação (Apriori)")
-                st.markdown(f"""
-                <div style='background-color: #f8f9fa; border-left: 5px solid #1a73e8; padding: 15px; border-radius: 6px;'>
-                    <span style='color: #1a73e8; font-weight: bold; font-size: 15px;'>Par Simbiótico Atual: {top_par[0]:02d} e {top_par[1]:02d}</span><br>
-                    <span style='color: #4d5156; font-size: 13px;'>Essas duas dezenas são as que mais saíram juntas nos últimos 100 concursos. O DNA recompensará bilhetes que contiverem essa dupla.</span>
-                </div>
-                """, unsafe_allow_html=True)
-
-            st.divider()
             # =====================================================================
             # PAINEL DE GESTÃO DE CICLO (Layout Limpo - Nível Profissional)
             # =====================================================================
