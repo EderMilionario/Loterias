@@ -436,7 +436,13 @@ with tabs[0]:
         with st.container(border=True):
             st.file_uploader("📥 Carregar Arquivo Cofre.json", type="json", key="uploader_cofre", on_change=cb_carregar_cofre)
             st.info(f"📊 **Concursos Oficiais Salvos:** {len(st.session_state.data['historico_dados'])}.")
-            st.download_button("📤 Baixar Backup Consolidado", json.dumps(st.session_state.data), "Cofre.json", type="primary", use_container_width=True)
+            
+            # =====================================================================
+            # A CORREÇÃO É SÓ NESTA LINHA: Adicionado default=list, ensure_ascii=False e indent=4
+            # Isso obriga o sistema a puxar os jogos gerados e formatar o backup perfeitamente
+            # =====================================================================
+            st.download_button("📤 Baixar Backup Consolidado", json.dumps(st.session_state.data, default=list, ensure_ascii=False, indent=4), "Cofre.json", type="primary", use_container_width=True)
+            
     with c2:
         with st.container(border=True):
             st.metric("💰 Saldo na Banca", f"R$ {st.session_state.data['banca']:.2f}")
