@@ -830,38 +830,6 @@ with tabs[3]:
 # --- TAB 5: SINCRONIZAÇÃO E ENTRADA ---
 with tabs[4]:
     st.markdown("### 🏆 Sincronização Oficial e Auditoria Pericial")
-    # -----------------------------------------------------------------
-    # MÓDULO: SINCRONIZAÇÃO EM MASSA (O CORTA-GAP)
-    # -----------------------------------------------------------------
-    with st.container(border=True):
-        st.markdown("#### 🛸 Sincronização Automática em Massa (Recuperar Gap)")
-        st.write("Detecta sorteios faltantes e baixa todos sequencialmente.")
-        if st.button("🛸 BUSCAR TODOS OS SORTEIOS FALTANTES AGORA", type="primary", use_container_width=True):
-            historico = st.session_state.data.get("historico_dados", [])
-            if not historico:
-                st.error("Banco vazio. Insira pelo menos 1 resultado manualmente.")
-            else:
-                ultimo_salvo = int(historico[-1]["concurso"])
-                try:
-                    res_latest = requests.get("https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest", verify=False, timeout=10).json()
-                    ultimo_oficial = int(res_latest['concurso'])
-                    if ultimo_salvo >= ultimo_oficial:
-                        st.info("Sistema já atualizado.")
-                    else:
-                        concursos_faltantes = list(range(ultimo_salvo + 1, ultimo_oficial + 1))
-                        barra = st.progress(0)
-                        for i, num in enumerate(concursos_faltantes):
-                            res_conc = requests.get(f"https://loteriascaixa-api.herokuapp.com/api/lotofacil/{num}", verify=False, timeout=10).json()
-                            if 'concurso' in res_conc:
-                                st.session_state.data["historico_dados"].append({
-                                    "concurso": num, "dezenas": sorted([int(d) for d in res_conc['dezenas']]), "data": res_conc['data']
-                                })
-                            barra.progress((i + 1) / len(concursos_faltantes))
-                        salvar_dados(st.session_state.data)
-                        st.success("Sincronização em Massa Concluída!")
-                        st.rerun()
-                except Exception as e:
-                    st.error(f"Erro na conexão: {e}")
     
     col_sync1, col_sync2 = st.columns(2)
     
