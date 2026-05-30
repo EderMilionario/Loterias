@@ -19,6 +19,32 @@ def salvar_dados(dados):
     except Exception as e:
         pass
 
+# =====================================================================
+# 💾 SISTEMA DE EXPORTAÇÃO DE BACKUP PARA O PC LOCAL
+# =====================================================================
+# Este código cria um botão que permite descarregares o estado atual da tua IA.
+# Deve ser utilizado SEMPRE que a IA gerar novos bilhetes ou aprender novos resultados!
+
+import json
+
+# 1. Primeiro verificamos se já existe memória carregada no sistema
+if 'data' in st.session_state:
+    
+    # 2. Convertemos o dicionário de memória (Python) para formato de texto (JSON)
+    dados_atualizados_json = json.dumps(st.session_state.data, ensure_ascii=False, indent=4)
+    
+    # 3. Desenhamos o botão na barra lateral (sidebar) para estar sempre visível
+    st.sidebar.markdown("### 💾 Salvar Progresso (Backup)")
+    st.sidebar.caption("Faz o download para o teu PC para não perderes os jogos gerados!")
+    
+    st.sidebar.download_button(
+        label="⬇️ Baixar Cofre.json Atualizado",
+        data=dados_atualizados_json,
+        file_name="Cofre.json",
+        mime="application/json",
+        type="primary" # Deixa o botão destacado com cor primária
+    )
+
 def render_performance_grid(dezenas_lista, titulo):
     contagem = Counter(dezenas_lista)
     # Criar DataFrame para visualizar melhor
