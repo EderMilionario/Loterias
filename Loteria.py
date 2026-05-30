@@ -351,24 +351,28 @@ def raciocinio_total_ia(historico, memoria):
         jogos_ciclo = 1
     # [FIM DA SUBSTITUIÇÃO]
 
-    # --- TAMANHO DINÂMICO DA MATRIZ ---
-    if len(faltam_ciclo) >= 9: qtd_matriz = 23
-    elif len(faltam_ciclo) >= 6: qtd_matriz = 21
-    elif len(faltam_ciclo) >= 3: qtd_matriz = 19
-    else: qtd_matriz = 18
-
     # --- AVALIAÇÃO DE DESEMPENHO (MEMÓRIA BLINDADA CONTRA OVERFITTING) ---
     perf = {}
     for est in ["Tendencia", "Reversao", "Ciclo", "Simetria"]:
-        usos = memoria.get(est, {}).get("usos", 0)
-        pontos = memoria.get(est, {}).get("pontos", 0)
-        # Taxa de Decaimento virtual: Impede que uma estratégia fique congelada no topo por ter 500 usos passados.
-        if usos > 30: 
-            pontos = (pontos / usos) * 30
-            usos = 30
-        perf[est] = pontos / usos if usos > 0 else 11.0 
-        
+        dado_memoria = memoria.get(est, 11.0)
+        # Verifica o formato que está salvo no Cofre.json para evitar quebra do código
+        if isinstance(dado_memoria, dict):
+            usos = dado_memoria.get("usos", 0)
+            pontos = dado_memoria.get("pontos", 0)
+            # Taxa de Decaimento virtual: Mantém a IA ágil em vez de presa ao passado antigo
+            if usos > 30: 
+                pontos = (pontos / usos) * 30
+                usos = 30
+            perf[est] = pontos / usos if usos > 0 else 11.0 
+        else:
+            perf[est] = float(dado_memoria)
+            
     melhor_est = max(perf, key=perf.get)
+
+    # --- TAMANHO DINÂMICO DA MATRIZ (CONECTADO AO NOVO MOTOR!) ---
+    # Agora sim! A IA deixou de usar aquela regra dura e chama a nossa 
+    # matemática de confiança e volatilidade para definir o tamanho da matriz da rodada.
+    qtd_matriz, _, _, _ = calcular_temperatura_e_confianca(historico, melhor_est, perf)
 
     # --- MUTAÇÃO DE PESOS DA IA CONFORME DECISÃO (CORE ATUALIZADO) ---
     if melhor_est == "Ciclo" and len(faltam_ciclo) > 0:
