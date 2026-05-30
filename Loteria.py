@@ -475,40 +475,48 @@ with tabs[1]:
 
             st.divider()
             # =====================================================================
-            # PAINEL DE DIAGNÓSTICO DO CICLO (Layout Clean - Sem CSS poluído)
+            # PAINEL DE GESTÃO DE CICLO (Layout Limpo - Nível Profissional)
             # =====================================================================
             st.subheader("📐 Gestão de Ciclo e Matriz")
         
             qtd_em_falta = len(ia['faltam_ciclo'])
         
-            # Exibição métrica principal
-            col_m1, col_m2 = st.columns(2)
-            col_m1.metric("Dezenas faltando para fechar o Ciclo", qtd_em_falta)
+            # Exibição das métricas principais
+            col_c1, col_c2 = st.columns(2)
+            col_c1.metric("Ciclo aberto há", f"{ia['ciclo_tam']} concursos")
+            col_c2.metric("Dezenas faltando", qtd_em_falta)
         
-            # Identificação do Modo Atual
+            # Identificação inteligente do modo de operação
             if qtd_em_falta >= 9:
-                modo_atual = "Modo Caos / Defensivo (Matriz: 23)"
-                status_color = "error"
+                modo = "Modo Caos (Defensivo)"
+                matriz = "23 Dezenas"
+                tipo = "error"
             elif 6 <= qtd_em_falta <= 8:
-                modo_atual = "Modo Transição (Matriz: 21)"
-                status_color = "warning"
+                modo = "Modo Transição"
+                matriz = "21 Dezenas"
+                tipo = "warning"
             elif 3 <= qtd_em_falta <= 5:
-                modo_atual = "Modo Ataque (Matriz: 19)"
-                status_color = "info"
+                modo = "Modo Ataque"
+                matriz = "19 Dezenas"
+                tipo = "info"
             else:
-                modo_atual = "Modo Sniper / Baixo Risco (Matriz: 18)"
-                status_color = "success"
+                modo = "Modo Sniper (Baixo Risco)"
+                matriz = "18 Dezenas"
+                tipo = "success"
             
-            st.write(f"**Estado Atual da Inteligência:** {modo_atual}")
+            # Exibição do Status atual (sem HTML bagunçado)
+            if tipo == "error": st.error(f"**Inteligência:** {modo} | **Matriz Selecionada:** {matriz}")
+            elif tipo == "warning": st.warning(f"**Inteligência:** {modo} | **Matriz Selecionada:** {matriz}")
+            elif tipo == "info": st.info(f"**Inteligência:** {modo} | **Matriz Selecionada:** {matriz}")
+            else: st.success(f"**Inteligência:** {modo} | **Matriz Selecionada:** {matriz}")
         
-            # Lista simples das regras (Fácil leitura)
-            with st.expander("Ver Tabela de Regras (Clique para expandir)"):
-                st.markdown("""
-                * **9+ faltando:** Matriz 23 (Caos)
-                * **6-8 faltando:** Matriz 21 (Transição)
-                * **3-5 faltando:** Matriz 19 (Ataque)
-                * **0-2 faltando:** Matriz 18 (Sniper)
-                """)
+            # Regras explicativas (Apenas se o usuário quiser ler)
+            with st.expander("Ver critérios de dimensionamento (Regras)"):
+                st.write("A matriz é ajustada automaticamente baseada na entropia do ciclo:")
+                st.write("- 9+ faltando: Matriz 23 (Caos)")
+                st.write("- 6-8 faltando: Matriz 21 (Transição)")
+                st.write("- 3-5 faltando: Matriz 19 (Ataque)")
+                st.write("- 0-2 faltando: Matriz 18 (Sniper)")
 
             st.divider()
         
