@@ -10,25 +10,14 @@ from datetime import datetime
 import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
 def salvar_dados(dados):
-    """
-    Versão corrigida: Converte tipos complexos (set/uuid) para formato 
-    que o JSON entende, garantindo que o salvamento nunca falhe.
-    """
-    import json
-    
-    # Esta função interna traduz o que o JSON não conhece
-    def conversor(obj):
-        if isinstance(obj, (set, frozenset)):
-            return list(obj)
-        if hasattr(obj, 'hex'): # Trata UUIDs
-            return str(obj)
-        return str(obj)
-
-    # Abre o arquivo e força a escrita com o conversor
-    with open("Cofre.json", "w", encoding='utf-8') as f:
-        json.dump(dados, f, ensure_ascii=False, indent=4, default=conversor)
+    """Força a gravação silenciosa da memória da IA no arquivo local do PC"""
+    try:
+        import json
+        with open("Cofre.json", "w", encoding='utf-8') as f:
+            json.dump(dados, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        pass
 
 def render_performance_grid(dezenas_lista, titulo):
     contagem = Counter(dezenas_lista)
@@ -447,13 +436,7 @@ with tabs[0]:
         with st.container(border=True):
             st.file_uploader("📥 Carregar Arquivo Cofre.json", type="json", key="uploader_cofre", on_change=cb_carregar_cofre)
             st.info(f"📊 **Concursos Oficiais Salvos:** {len(st.session_state.data['historico_dados'])}.")
-            
-            # =====================================================================
-            # A CORREÇÃO É SÓ NESTA LINHA: Adicionado default=list, ensure_ascii=False e indent=4
-            # Isso obriga o sistema a puxar os jogos gerados e formatar o backup perfeitamente
-            # =====================================================================
-            st.download_button("📤 Baixar Backup Consolidado", json.dumps(st.session_state.data, default=list, ensure_ascii=False, indent=4), "Cofre.json", type="primary", use_container_width=True)
-            
+            st.download_button("📤 Baixar Backup Consolidado", json.dumps(st.session_state.data), "Cofre.json", type="primary", use_container_width=True)
     with c2:
         with st.container(border=True):
             st.metric("💰 Saldo na Banca", f"R$ {st.session_state.data['banca']:.2f}")
