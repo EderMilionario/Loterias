@@ -241,13 +241,23 @@ def raciocinio_total_ia(historico, memoria):
         for n in range(1, 26):
             if n not in h['dezenas'] and atrasos[n] == 0: atrasos[n] += 1
 
+    # [INÍCIO DA SUBSTITUIÇÃO - CORREÇÃO DE CICLO]
     ciclo = set()
     jogos_ciclo = 0
+    # Percorre o histórico para acumular o ciclo
     for h in reversed(historico):
         ciclo.update(h['dezenas'])
         jogos_ciclo += 1
         if len(ciclo) == 25: break
+
     faltam_ciclo = sorted(list(set(range(1, 26)) - ciclo))
+
+    # Inteligência de Reset: Se o ciclo fechou (faltam 0), iniciamos um novo agora
+    if len(faltam_ciclo) == 0:
+        ciclo = set(historico[-1]['dezenas'])
+        faltam_ciclo = sorted(list(set(range(1, 26)) - ciclo))
+        jogos_ciclo = 1
+    # [FIM DA SUBSTITUIÇÃO]
 
     # --- TAMANHO DINÂMICO DA MATRIZ ---
     if len(faltam_ciclo) >= 9: qtd_matriz = 23
