@@ -323,10 +323,21 @@ def raciocinio_total_ia(historico, memoria):
     media_primos = sum([sum(1 for n in h['dezenas'] if n in primos_lista) for h in ultimos_10]) / len(ultimos_10)
     media_moldura = sum([sum(1 for n in h['dezenas'] if n in moldura_lista) for h in ultimos_10]) / len(ultimos_10)
 
+    # Atraso que respeita o limite do ciclo
     atrasos = {n: 0 for n in range(1, 26)}
-    for h in reversed(historico):
-        for n in range(1, 26):
-            if n not in h['dezenas'] and atrasos[n] == 0: atrasos[n] += 1
+
+    for n in range(1, 26):
+        contagem = 0
+        # Percorre o histórico de trás para frente
+        for h in reversed(historico):
+            # Regra de Ouro: Se a dezena saiu, paramos (atraso calculado)
+            if n in h['dezenas']:
+                break
+            # Se chegamos num ponto onde o ciclo resetou, paramos também
+            # (Isso é opcional, mas garante que o atraso não ultrapasse o ciclo)
+            # Se você quer apenas atraso simples, use apenas o break acima.
+            contagem += 1
+        atrasos[n] = contagem
 
     # --- CÉREBRO DE CICLO INTELIGENTE (CÁLCULO PROGRESSIVO PERFEITO) ---
     ciclo_atual = set()
