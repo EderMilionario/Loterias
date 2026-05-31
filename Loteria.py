@@ -323,21 +323,34 @@ def raciocinio_total_ia(historico, memoria):
     media_primos = sum([sum(1 for n in h['dezenas'] if n in primos_lista) for h in ultimos_10]) / len(ultimos_10)
     media_moldura = sum([sum(1 for n in h['dezenas'] if n in moldura_lista) for h in ultimos_10]) / len(ultimos_10)
 
-    # Atraso que respeita o limite do ciclo
+    # 1. Identificar o início do ciclo atual
+    # Varremos o histórico para achar o último reset
+    buffer_ciclo = set()
+    inicio_ciclo_index = 0
+
+    for i, h in enumerate(historico):
+        buffer_ciclo.update(h['dezenas'])
+        # Se fechou o ciclo, o próximo começa no índice i+1
+        if len(buffer_ciclo) == 25:
+            buffer_ciclo = set()
+            inicio_ciclo_index = i + 1
+
+    # 2. Pegar apenas os sorteios do ciclo atual
+    historico_ciclo = historico[inicio_ciclo_index:]
+
+    # 3. Calcular o atraso APENAS dentro deste ciclo
     atrasos = {n: 0 for n in range(1, 26)}
 
     for n in range(1, 26):
         contagem = 0
-        # Percorre o histórico de trás para frente
-        for h in reversed(historico):
-            # Regra de Ouro: Se a dezena saiu, paramos (atraso calculado)
+        # Varremos de trás para frente, mas SOMENTE dentro do ciclo atual
+        for h in reversed(historico_ciclo):
             if n in h['dezenas']:
-                break
-            # Se chegamos num ponto onde o ciclo resetou, paramos também
-            # (Isso é opcional, mas garante que o atraso não ultrapasse o ciclo)
-            # Se você quer apenas atraso simples, use apenas o break acima.
+                break # Parou, a dezena saiu neste ciclo
             contagem += 1
-        atrasos[n] = contagem
+    
+    # Se a dezena nunca saiu no ciclo, o atraso é o tamanho do ciclo atual
+    atrasos[n] = contagem
 
     # --- CÉREBRO DE CICLO INTELIGENTE (CÁLCULO PROGRESSIVO PERFEITO) ---
     ciclo_atual = set()
